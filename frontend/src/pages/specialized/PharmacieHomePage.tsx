@@ -114,11 +114,13 @@ const PharmacieHomePage: React.FC = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiUnavailable, setAiUnavailable] = useState(false);
 
+  // ⚠️ Pas de filtre "Prix bas" : les prix des médicaments sont harmonisés
+  // au Cameroun (régulation MINSANTE). Tous les pharmaciens vendent au même
+  // tarif officiel → un filtre comparatif n'aurait pas de sens.
   const QUICK_FILTERS = [
     { id: 'proche', label: t('pharmacie.filters.near'), icon: <MapPin className="w-3 h-3" /> },
     { id: 'disponible', label: t('pharmacie.filters.available'), icon: null },
     { id: 'garde', label: t('pharmacie.filters.onDuty'), icon: <Shield className="w-3 h-3" /> },
-    { id: 'prix_bas', label: t('pharmacie.filters.lowPrice'), icon: <Tag className="w-3 h-3" /> },
   ];
 
   const loadMedications = useCallback(
@@ -277,7 +279,7 @@ const PharmacieHomePage: React.FC = () => {
             query_items: meds.map(name => ({ name })),
             gps_lat: gps?.lat ?? 4.0511,
             gps_lng: gps?.lng ?? 9.7679,
-            radius_km: 5,
+            radius_km: 20,
           },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

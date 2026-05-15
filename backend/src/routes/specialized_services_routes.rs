@@ -1152,6 +1152,12 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/me/prescriptions/{id}",
             delete(specialized_services_controller::delete_archived_prescription),
         )
+        // Dashboard analytics pharmacien (taux de réponse, top médicaments,
+        // ruptures de stock, top hôpitaux/médecins). Période en jours.
+        .route(
+            "/api/pharmacies/me/analytics",
+            get(specialized_services_controller::get_pharmacy_analytics),
+        )
         .route(
             "/api/pharmacies/me/financial-movements",
             get(specialized_services_controller::get_pharmacy_financial_movements),

@@ -73,6 +73,28 @@ const LivreScolaireHomePage: React.FC = () => {
     }
   }, [isLoading, user, navigate]);
 
+  // ✅ 2026-05-15 : Onboarding lieu de livraison au 1er login. Si l'user n'a
+  // pas encore enregistré son adresse persistante (delivery_location_saved_at
+  // null), on le redirige vers /onboarding/livraison. Une fois saved, plus
+  // jamais redirigé. Ce lieu sert au matching troc (proximité) + livraison.
+  useEffect(() => {
+    if (!user || isLoading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiGet('/api/users/me/delivery-info');
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (data?.success && data?.onboarding_done === false) {
+          navigate('/onboarding/livraison', { replace: true });
+        }
+      } catch {
+        // silencieux — l'user pourra renseigner plus tard
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, isLoading, navigate]);
+
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-amber-50">

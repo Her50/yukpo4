@@ -25,7 +25,21 @@ const PWAInstallPrompt: React.FC<Props> = ({ appName, themeColor, storageKey }) 
     if (isStandalone) return; // app déjà installée et ouverte en mode app
 
     const stored = localStorage.getItem(storageKey);
-    if (stored === 'dismissed') return;
+    // ✅ 2026-05-15 : 'dismissed' expire après 7 jours pour redonner une chance.
+    // Format stocké : 'dismissed:<timestamp_ms>' (legacy 'dismissed' = permanent).
+    if (stored && stored.startsWith('dismissed:')) {
+      const ts = parseInt(stored.slice('dismissed:'.length), 10);
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      if (!Number.isNaN(ts) && Date.now() - ts < SEVEN_DAYS_MS) {
+        return; // encore dans la fenêtre de silence
+      }
+      // expiré → on retire et on laisse réafficher
+      localStorage.removeItem(storageKey);
+    } else if (stored === 'dismissed') {
+      // Legacy : ancien format permanent → on convertit en expirable et on respecte 7j.
+      localStorage.setItem(storageKey, `dismissed:${Date.now()}`);
+      return;
+    }
     // Si marqué 'installed' mais pas en standalone → app désinstallée, réafficher le prompt
     if (stored === 'installed') localStorage.removeItem(storageKey);
 
@@ -65,7 +79,8 @@ const PWAInstallPrompt: React.FC<Props> = ({ appName, themeColor, storageKey }) 
   };
 
   const onDismiss = () => {
-    localStorage.setItem(storageKey, 'dismissed');
+    // ✅ 2026-05-15 : stocke le timestamp pour expiration auto à 7 jours.
+    localStorage.setItem(storageKey, `dismissed:${Date.now()}`);
     setShow(false);
   };
 

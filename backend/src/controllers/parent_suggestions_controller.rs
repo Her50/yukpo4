@@ -566,3 +566,130 @@ pub async fn articles_search(
         })),
     ))
 }
+
+// ============================================================================
+// ✅ 2026-05-15 : Onboarding lieu de livraison + WhatsApp persistants
+// ============================================================================
+// Au 1er login, le user remplit son lieu de livraison (autocomplete Photon)
+// + confirme/édite son numéro WhatsApp. Une fois sauvegardé, l'app ne demande
+// plus jamais ces infos (ni de GPS in-flow pour le troc / commande).
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct UserDeliveryInfo {
+    pub delivery_location_text: Option<String>,
+    pub delivery_location_lat: Option<f64>,
+    pub delivery_location_lng: Option<f64>,
+    pub delivery_location_saved_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Numéro WhatsApp principal (= colonne `phone` de users)
+    pub whatsapp_number_primary: Option<String>,
+    pub whatsapp_number_secondary: Option<String>,
+}
+
+/// GET /api/users/me/delivery-info
+pub async fn get_delivery_info(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let info: UserDeliveryInfo = sqlx::query_as(
+        r#"SELECT
+              delivery_location_text,
+              delivery_location_lat,
+              delivery_location_lng,
+              delivery_location_saved_at,
+              phone AS whatsapp_number_primary,
+              whatsapp_number_secondary
+           FROM users
+           WHERE id = $1"#,
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("get_delivery_info: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Utilisateur introuvable".into()))?;
+
+    // Booléen pratique pour le frontend : sait-on déjà où livrer ?
+    let onboarding_done =
+        info.delivery_location_text.is_some() && info.delivery_location_saved_at.is_some();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "onboarding_done": onboarding_done,
+            "delivery_location_text": info.delivery_location_text,
+            "delivery_location_lat": info.delivery_location_lat,
+            "delivery_location_lng": info.delivery_location_lng,
+            "delivery_location_saved_at": info.delivery_location_saved_at,
+            "whatsapp_number_primary": info.whatsapp_number_primary,
+            "whatsapp_number_secondary": info.whatsapp_number_secondary,
+        })),
+    ))
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct PutDeliveryInfoBody {
+    pub delivery_location_text: String,
+    pub delivery_location_lat: Option<f64>,
+    pub delivery_location_lng: Option<f64>,
+    pub whatsapp_number_primary: Option<String>,
+    pub whatsapp_number_secondary: Option<String>,
+}
+
+/// PUT /api/users/me/delivery-info
+///
+/// Persiste le lieu de livraison choisi par l'user (autocomplete Photon →
+/// texte + lat + lng). Met aussi à jour le WhatsApp principal/secondaire.
+/// Source de vérité pour le matching troc (proximité géographique) et
+/// l'organisation des livraisons côté coursier.
+pub async fn put_delivery_info(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(body): Json<PutDeliveryInfoBody>,
+) -> AppResult<impl IntoResponse> {
+    let text = body.delivery_location_text.trim();
+    if text.is_empty() {
+        return Err(AppError::BadRequest(
+            "Le lieu de livraison est obligatoire.".into(),
+        ));
+    }
+    if text.len() > 500 {
+        return Err(AppError::BadRequest(
+            "Le lieu de livraison est trop long (max 500 caractères).".into(),
+        ));
+    }
+
+    // Normalise les numéros WhatsApp (suppression des espaces, garde +, chiffres)
+    let normalize_phone =
+        |s: &str| -> String { s.chars().filter(|c| c.is_ascii_digit() || *c == '+').collect() };
+    let whatsapp_primary = body.whatsapp_number_primary.as_deref().map(|s| normalize_phone(s));
+    let whatsapp_secondary = body.whatsapp_number_secondary.as_deref().map(|s| normalize_phone(s));
+
+    sqlx::query(
+        r#"UPDATE users
+           SET delivery_location_text = $2,
+               delivery_location_lat = $3,
+               delivery_location_lng = $4,
+               delivery_location_saved_at = NOW(),
+               phone = COALESCE($5, phone),
+               whatsapp_number_secondary = $6,
+               updated_at = NOW()
+           WHERE id = $1"#,
+    )
+    .bind(user.id)
+    .bind(text)
+    .bind(body.delivery_location_lat)
+    .bind(body.delivery_location_lng)
+    .bind(whatsapp_primary.as_deref().filter(|s| !s.is_empty()))
+    .bind(whatsapp_secondary.as_deref().filter(|s| !s.is_empty()))
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("put_delivery_info: {}", e)))?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "delivery_location_saved_at": chrono::Utc::now(),
+        })),
+    ))
+}

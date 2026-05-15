@@ -6,7 +6,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BookPhotoCapture, { AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
-import GpsGate from '../../components/livres-scolaires/GpsGate';
 import { apiGet, apiPost } from '../../services/apiService';
 import { useToast } from '../../hooks/use-toast';
 
@@ -312,22 +311,45 @@ const VendreLivresPage: React.FC = () => {
     .reduce((s, b) => s + Math.round(b.credit_net_xaf ?? Math.max(0, (b.valeur_calculee || 0) * 0.75 - 40)), 0);
   const validBooksCount = books.filter(b => !b.is_rejected).length;
 
-  // ✅ 2026-05-11 : GPS gate obligatoire AVANT tout — la page complète
-  // ne se rend que quand la position est accordée. Tant que gps est
-  // null, on affiche un écran d'instructions clair (composant GpsGate).
-  // Une fois accordée, le state `gps` est rempli et le rendu normal
-  // de la page démarre. ensureSession utilise alors gps directement.
-  if (!gps) {
-    return (
-      <GpsGate
-        title="Où venir chercher vos livres ?"
-        reason="Indiquez le point où le coursier viendra récupérer vos livres après matching. Vous pouvez utiliser votre position actuelle ou choisir un lieu précis sur la carte."
-        onGranted={(coords) => {
-          setGps(coords);
+  // ✅ 2026-05-15 : Plus de GpsGate ici. Le lieu de livraison est récupéré
+  // depuis l'onboarding du user (delivery_location_lat/lng persisté côté DB).
+  // Au mount, on fetche ces coords ; si absentes (onboarding non fait), on
+  // redirige vers /onboarding/livraison.
+  const [deliveryInfoLoaded, setDeliveryInfoLoaded] = useState(false);
+  useEffect(() => {
+    if (gps || deliveryInfoLoaded) return;
+    (async () => {
+      try {
+        const res = await apiGet('/api/users/me/delivery-info');
+        const data = await res.json().catch(() => ({}));
+        if (data?.success) {
+          if (data.onboarding_done === false) {
+            navigate('/onboarding/livraison', { replace: true });
+            return;
+          }
+          if (typeof data.delivery_location_lat === 'number' && typeof data.delivery_location_lng === 'number') {
+            setGps({ lat: data.delivery_location_lat, lon: data.delivery_location_lng });
+          } else {
+            // Pas de coords précises mais texte présent — coords optionnelles côté backend, on continue.
+            setGps({ lat: 0, lon: 0 });
+          }
           setGpsAsked(true);
-        }}
-        onCancel={() => navigate(-1)}
-      />
+        }
+      } catch {
+        // silent — on rend la page sans GPS, le backend gère l'absence (gps optionnel)
+        setGps({ lat: 0, lon: 0 });
+        setGpsAsked(true);
+      } finally {
+        setDeliveryInfoLoaded(true);
+      }
+    })();
+  }, [gps, deliveryInfoLoaded, navigate]);
+
+  if (!gps && !deliveryInfoLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+      </div>
     );
   }
 

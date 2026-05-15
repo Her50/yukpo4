@@ -14,6 +14,7 @@ import {
 } from '@/services/pharmacyPartner';
 import PharmacyAlertsTab from './PharmacyAlertsTab';
 import PharmacyArchivesTab from './PharmacyArchivesTab';
+import PharmacyAnalyticsTab from './PharmacyAnalyticsTab';
 // Note : pas de YukpoCostBadge côté pharmacien partenaire — outils internes gratuits
 // (la marge plateforme se fait sur le client patient final, pas sur le partenaire métier).
 
@@ -447,14 +448,21 @@ const PharmacieDashboardPage: React.FC = () => {
         )}
 
         {tab === 'stats' && (
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Total commandes" value={analytics?.total_orders ?? '—'} accent="text-emerald-600" />
-            <StatCard label="7 derniers jours" value={analytics?.orders_7d ?? '—'} accent="text-blue-600" />
-            <StatCard label="30 derniers jours" value={analytics?.orders_30d ?? '—'} accent="text-violet-600" />
-            <StatCard label="CA total" value={`${Number(analytics?.total_revenue ?? 0).toLocaleString()} XAF`} accent="text-emerald-700" />
-            <div className="col-span-2">
-              <StatCard label="Panier moyen" value={`${Number(analytics?.avg_order_value ?? 0).toLocaleString()} XAF`} accent="text-amber-600" />
+          <div className="space-y-5">
+            {/* KPIs commandes (existant) — gardés en haut pour cohérence */}
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard label="Total commandes" value={analytics?.total_orders ?? '—'} accent="text-emerald-600" />
+              <StatCard label="7 derniers jours" value={analytics?.orders_7d ?? '—'} accent="text-blue-600" />
+              <StatCard label="30 derniers jours" value={analytics?.orders_30d ?? '—'} accent="text-violet-600" />
+              <StatCard label="CA total" value={`${Number(analytics?.total_revenue ?? 0).toLocaleString()} XAF`} accent="text-emerald-700" />
+              <div className="col-span-2">
+                <StatCard label="Panier moyen" value={`${Number(analytics?.avg_order_value ?? 0).toLocaleString()} XAF`} accent="text-amber-600" />
+              </div>
             </div>
+
+            {/* Dashboard analytics RFQ : taux de réponse, top médic, ruptures,
+                top hôpitaux/médecins. Période configurable 7/30/90 jours. */}
+            <PharmacyAnalyticsTab />
           </div>
         )}
 

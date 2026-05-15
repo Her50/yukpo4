@@ -123,7 +123,9 @@ const MedicationAlertPage: React.FC = () => {
     try {
       // On ré-émet une nouvelle alerte avec un rayon plus large.
       // L'ancienne reste consultable, la nouvelle a un nouvel ID.
-      const newRadius = Math.min(25, data.radius_km * 2);
+      // Max 50 km (clamp backend) → permet d'aller jusqu'à 50 km en
+      // partant du défaut 20 km via un seul élargissement.
+      const newRadius = Math.min(50, data.radius_km * 2);
       const items = data.matches[0]?.items_status?.map(s => ({ name: s.name }))
         ?? Array(data.total_items).fill(0).map((_, i) => ({ name: `Médicament ${i + 1}` }));
       const res = await apiPost('/api/medication-alerts', {
@@ -167,6 +169,20 @@ const MedicationAlertPage: React.FC = () => {
 
   const fullMatches = data.matches.filter(m => m.found_count === m.total_count);
   const partialMatches = data.matches.filter(m => m.found_count < m.total_count);
+
+  // ✅ Budget total de l'ordonnance (prix harmonisés au CM → identique entre
+  // pharmacies). On prend la 1ère pharmacie 100% si disponible, sinon le
+  // meilleur match partiel + indique que c'est partiel.
+  const computeBudget = (match: MatchPharmacy | undefined): number => {
+    if (!match) return 0;
+    return match.items_status
+      .filter(s => s.available && typeof s.price === 'number')
+      .reduce((s, i) => s + (i.price as number), 0);
+  };
+  const referenceMatch = fullMatches[0] ?? partialMatches[0];
+  const referenceBudget = computeBudget(referenceMatch);
+  const isPartialReference =
+    !!referenceMatch && referenceMatch.found_count < referenceMatch.total_count;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500">
@@ -216,6 +232,30 @@ const MedicationAlertPage: React.FC = () => {
       {/* Body */}
       <div className="bg-white rounded-t-3xl min-h-screen pb-28">
         <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
+          {/* Budget total de l'ordonnance — visible en haut. Les prix des
+              médicaments sont harmonisés au Cameroun (régulation MINSANTE)
+              donc cette valeur est valide quelle que soit la pharmacie
+              choisie pour les médicaments effectivement disponibles. */}
+          {referenceBudget > 0 && (
+            <div className="rounded-2xl border-2 border-blue-200 bg-blue-50 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wide">
+                    Budget estimé pour votre ordonnance
+                  </p>
+                  <p className="text-2xl font-bold text-blue-900 mt-0.5 tabular-nums">
+                    {referenceBudget.toLocaleString()} <span className="text-base font-semibold">FCFA</span>
+                  </p>
+                  <p className="text-[11px] text-blue-700/80 mt-0.5 leading-snug">
+                    {isPartialReference
+                      ? `⚠ Total partiel : ${referenceMatch.found_count}/${referenceMatch.total_count} médicaments disponibles dans la meilleure pharmacie pour l'instant.`
+                      : 'Prix harmonisés au Cameroun : identique dans toutes les pharmacies qui ont l\'ordonnance complète.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Section pharmacies complètes (100% match) */}
           {fullMatches.length > 0 && (
             <section>
@@ -270,7 +310,7 @@ const MedicationAlertPage: React.FC = () => {
                 Meilleur taux atteint : {data.fallback.max_completeness}/{data.total_items} médicaments.
                 {data.fallback.suggestion}
               </p>
-              {data.radius_km < 25 && (
+              {data.radius_km < 50 && (
                 <button
                   onClick={handleWidenRadius}
                   disabled={widening || !gps}
@@ -281,7 +321,7 @@ const MedicationAlertPage: React.FC = () => {
                   ) : (
                     <>
                       <MapPin className="w-4 h-4" />
-                      Élargir à {Math.min(25, data.radius_km * 2).toFixed(0)} km
+                      Élargir à {Math.min(50, data.radius_km * 2).toFixed(0)} km
                     </>
                   )}
                 </button>

@@ -7054,7 +7054,10 @@ pub async fn create_medication_alert(
     }
 
     let total = payload.query_items.len() as i32;
-    let radius_km = payload.radius_km.unwrap_or(5.0).clamp(1.0, 25.0);
+    // Rayon par défaut 20 km (mise à jour 2026-05-15) — assure une couverture
+    // plus large des pharmacies notifiées au Cameroun où la densité de
+    // partenaires est encore variable. clamp 1-50 km pour laisser l'élargissement.
+    let radius_km = payload.radius_km.unwrap_or(20.0).clamp(1.0, 50.0);
     let ttl = payload.ttl_minutes.unwrap_or(5).clamp(1, 60);
     let user_id = user.as_ref().map(|u| u.0.id);
 
@@ -7504,6 +7507,49 @@ pub async fn get_my_pharmacy_alerts(
         .await
         .unwrap_or_default();
 
+        // ✅ 2026-05-15 : récupère les derniers prix saisis par cette pharmacie
+        // pour chaque médicament déjà rencontré (DISTINCT ON par nom, ordre
+        // par responded_at desc). Le frontend pré-remplit le champ prix dans
+        // PharmacyAlertsTab pour éviter au pharmacien de retaper à chaque
+        // alerte le prix déjà connu. Les prix sont harmonisés au CM mais
+        // mémoriser la dernière saisie reste un gain UX (pas besoin de
+        // ressaisir 1200 FCFA pour le Doliprane à chaque alerte).
+        let known_prices_rows = sqlx::query(
+            r#"
+            SELECT DISTINCT ON (lower(trim(item->>'name')))
+                lower(trim(item->>'name')) AS name,
+                (item->>'price')::DOUBLE PRECISION AS price
+            FROM pharmacy_responses pr,
+                 jsonb_array_elements(pr.items_status) AS item
+            WHERE pr.pharmacy_id = $1
+              AND (item->>'available')::BOOLEAN = TRUE
+              AND item ? 'price'
+              AND length(trim(item->>'name')) > 0
+              AND (item->>'price') ~ '^[0-9]+(\.[0-9]+)?$'
+            ORDER BY lower(trim(item->>'name')), pr.responded_at DESC
+            "#,
+        )
+        .bind(pharmacy_id)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default();
+
+        let mut known_prices_map = serde_json::Map::new();
+        for kp in known_prices_rows {
+            let name: String = kp.try_get("name").unwrap_or_default();
+            let price: f64 = kp.try_get("price").unwrap_or(0.0);
+            if !name.is_empty() && price > 0.0 {
+                known_prices_map.insert(
+                    name,
+                    serde_json::Value::Number(
+                        serde_json::Number::from_f64(price)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+            }
+        }
+        let known_prices_json = serde_json::Value::Object(known_prices_map);
+
         for a in alerts {
             all_alerts.push(json!({
                 "alert_id": a.try_get::<i64, _>("id").unwrap_or_default(),
@@ -7511,10 +7557,11 @@ pub async fn get_my_pharmacy_alerts(
                 "query_items": a.try_get::<serde_json::Value, _>("query_items").unwrap_or(json!([])),
                 "total_items": a.try_get::<i32, _>("total_items").unwrap_or(0),
                 "distance_km": a.try_get::<f64, _>("distance_km").unwrap_or(0.0),
-                "radius_km": a.try_get::<f32, _>("radius_km").unwrap_or(5.0),
+                "radius_km": a.try_get::<f32, _>("radius_km").unwrap_or(20.0),
                 "expires_at": a.try_get::<chrono::DateTime<chrono::Utc>, _>("expires_at")
                     .map(|d| d.to_rfc3339()).unwrap_or_default(),
                 "already_responded": a.try_get::<bool, _>("already_responded").unwrap_or(false),
+                "known_prices": known_prices_json.clone(),
             }));
         }
     }
@@ -7839,6 +7886,309 @@ pub async fn delete_archived_prescription(
         ));
     }
     Ok((StatusCode::OK, Json(json!({ "success": true }))))
+}
+
+// ============================================================================
+// ANALYTICS pharmacien (dashboard)
+// ============================================================================
+//
+// Métriques utiles au pharmacien partenaire :
+//   - Taux de réponse aux alertes (reçues vs validées) sur la période
+//   - Top médicaments demandés
+//   - Ruptures de stock : médicaments demandés où la pharmacie a coché
+//     indisponible (signal de réapprovisionnement)
+//   - Top hôpitaux / médecins prescripteurs (extrait des archives scannées)
+//   - Temps moyen de réponse
+//   - Distance moyenne des patients
+
+#[derive(Debug, Deserialize)]
+pub struct AnalyticsQuery {
+    /// Période d'analyse en jours (7, 30, 90). Défaut 30.
+    pub days: Option<i32>,
+    /// Limiter aux pharmacies d'un service précis (optionnel).
+    pub pharmacy_id: Option<i32>,
+}
+
+pub async fn get_pharmacy_analytics(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+    Query(params): Query<AnalyticsQuery>,
+) -> AppResult<impl IntoResponse> {
+    let days = params.days.unwrap_or(30).clamp(1, 365);
+
+    // Récupère les pharmacies du user (+ officielle si admin) pour scoper.
+    let pharmacy_rows = sqlx::query(
+        r#"
+        SELECT p.id, p.gps,
+               split_part(p.gps, ',', 1)::DOUBLE PRECISION AS lat,
+               split_part(p.gps, ',', 2)::DOUBLE PRECISION AS lng
+        FROM pharmacies p
+        WHERE (p.user_id = $1
+               OR (p.is_official = TRUE AND $2 IN ('admin', 'super_admin')))
+          AND p.is_active = TRUE
+          AND ($3::INTEGER IS NULL OR p.id = $3)
+        "#,
+    )
+    .bind(user_id)
+    .bind(&user_role)
+    .bind(params.pharmacy_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture pharmacies: {}", e)))?;
+
+    if pharmacy_rows.is_empty() {
+        return Ok((
+            StatusCode::OK,
+            Json(json!({ "success": true, "empty": true, "days": days })),
+        ));
+    }
+
+    let pharmacy_ids: Vec<i32> =
+        pharmacy_rows.iter().filter_map(|r| r.try_get::<i32, _>("id").ok()).collect();
+
+    // ---- 1) Taux de réponse : alertes reçues dans le rayon vs validées ----
+    // "Reçues" = alertes ouvertes dans les N derniers jours dont au moins une
+    // pharmacie du user est dans le rayon (= aurait dû être notifiée).
+    // "Validées" = COUNT distinct (alert_id, pharmacy_id) dans pharmacy_responses
+    // pour ces mêmes pharmacies.
+    //
+    // Pour limiter la complexité, on calcule à partir de pharmacy_responses :
+    // received = alertes dans le rayon d'au moins une de mes pharmacies,
+    // responded = celles auxquelles j'ai répondu. Calcul en 2 queries.
+
+    let received: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(DISTINCT a.id)::BIGINT
+        FROM medication_alerts a, pharmacies p
+        WHERE p.id = ANY($1)
+          AND p.gps IS NOT NULL
+          AND p.gps ~ '^-?[0-9.]+,-?[0-9.]+$'
+          AND a.created_at >= NOW() - ($2 || ' days')::INTERVAL
+          AND 6371.0 * 2 * ASIN(
+                SQRT(
+                    POWER(SIN(RADIANS((a.gps_lat - split_part(p.gps, ',', 1)::DOUBLE PRECISION) / 2)), 2)
+                  + COS(RADIANS(a.gps_lat)) * COS(RADIANS(split_part(p.gps, ',', 1)::DOUBLE PRECISION))
+                  * POWER(SIN(RADIANS((a.gps_lng - split_part(p.gps, ',', 2)::DOUBLE PRECISION) / 2)), 2)
+                )
+              ) <= a.radius_km
+        "#,
+    )
+    .bind(&pharmacy_ids)
+    .bind(days.to_string())
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    let responded: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)::BIGINT
+        FROM pharmacy_responses pr
+        WHERE pr.pharmacy_id = ANY($1)
+          AND pr.responded_at >= NOW() - ($2 || ' days')::INTERVAL
+        "#,
+    )
+    .bind(&pharmacy_ids)
+    .bind(days.to_string())
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    let avg_response_minutes: Option<f64> = sqlx::query_scalar(
+        r#"
+        SELECT AVG(EXTRACT(EPOCH FROM (pr.responded_at - a.created_at)) / 60.0)
+        FROM pharmacy_responses pr
+        JOIN medication_alerts a ON a.id = pr.alert_id
+        WHERE pr.pharmacy_id = ANY($1)
+          AND pr.responded_at >= NOW() - ($2 || ' days')::INTERVAL
+        "#,
+    )
+    .bind(&pharmacy_ids)
+    .bind(days.to_string())
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(None);
+
+    // ---- 2) Top médicaments demandés (extraction depuis items_status JSONB) ----
+    let top_requested_rows = sqlx::query(
+        r#"
+        SELECT
+            lower(trim(item->>'name')) AS name,
+            COUNT(*)::BIGINT AS count
+        FROM pharmacy_responses pr,
+             jsonb_array_elements(pr.items_status) AS item
+        WHERE pr.pharmacy_id = ANY($1)
+          AND pr.responded_at >= NOW() - ($2 || ' days')::INTERVAL
+          AND item ? 'name'
+          AND length(trim(item->>'name')) > 0
+        GROUP BY lower(trim(item->>'name'))
+        ORDER BY count DESC
+        LIMIT 10
+        "#,
+    )
+    .bind(&pharmacy_ids)
+    .bind(days.to_string())
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let top_requested: Vec<serde_json::Value> = top_requested_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "name": r.try_get::<String, _>("name").unwrap_or_default(),
+                "count": r.try_get::<i64, _>("count").unwrap_or(0),
+            })
+        })
+        .collect();
+
+    // ---- 3) Ruptures de stock : médicaments demandés mais cochés indisponibles ----
+    let top_unavailable_rows = sqlx::query(
+        r#"
+        SELECT
+            lower(trim(item->>'name')) AS name,
+            COUNT(*)::BIGINT AS count
+        FROM pharmacy_responses pr,
+             jsonb_array_elements(pr.items_status) AS item
+        WHERE pr.pharmacy_id = ANY($1)
+          AND pr.responded_at >= NOW() - ($2 || ' days')::INTERVAL
+          AND (item->>'available')::BOOLEAN = FALSE
+          AND length(trim(item->>'name')) > 0
+        GROUP BY lower(trim(item->>'name'))
+        ORDER BY count DESC
+        LIMIT 10
+        "#,
+    )
+    .bind(&pharmacy_ids)
+    .bind(days.to_string())
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let top_unavailable: Vec<serde_json::Value> = top_unavailable_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "name": r.try_get::<String, _>("name").unwrap_or_default(),
+                "count": r.try_get::<i64, _>("count").unwrap_or(0),
+            })
+        })
+        .collect();
+
+    // ---- 4) Top hôpitaux / médecins prescripteurs (depuis archives scannées) ----
+    // L'archivage stocke les métadonnées extraites par l'IA dans
+    // extracted_medications.hospital et .doctor_name.
+    let top_hospitals_rows = sqlx::query(
+        r#"
+        SELECT
+            COALESCE(NULLIF(trim(ar.extracted_medications->>'hospital'), ''), '—') AS hospital,
+            COUNT(*)::BIGINT AS count
+        FROM pharmacy_archived_prescriptions ar
+        WHERE ar.pharmacy_id = ANY($1)
+          AND ar.scanned_at >= NOW() - ($2 || ' days')::INTERVAL
+          AND ar.extracted_medications->>'hospital' IS NOT NULL
+          AND length(trim(ar.extracted_medications->>'hospital')) > 0
+        GROUP BY hospital
+        ORDER BY count DESC
+        LIMIT 5
+        "#,
+    )
+    .bind(&pharmacy_ids)
+    .bind(days.to_string())
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let top_hospitals: Vec<serde_json::Value> = top_hospitals_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "name": r.try_get::<String, _>("hospital").unwrap_or_default(),
+                "count": r.try_get::<i64, _>("count").unwrap_or(0),
+            })
+        })
+        .collect();
+
+    let top_doctors_rows = sqlx::query(
+        r#"
+        SELECT
+            COALESCE(NULLIF(trim(ar.extracted_medications->>'doctor_name'), ''), '—') AS doctor,
+            COUNT(*)::BIGINT AS count
+        FROM pharmacy_archived_prescriptions ar
+        WHERE ar.pharmacy_id = ANY($1)
+          AND ar.scanned_at >= NOW() - ($2 || ' days')::INTERVAL
+          AND ar.extracted_medications->>'doctor_name' IS NOT NULL
+          AND length(trim(ar.extracted_medications->>'doctor_name')) > 0
+        GROUP BY doctor
+        ORDER BY count DESC
+        LIMIT 5
+        "#,
+    )
+    .bind(&pharmacy_ids)
+    .bind(days.to_string())
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let top_doctors: Vec<serde_json::Value> = top_doctors_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "name": r.try_get::<String, _>("doctor").unwrap_or_default(),
+                "count": r.try_get::<i64, _>("count").unwrap_or(0),
+            })
+        })
+        .collect();
+
+    let archives_count: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)::BIGINT
+        FROM pharmacy_archived_prescriptions
+        WHERE pharmacy_id = ANY($1)
+          AND scanned_at >= NOW() - ($2 || ' days')::INTERVAL
+        "#,
+    )
+    .bind(&pharmacy_ids)
+    .bind(days.to_string())
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    let response_rate = if received > 0 {
+        (responded as f64 / received as f64).min(1.0)
+    } else {
+        0.0
+    };
+    let missed = (received - responded).max(0);
+
+    info!(
+        "[pharmacy_analytics] user={} pharmacies={:?} days={} received={} responded={} rate={:.2}",
+        user_id, pharmacy_ids, days, received, responded, response_rate
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "days": days,
+            "pharmacy_ids": pharmacy_ids,
+            "response_rate": {
+                "received": received,
+                "responded": responded,
+                "missed": missed,
+                "rate": response_rate,
+                "avg_response_minutes": avg_response_minutes,
+            },
+            "top_requested": top_requested,
+            "top_unavailable": top_unavailable,
+            "top_hospitals": top_hospitals,
+            "top_doctors": top_doctors,
+            "archives_count": archives_count,
+        })),
+    ))
 }
 
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie

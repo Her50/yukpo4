@@ -31,6 +31,10 @@ interface IncomingAlert {
   radius_km: number;
   expires_at: string;
   already_responded: boolean;
+  /** Derniers prix saisis par cette pharmacie pour chaque médicament déjà
+   *  rencontré. Clé : nom normalisé en minuscules. Évite au pharmacien de
+   *  ressaisir le prix à chaque nouvelle alerte du même médicament. */
+  known_prices?: Record<string, number>;
 }
 
 interface ItemStatusInput {
@@ -153,8 +157,18 @@ const AlertCard: React.FC<{
   collapsed?: boolean;
 }> = ({ alert, onSubmitted, collapsed = false }) => {
   const [expanded, setExpanded] = useState(!collapsed);
+  // Pré-remplissage prix : si la pharmacie a déjà saisi un prix pour ce
+  // médicament lors d'une alerte précédente, on le pré-rempli (modifiable).
+  // L'item est aussi pré-coché disponible si un prix connu existe → UX
+  // pharmacien : 1 clic pour confirmer la disponibilité au prix usuel.
   const [items, setItems] = useState<ItemStatusInput[]>(() =>
-    alert.query_items.map(q => ({ name: q.name, available: false })),
+    alert.query_items.map(q => {
+      const knownPrice = alert.known_prices?.[q.name.trim().toLowerCase()];
+      if (typeof knownPrice === 'number' && knownPrice > 0) {
+        return { name: q.name, available: true, price: knownPrice };
+      }
+      return { name: q.name, available: false };
+    }),
   );
   const [alternatives, setAlternatives] = useState<AlternativeInput[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -296,6 +310,27 @@ const AlertCard: React.FC<{
                     {alert.query_items[idx]?.dosage && (
                       <p className="text-xs text-gray-500">{alert.query_items[idx].dosage}</p>
                     )}
+                    {/* Badge "prix mémorisé" : pré-rempli depuis une réponse
+                        précédente de cette pharmacie pour le même médicament.
+                        Visible uniquement à la 1ère ouverture (pour expliquer
+                        au pharmacien pourquoi la case est déjà cochée). */}
+                    {(() => {
+                      const known =
+                        alert.known_prices?.[it.name.trim().toLowerCase()];
+                      if (
+                        typeof known === 'number' &&
+                        known > 0 &&
+                        it.available &&
+                        it.price === known
+                      ) {
+                        return (
+                          <span className="inline-block mt-0.5 text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                            💾 Prix mémorisé
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                   {it.available && (
                     <div className="flex items-center gap-1">

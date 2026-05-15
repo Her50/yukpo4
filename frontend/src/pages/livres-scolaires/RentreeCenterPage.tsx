@@ -18,7 +18,7 @@ import {
 import type { Systeme } from '../../hooks/useParentShop';
 import BookPhotoCapture, { type AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
 import ClasseAutocomplete, { type ClasseSelection } from '../../components/livres-scolaires/ClasseAutocomplete';
-import GpsGate from '../../components/livres-scolaires/GpsGate';
+// GpsGate retiré 2026-05-15 : remplacé par le lieu de livraison persistant (onboarding).
 import ManualAddInline from '../../components/livres-scolaires/ManualAddInline';
 
 // ─── Types locaux ───
@@ -436,18 +436,25 @@ const RentreeCenterPage: React.FC = () => {
     }
   }, [t, toast, updateTrocMatch, clearTrocIntent, updateChoix]);
 
-  // ✅ 2026-05-11 : avant de créer la session troc, on EXIGE la position
-  // GPS via GpsGate (écran d'instructions clair). Si déjà en cache (1h),
-  // saute le gate et continue.
-  const [showGpsGate, setShowGpsGate] = useState(false);
+  // ✅ 2026-05-15 : Plus de GpsGate. Le lieu de livraison est récupéré une
+  // fois pour toutes via l'onboarding (delivery_location_lat/lng persisté
+  // côté DB). Au mount, on charge ces coords si pas déjà en state.
+  // GpsGate retiré 2026-05-15 — coords récupérées depuis profil user persistant.
+  useEffect(() => {
+    if (gps) return;
+    (async () => {
+      try {
+        const res = await apiGet('/api/users/me/delivery-info');
+        const data = await res.json().catch(() => ({}));
+        if (data?.success && typeof data.delivery_location_lat === 'number' && typeof data.delivery_location_lng === 'number') {
+          setGps({ lat: data.delivery_location_lat, lon: data.delivery_location_lng });
+        }
+      } catch { /* silent — backend tolère un gps absent */ }
+    })();
+  }, [gps]);
+
   const continueToCapture = async () => {
     if (!showTrocExplainer) return;
-    if (!gps) {
-      // Pas de GPS → on affiche le gate. Quand granted, useEffect ci-dessous
-      // relance la suite du flow.
-      setShowGpsGate(true);
-      return;
-    }
     const sid = await ensureSession();
     if (!sid) return;
     const itemId = showTrocExplainer.itemId;
@@ -455,23 +462,6 @@ const RentreeCenterPage: React.FC = () => {
     setShowPhotoCapture({ itemId });
   };
 
-  // Une fois le GPS accordé après gate, on relance continueToCapture
-  // automatiquement si l'utilisateur était en train de demander une photo.
-  useEffect(() => {
-    if (gps && !showGpsGate) return; // état stable, rien à faire
-    if (gps && showGpsGate && showTrocExplainer) {
-      // gate vient de fermer, on enchaîne
-      setShowGpsGate(false);
-      (async () => {
-        const sid = await ensureSession();
-        if (!sid) return;
-        const itemId = showTrocExplainer.itemId;
-        setShowTrocExplainer(null);
-        setShowPhotoCapture({ itemId });
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gps]);
 
   // ✅ Pré-création de la session backend en arrière-plan, dès qu'on détecte
   // au moins un livre en troc en attente. Évite l'attente de 1-3s au clic
@@ -946,25 +936,8 @@ const RentreeCenterPage: React.FC = () => {
         />
       )}
 
-      {/* Modal "Ajouter une autre classe" — choix école courante vs autre */}
-      {/* GpsGate — bloque l'écran jusqu'à obtention GPS avant capture troc */}
-      {showGpsGate && (
-        <div className="fixed inset-0 z-[60]">
-          <GpsGate
-            title="Où venir chercher votre livre ?"
-            reason="Indiquez le point où le coursier passera récupérer votre livre une fois l'échange validé. Vous pouvez utiliser votre position actuelle ou choisir un lieu précis sur la carte."
-            onGranted={(coords) => {
-              setGps(coords);
-              // setShowGpsGate(false) sera fait par l'effect qui voit gps
-              // changer et enchaîne ensureSession + showPhotoCapture.
-            }}
-            onCancel={() => {
-              setShowGpsGate(false);
-              setShowTrocExplainer(null);
-            }}
-          />
-        </div>
-      )}
+      {/* ✅ 2026-05-15 : GpsGate retiré. Lieu de livraison persistant via
+          onboarding (delivery_location_lat/lng dans users). */}
 
       {showAddClassChoice && active?.etablissementSlug && (
         <ModalShell

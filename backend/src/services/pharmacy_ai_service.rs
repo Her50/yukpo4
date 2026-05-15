@@ -335,6 +335,13 @@ pub struct ExtractedMedication {
 pub struct OrdonnanceMetadata {
     pub patient_name: Option<String>,
     pub doctor_name: Option<String>,
+    /// Numéro d'ordre / matricule professionnel du médecin (Ordre des
+    /// Médecins du Cameroun ou équivalent). Souvent imprimé sur l'en-tête
+    /// ou à côté de la signature. Utile pour :
+    ///   - vérifier l'authenticité de l'ordonnance
+    ///   - tracer les médecins prescripteurs (analytics)
+    ///   - en cas de litige / pharmacovigilance
+    pub doctor_id_number: Option<String>,
     pub hospital: Option<String>,
     pub city: Option<String>,
     pub prescription_date: Option<String>,

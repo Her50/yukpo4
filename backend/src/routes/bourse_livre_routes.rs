@@ -528,6 +528,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/parent/fournitures-aggregees",
             axum::routing::post(parent_suggestions_controller::fournitures_aggregees),
         )
+        // ✅ 2026-05-15 : Lieu de livraison persistant + WhatsApp (onboarding 1er login)
+        .route(
+            "/api/users/me/delivery-info",
+            get(parent_suggestions_controller::get_delivery_info)
+                .put(parent_suggestions_controller::put_delivery_info),
+        )
         // ✅ 2026-05-10 : Équipe établissement (invitations + liste + suppression)
         .route(
             "/api/v2/admin/etablissement/{id}/team/invitations",
