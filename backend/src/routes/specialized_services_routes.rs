@@ -1158,6 +1158,21 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/me/analytics",
             get(specialized_services_controller::get_pharmacy_analytics),
         )
+        // Carnet de santé patient + réordre 1 clic (commit 2026-05-15)
+        .route(
+            "/api/users/me/medication-history",
+            get(specialized_services_controller::get_user_medication_history),
+        )
+        .route(
+            "/api/medication-alerts/{id}/reorder",
+            post(specialized_services_controller::reorder_medication_alert),
+        )
+        // Pharmacovigilance (signalements pharmacien)
+        .route(
+            "/api/pharmacies/me/pharmacovigilance",
+            post(specialized_services_controller::submit_pharmacovigilance_report)
+                .get(specialized_services_controller::list_pharmacovigilance_reports),
+        )
         .route(
             "/api/pharmacies/me/financial-movements",
             get(specialized_services_controller::get_pharmacy_financial_movements),

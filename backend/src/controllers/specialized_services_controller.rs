@@ -8198,6 +8198,421 @@ pub async fn get_pharmacy_analytics(
     ))
 }
 
+// ============================================================================
+// CARNET DE SANTÉ (côté patient)
+// ============================================================================
+//
+// Permet à un patient connecté de consulter l'historique de ses alertes de
+// disponibilité médicaments (avec les pharmacies qui ont répondu et ce qu'il
+// a effectivement pu obtenir). Sert aussi de base au réordre 1 clic.
+
+#[derive(Debug, Deserialize)]
+pub struct MedicationHistoryQuery {
+    pub days: Option<i32>,
+    pub limit: Option<i32>,
+}
+
+pub async fn get_user_medication_history(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(params): Query<MedicationHistoryQuery>,
+) -> AppResult<impl IntoResponse> {
+    let days = params.days.unwrap_or(180).clamp(1, 730);
+    let limit = params.limit.unwrap_or(50).clamp(1, 200);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            a.id AS alert_id,
+            a.query_items,
+            a.total_items,
+            a.created_at,
+            a.expires_at,
+            a.status,
+            a.notified_pharmacies_count,
+            -- Meilleure réponse pharmacie (taux de complétude le plus élevé)
+            (
+                SELECT jsonb_build_object(
+                    'pharmacy_id', pr.pharmacy_id,
+                    'pharmacy_name', p.nom,
+                    'pharmacy_ville', p.ville,
+                    'pharmacy_quartier', p.quartier,
+                    'pharmacy_telephone', p.telephone,
+                    'pharmacy_whatsapp', p.whatsapp,
+                    'found_count', pr.found_count,
+                    'items_status', pr.items_status,
+                    'alternatives', pr.alternatives,
+                    'responded_at', pr.responded_at
+                )
+                FROM pharmacy_responses pr
+                JOIN pharmacies p ON p.id = pr.pharmacy_id
+                WHERE pr.alert_id = a.id
+                ORDER BY pr.found_count DESC, pr.responded_at ASC
+                LIMIT 1
+            ) AS best_match,
+            (SELECT COUNT(*)::INTEGER FROM pharmacy_responses pr2
+             WHERE pr2.alert_id = a.id) AS total_responses
+        FROM medication_alerts a
+        WHERE a.user_id = $1
+          AND a.created_at >= NOW() - ($2 || ' days')::INTERVAL
+        ORDER BY a.created_at DESC
+        LIMIT $3
+        "#,
+    )
+    .bind(user_id)
+    .bind(days.to_string())
+    .bind(limit as i64)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture historique: {}", e)))?;
+
+    let history: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "alert_id": r.try_get::<i64, _>("alert_id").unwrap_or(0),
+                "query_items": r.try_get::<serde_json::Value, _>("query_items").unwrap_or(json!([])),
+                "total_items": r.try_get::<i32, _>("total_items").unwrap_or(0),
+                "created_at": r
+                    .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_default(),
+                "expires_at": r
+                    .try_get::<chrono::DateTime<chrono::Utc>, _>("expires_at")
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_default(),
+                "status": r.try_get::<String, _>("status").unwrap_or_default(),
+                "notified_pharmacies_count": r.try_get::<i32, _>("notified_pharmacies_count").unwrap_or(0),
+                "total_responses": r.try_get::<i32, _>("total_responses").unwrap_or(0),
+                "best_match": r.try_get::<Option<serde_json::Value>, _>("best_match").unwrap_or(None),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "days": days,
+            "count": history.len(),
+            "history": history,
+        })),
+    ))
+}
+
+/// Réordre 1 clic : duplique une alerte précédente (même médicaments) à
+/// la position GPS courante du patient. Utile pour les traitements
+/// chroniques ou les médicaments souvent commandés.
+#[derive(Debug, Deserialize)]
+pub struct ReorderAlertRequest {
+    pub gps_lat: f64,
+    pub gps_lng: f64,
+    pub radius_km: Option<f32>,
+}
+
+pub async fn reorder_medication_alert(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(source_alert_id): Path<i64>,
+    Json(payload): Json<ReorderAlertRequest>,
+) -> AppResult<impl IntoResponse> {
+    // Récupère les items de l'alerte source si elle appartient bien à l'user
+    let source = sqlx::query(
+        r#"
+        SELECT query_items, total_items
+        FROM medication_alerts
+        WHERE id = $1 AND user_id = $2
+        "#,
+    )
+    .bind(source_alert_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture alerte source: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Alerte source introuvable".to_string()))?;
+
+    let query_items: serde_json::Value = source.try_get("query_items").unwrap_or(json!([]));
+    let total_items: i32 = source.try_get("total_items").unwrap_or(0);
+    if total_items <= 0 {
+        return Err(AppError::BadRequest(
+            "Alerte source vide, réordre impossible".to_string(),
+        ));
+    }
+
+    let radius_km = payload.radius_km.unwrap_or(20.0).clamp(1.0, 50.0);
+
+    // Création de la nouvelle alerte (même TTL 5 min par défaut)
+    let row = sqlx::query(
+        r#"
+        INSERT INTO medication_alerts
+            (user_id, query_items, total_items, gps_lat, gps_lng, radius_km)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, expires_at
+        "#,
+    )
+    .bind(user_id)
+    .bind(&query_items)
+    .bind(total_items)
+    .bind(payload.gps_lat)
+    .bind(payload.gps_lng)
+    .bind(radius_km)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création réordre: {}", e)))?;
+
+    let new_alert_id: i64 = row.try_get("id").unwrap_or_default();
+    let expires_at: chrono::DateTime<chrono::Utc> =
+        row.try_get("expires_at").unwrap_or_else(|_| chrono::Utc::now());
+
+    info!(
+        "[reorder_medication_alert] user={} source={} → new={}",
+        user_id, source_alert_id, new_alert_id
+    );
+
+    // Déclenche le broadcast async (push + WhatsApp) comme pour une nouvelle alerte
+    if let Ok(items) = serde_json::from_value::<Vec<serde_json::Value>>(query_items.clone()) {
+        let med_names: Vec<String> = items
+            .iter()
+            .filter_map(|i| i.get("name").and_then(|n| n.as_str()).map(String::from))
+            .collect();
+        if !med_names.is_empty() {
+            let pool = state.pg.clone();
+            tokio::spawn(async move {
+                broadcast_alert_to_pharmacies(
+                    &pool,
+                    new_alert_id,
+                    payload.gps_lat,
+                    payload.gps_lng,
+                    radius_km as f64,
+                    med_names,
+                )
+                .await;
+            });
+        }
+    }
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "alert_id": new_alert_id,
+            "source_alert_id": source_alert_id,
+            "expires_at": expires_at.to_rfc3339(),
+        })),
+    ))
+}
+
+// ============================================================================
+// PHARMACOVIGILANCE (côté pharmacien)
+// ============================================================================
+//
+// Signalement d'effets indésirables ou de problèmes liés à un médicament.
+// Migration : 20260515_001_pharmacovigilance.sql
+
+#[derive(Debug, Deserialize)]
+pub struct PharmacovigilanceReportRequest {
+    pub pharmacy_id: i32,
+    pub medication_name: String,
+    #[serde(default)]
+    pub medication_dosage: Option<String>,
+    #[serde(default)]
+    pub medication_batch: Option<String>,
+    #[serde(default)]
+    pub medication_manufacturer: Option<String>,
+    #[serde(default)]
+    pub patient_age_range: Option<String>,
+    #[serde(default)]
+    pub patient_gender: Option<String>,
+    pub side_effects: String,
+    pub severity: String,
+    #[serde(default)]
+    pub onset_date: Option<String>,
+    #[serde(default)]
+    pub reported_to_authority: Option<bool>,
+    #[serde(default)]
+    pub authority_reference: Option<String>,
+    #[serde(default)]
+    pub notes: Option<String>,
+}
+
+pub async fn submit_pharmacovigilance_report(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+    Json(payload): Json<PharmacovigilanceReportRequest>,
+) -> AppResult<impl IntoResponse> {
+    if payload.medication_name.trim().is_empty() {
+        return Err(AppError::BadRequest(
+            "medication_name est requis".to_string(),
+        ));
+    }
+    if payload.side_effects.trim().is_empty() {
+        return Err(AppError::BadRequest("side_effects est requis".to_string()));
+    }
+    if !matches!(
+        payload.severity.as_str(),
+        "minor" | "moderate" | "serious" | "life_threatening"
+    ) {
+        return Err(AppError::BadRequest(
+            "severity invalide (minor/moderate/serious/life_threatening)".to_string(),
+        ));
+    }
+
+    // Vérif ownership pharmacie (avec bypass admin Yukpo)
+    let owns: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM pharmacies
+            WHERE id = $1 AND (user_id = $2
+                OR (is_official = TRUE AND $3 IN ('admin', 'super_admin')))
+        )
+        "#,
+    )
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .bind(&user_role)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+    if !owns {
+        return Err(AppError::Forbidden(
+            "Cette pharmacie ne vous appartient pas".to_string(),
+        ));
+    }
+
+    let onset_date = payload
+        .onset_date
+        .as_deref()
+        .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+    let row = sqlx::query(
+        r#"
+        INSERT INTO pharmacovigilance_reports
+            (pharmacy_id, pharmacy_user_id, medication_name, medication_dosage,
+             medication_batch, medication_manufacturer, patient_age_range,
+             patient_gender, side_effects, severity, onset_date,
+             reported_to_authority, authority_reference, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        RETURNING id, created_at
+        "#,
+    )
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .bind(&payload.medication_name)
+    .bind(payload.medication_dosage.as_deref())
+    .bind(payload.medication_batch.as_deref())
+    .bind(payload.medication_manufacturer.as_deref())
+    .bind(payload.patient_age_range.as_deref())
+    .bind(payload.patient_gender.as_deref())
+    .bind(&payload.side_effects)
+    .bind(&payload.severity)
+    .bind(onset_date)
+    .bind(payload.reported_to_authority.unwrap_or(false))
+    .bind(payload.authority_reference.as_deref())
+    .bind(payload.notes.as_deref())
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur enregistrement: {}", e)))?;
+
+    let report_id: i64 = row.try_get("id").unwrap_or_default();
+    info!(
+        "[pharmacovigilance_report] id={} medication={} severity={}",
+        report_id, payload.medication_name, payload.severity
+    );
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "report_id": report_id,
+            "created_at": row
+                .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                .map(|d| d.to_rfc3339())
+                .unwrap_or_default(),
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PharmacovigilanceListQuery {
+    pub days: Option<i32>,
+    pub limit: Option<i32>,
+}
+
+pub async fn list_pharmacovigilance_reports(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+    Query(params): Query<PharmacovigilanceListQuery>,
+) -> AppResult<impl IntoResponse> {
+    let days = params.days.unwrap_or(90).clamp(1, 730);
+    let limit = params.limit.unwrap_or(50).clamp(1, 200);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT r.*, p.nom AS pharmacy_name
+        FROM pharmacovigilance_reports r
+        LEFT JOIN pharmacies p ON p.id = r.pharmacy_id
+        WHERE (r.pharmacy_user_id = $1
+               OR (p.is_official = TRUE AND $2 IN ('admin', 'super_admin')))
+          AND r.created_at >= NOW() - ($3 || ' days')::INTERVAL
+        ORDER BY r.created_at DESC
+        LIMIT $4
+        "#,
+    )
+    .bind(user_id)
+    .bind(&user_role)
+    .bind(days.to_string())
+    .bind(limit as i64)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture rapports: {}", e)))?;
+
+    let reports: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i64, _>("id").unwrap_or(0),
+                "pharmacy_id": r.try_get::<Option<i32>, _>("pharmacy_id").unwrap_or(None),
+                "pharmacy_name": r.try_get::<Option<String>, _>("pharmacy_name").unwrap_or(None),
+                "medication_name": r.try_get::<String, _>("medication_name").unwrap_or_default(),
+                "medication_dosage": r.try_get::<Option<String>, _>("medication_dosage").unwrap_or(None),
+                "medication_batch": r.try_get::<Option<String>, _>("medication_batch").unwrap_or(None),
+                "patient_age_range": r.try_get::<Option<String>, _>("patient_age_range").unwrap_or(None),
+                "patient_gender": r.try_get::<Option<String>, _>("patient_gender").unwrap_or(None),
+                "side_effects": r.try_get::<String, _>("side_effects").unwrap_or_default(),
+                "severity": r.try_get::<String, _>("severity").unwrap_or_default(),
+                "onset_date": r
+                    .try_get::<Option<chrono::NaiveDate>, _>("onset_date")
+                    .unwrap_or(None)
+                    .map(|d| d.to_string()),
+                "reported_to_authority": r.try_get::<bool, _>("reported_to_authority").unwrap_or(false),
+                "authority_reference": r.try_get::<Option<String>, _>("authority_reference").unwrap_or(None),
+                "notes": r.try_get::<Option<String>, _>("notes").unwrap_or(None),
+                "created_at": r
+                    .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_default(),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "count": reports.len(),
+            "reports": reports,
+        })),
+    ))
+}
+
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie
 ///
 /// Conformité éthique/réglementaire : trace serveur pour prouver que
