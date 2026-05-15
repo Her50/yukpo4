@@ -7,6 +7,7 @@ import { Loader2, MapPin, Phone, RefreshCw, ShieldCheck, Clock } from 'lucide-re
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiGet } from '@/services/apiService';
+import PharmacySurplusSection from './PharmacySurplusSection';
 
 interface Neighbor {
   id: number;
@@ -29,7 +30,9 @@ const buildWaUrl = (phone: string, message: string): string => {
 const PharmacyDutyNetworkTab: React.FC = () => {
   const { t } = useTranslation();
   const [neighbors, setNeighbors] = useState<Neighbor[]>([]);
-  const [self, setSelf] = useState<{ ville: string | null; quartier: string | null } | null>(null);
+  // ✅ C2 (2026-05-15) : on garde aussi self.id pour pouvoir interroger le
+  // backend de surplus B2B avec la pharmacy_id du pharmacien connecté.
+  const [self, setSelf] = useState<{ id: number; ville: string | null; quartier: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -116,6 +119,10 @@ const PharmacyDutyNetworkTab: React.FC = () => {
           )}
         </>
       )}
+
+      {/* C2 — Surplus B2B entre pharmacies (proche péremption). Visible
+          uniquement si le pharmacien a une pharmacie active. */}
+      {self?.id && <PharmacySurplusSection pharmacyId={self.id} />}
     </div>
   );
 };

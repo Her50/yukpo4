@@ -2447,6 +2447,53 @@ impl DeliveryService {
         self.send_delivery_status_notifications(delivery_id, status, cancel_reason)
             .await;
 
+        // ✅ 2026-05-15 — PR #2 parrainage : si la commande passe à Completed,
+        // tenter de créditer le bonus du parrain du filleul. Fire-and-forget :
+        // une erreur ici ne doit pas casser le flow de livraison.
+        if matches!(status, DeliveryStatus::Completed) {
+            let pool = self.repository.pool().clone();
+            tokio::spawn(async move {
+                match crate::services::referral_service::try_credit_referral_bonus(
+                    &pool,
+                    delivery_id,
+                )
+                .await
+                {
+                    Ok(crate::services::referral_service::ConversionOutcome::Credited {
+                        parrain_id,
+                        order_total_xaf,
+                        bonus_xaf,
+                        ..
+                    }) => {
+                        log::info!(
+                            "[referral] ✅ Bonus {} XAF crédité au parrain {} (commande {} = {} XAF)",
+                            bonus_xaf,
+                            parrain_id,
+                            delivery_id,
+                            order_total_xaf
+                        );
+                    }
+                    Ok(crate::services::referral_service::ConversionOutcome::BelowThreshold {
+                        parrain_id,
+                        order_total_xaf,
+                    }) => {
+                        log::info!(
+                            "[referral] ⏳ Commande {} XAF < seuil 10000 — parrainage parrain {} reste pending",
+                            order_total_xaf,
+                            parrain_id
+                        );
+                    }
+                    Ok(crate::services::referral_service::ConversionOutcome::NoOp) => {}
+                    Err(e) => {
+                        log::warn!(
+                            "[referral] Échec try_credit_referral_bonus pour delivery {}: {e:?}",
+                            delivery_id
+                        );
+                    }
+                }
+            });
+        }
+
         Ok(())
     }
 

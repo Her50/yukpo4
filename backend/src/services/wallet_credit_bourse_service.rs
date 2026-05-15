@@ -17,6 +17,8 @@
 //   - "order_credit_used"         : utilisation au checkout (réduit la facture)
 //   - "consignation_recovery"     : récupération via vente boutique secondaire
 //   - "manual_admin_adjustment"   : ajustement par un admin Yukpo
+//   - "referral_bonus"            : bonus parrain crédité à la conversion
+//                                   (1ère commande filleul ≥ 10 000 FCFA)
 
 use rust_decimal::Decimal;
 use sqlx::{PgPool, Postgres, Transaction};
@@ -29,6 +31,9 @@ pub enum CreditSource {
     OrderCreditUsed,
     ConsignationRecovery,
     ManualAdminAdjustment,
+    /// ✅ 2026-05-15 : bonus parrain. Crédité quand le filleul passe sa
+    /// première commande ≥ 10 000 FCFA en statut `Completed`.
+    ReferralBonus,
 }
 
 impl CreditSource {
@@ -40,6 +45,7 @@ impl CreditSource {
             CreditSource::OrderCreditUsed => "order_credit_used",
             CreditSource::ConsignationRecovery => "consignation_recovery",
             CreditSource::ManualAdminAdjustment => "manual_admin_adjustment",
+            CreditSource::ReferralBonus => "referral_bonus",
         }
     }
 }

@@ -1221,6 +1221,24 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/users/me/allergies/{id}",
             delete(specialized_services_controller::delete_allergy),
         )
+        // ✅ Phase C2 (2026-05-15) : surplus B2B entre pharmacies
+        .route(
+            "/api/pharmacies/me/surplus",
+            post(specialized_services_controller::create_surplus)
+                .get(specialized_services_controller::list_my_surplus),
+        )
+        .route(
+            "/api/pharmacies/me/surplus/nearby",
+            get(specialized_services_controller::list_nearby_surplus),
+        )
+        .route(
+            "/api/pharmacies/me/surplus/{id}",
+            delete(specialized_services_controller::delete_surplus),
+        )
+        .route(
+            "/api/pharmacies/me/surplus/{id}/claim",
+            post(specialized_services_controller::claim_surplus),
+        )
         .route(
             "/api/pharmacies/me/financial-movements",
             get(specialized_services_controller::get_pharmacy_financial_movements),

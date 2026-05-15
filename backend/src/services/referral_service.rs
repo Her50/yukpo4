@@ -11,7 +11,11 @@
 // La conversion (crédit du bonus) est gérée en PR #2 via referral_conversion.rs
 
 use rand::Rng;
-use sqlx::{PgPool, Postgres, Transaction};
+use rust_decimal::Decimal;
+use sqlx::{PgPool, Postgres, Row, Transaction};
+use uuid::Uuid;
+
+use crate::services::wallet_credit_bourse_service::{self, CreditMovementContext, CreditSource};
 
 const CODE_LEN: usize = 6;
 // Alphabet sans 0/O/1/I/L : impossible de confondre à l'oral / au scan
@@ -267,5 +271,166 @@ pub async fn get_stats(pool: &PgPool, user_id: i32) -> Result<ReferralStats, sql
         total_signups,
         total_conversions,
         total_bonus_xaf,
+    })
+}
+
+// ============================================================================
+// PR #2 — Conversion (crédit bonus parrain)
+// ============================================================================
+
+/// Outcome de [`try_credit_referral_bonus`].
+#[derive(Debug)]
+pub enum ConversionOutcome {
+    /// Pas de parrain ou parrainage déjà converti — aucune action.
+    NoOp,
+    /// Filleul a un parrainage pending mais la commande est sous le seuil
+    /// (< REFERRAL_MIN_ORDER_XAF). Le parrainage reste pending pour une
+    /// future commande qui franchira le seuil.
+    BelowThreshold {
+        parrain_id: i32,
+        order_total_xaf: i32,
+    },
+    /// Bonus crédité au parrain. Retourne l'id du parrain et le nouveau solde.
+    Credited {
+        parrain_id: i32,
+        order_total_xaf: i32,
+        bonus_xaf: i32,
+        parrain_new_balance: Decimal,
+    },
+}
+
+/// Tente de créditer le bonus parrain pour une commande passée en `Completed`.
+///
+/// Pipeline :
+///   1. Lookup filleul = `deliveries.creator_id`
+///   2. Lookup référral pending pour ce filleul (sinon NoOp)
+///   3. Lookup total commande via `shopping_orders` (actual_total_cents ||
+///      estimated_total_cents)
+///   4. Si total < REFERRAL_MIN_ORDER_XAF → BelowThreshold (no-op, on attend
+///      une prochaine commande)
+///   5. Sinon, transaction atomique :
+///      - INSERT credit wallet_credit_bourse_ledger via apply_credit_tx
+///      - UPDATE referrals SET status='converted', bonus_credited_at=NOW(),
+///        first_order_id=$delivery_id, first_order_total_xaf=$total
+///
+/// Idempotent : si `bonus_credited_at IS NOT NULL`, retourne NoOp.
+/// Idempotent : si le même `delivery_id` arrive 2x (via uniq index sur
+/// first_order_id), la 2e fois est NoOp.
+///
+/// **Ne lève pas d'erreur métier** : si le parrainage n'existe pas, si la
+/// commande n'a pas de shopping_order, on retourne NoOp. Les erreurs DB
+/// remontent telles quelles.
+pub async fn try_credit_referral_bonus(
+    pool: &PgPool,
+    delivery_id: Uuid,
+) -> Result<ConversionOutcome, sqlx::Error> {
+    // 1. Filleul + parrainage pending
+    let filleul_row: Option<(i32,)> =
+        sqlx::query_as(r#"SELECT creator_id FROM deliveries WHERE id = $1"#)
+            .bind(delivery_id)
+            .fetch_optional(pool)
+            .await?;
+
+    let Some((filleul_id,)) = filleul_row else {
+        return Ok(ConversionOutcome::NoOp);
+    };
+
+    let pending: Option<(i64, i32, i32)> = sqlx::query_as(
+        r#"SELECT id, parrain_id, bonus_amount_xaf
+             FROM referrals
+            WHERE filleul_id = $1
+              AND status = 'pending'
+              AND bonus_credited_at IS NULL
+            LIMIT 1"#,
+    )
+    .bind(filleul_id)
+    .fetch_optional(pool)
+    .await?;
+
+    let Some((referral_id, parrain_id, bonus_xaf)) = pending else {
+        return Ok(ConversionOutcome::NoOp);
+    };
+
+    // 2. Total commande via shopping_orders
+    let total_row = sqlx::query(
+        r#"SELECT
+               COALESCE(actual_total_cents, estimated_total_cents) AS total_cents,
+               currency
+             FROM shopping_orders
+            WHERE delivery_id = $1
+            LIMIT 1"#,
+    )
+    .bind(delivery_id)
+    .fetch_optional(pool)
+    .await?;
+
+    let Some(row) = total_row else {
+        // Livraison sans shopping_order associé (livraison "vide" / non Bourse) →
+        // pas de bonus.
+        return Ok(ConversionOutcome::NoOp);
+    };
+    let total_cents: i32 = row.try_get("total_cents").unwrap_or(0);
+    let currency: String = row.try_get("currency").unwrap_or_else(|_| "XAF".to_string());
+
+    // Convention repo : *_cents = FCFA × 100 (cf. bus_ticket_controller / 100).
+    // Si la devise n'est pas XAF on ignore (pas de support multi-devise pour le bonus v1).
+    if currency != "XAF" {
+        return Ok(ConversionOutcome::NoOp);
+    }
+    let order_total_xaf = total_cents / 100;
+
+    if order_total_xaf < REFERRAL_MIN_ORDER_XAF {
+        return Ok(ConversionOutcome::BelowThreshold {
+            parrain_id,
+            order_total_xaf,
+        });
+    }
+
+    // 3. Crédit atomique parrain
+    let mut tx = pool.begin().await?;
+
+    let new_balance = wallet_credit_bourse_service::apply_credit_tx(
+        &mut tx,
+        parrain_id,
+        Decimal::from(bonus_xaf),
+        CreditSource::ReferralBonus,
+        CreditMovementContext {
+            note: Some(format!(
+                "Bonus parrainage : filleul user {} a passé sa première commande de {} XAF",
+                filleul_id, order_total_xaf
+            )),
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    // UPDATE referrals — guard idempotency via bonus_credited_at IS NULL
+    let updated = sqlx::query(
+        r#"UPDATE referrals
+              SET status = 'converted',
+                  bonus_credited_at = NOW(),
+                  first_order_id = $2,
+                  first_order_total_xaf = $3
+            WHERE id = $1 AND bonus_credited_at IS NULL"#,
+    )
+    .bind(referral_id)
+    .bind(delivery_id)
+    .bind(order_total_xaf)
+    .execute(&mut *tx)
+    .await?;
+
+    if updated.rows_affected() == 0 {
+        // Concurrent : un autre thread a déjà crédité. Rollback.
+        tx.rollback().await?;
+        return Ok(ConversionOutcome::NoOp);
+    }
+
+    tx.commit().await?;
+
+    Ok(ConversionOutcome::Credited {
+        parrain_id,
+        order_total_xaf,
+        bonus_xaf,
+        parrain_new_balance: new_balance,
     })
 }

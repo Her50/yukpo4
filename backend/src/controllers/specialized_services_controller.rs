@@ -9805,6 +9805,386 @@ pub async fn delete_allergy(
     Ok((StatusCode::OK, Json(json!({ "success": true }))))
 }
 
+// ============================================================================
+// Phase C2 — Surplus B2B entre pharmacies
+// ============================================================================
+//
+// Une pharmacie en surstock proche péremption propose son lot à un confrère
+// voisin. Légalement OK entre pharmacies titulaires d'agrément. Yukpo se
+// contente d'être marketplace : pas de paiement, les deux pharmacies se
+// contactent ensuite hors-app.
+
+#[derive(Debug, Deserialize)]
+pub struct CreateSurplusRequest {
+    pub pharmacy_id: i32,
+    pub medication_name: String,
+    #[serde(default)]
+    pub dosage: Option<String>,
+    pub quantity: i32,
+    #[serde(default)]
+    pub quantity_unit: Option<String>,
+    #[serde(default)]
+    pub batch_number: Option<String>,
+    /// Date péremption au format YYYY-MM-DD
+    pub expiry_date: String,
+    #[serde(default)]
+    pub unit_price_xaf: Option<f64>,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
+/// POST /api/pharmacies/me/surplus — créer une annonce de surplus
+pub async fn create_surplus(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<CreateSurplusRequest>,
+) -> AppResult<impl IntoResponse> {
+    let name = payload.medication_name.trim();
+    if name.is_empty() {
+        return Err(AppError::BadRequest("Nom médicament requis".to_string()));
+    }
+    if payload.quantity <= 0 {
+        return Err(AppError::BadRequest("Quantité doit être > 0".to_string()));
+    }
+
+    let expiry = chrono::NaiveDate::parse_from_str(&payload.expiry_date, "%Y-%m-%d")
+        .map_err(|_| AppError::BadRequest("expiry_date invalide (YYYY-MM-DD)".to_string()))?;
+
+    // Vérifier que la pharmacie appartient à l'utilisateur
+    let owns: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM pharmacies WHERE id = $1 AND user_id = $2 AND is_active = TRUE",
+    )
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture pharmacie: {}", e)))?;
+
+    if owns.is_none() {
+        return Err(AppError::Forbidden(
+            "Cette pharmacie ne vous appartient pas".to_string(),
+        ));
+    }
+
+    let unit = payload
+        .quantity_unit
+        .as_deref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "boite".to_string());
+
+    // auto_expire_at = min(expiry_date, NOW() + 30 days)
+    let row = sqlx::query(
+        r#"
+        INSERT INTO pharmacy_surplus
+            (pharmacy_id, created_by_user_id, medication_name, dosage, quantity,
+             quantity_unit, batch_number, expiry_date, unit_price_xaf, note,
+             auto_expire_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                LEAST($8::TIMESTAMPTZ, NOW() + INTERVAL '30 days'))
+        RETURNING id
+        "#,
+    )
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .bind(name)
+    .bind(&payload.dosage)
+    .bind(payload.quantity)
+    .bind(&unit)
+    .bind(&payload.batch_number)
+    .bind(expiry)
+    .bind(payload.unit_price_xaf)
+    .bind(&payload.note)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création surplus: {}", e)))?;
+
+    let id: i64 = row.try_get("id").unwrap_or_default();
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "success": true, "id": id })),
+    ))
+}
+
+/// GET /api/pharmacies/me/surplus — liste les surplus de mes pharmacies
+pub async fn list_my_surplus(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let rows = sqlx::query(
+        r#"
+        SELECT s.id, s.pharmacy_id, s.medication_name, s.dosage, s.quantity,
+               s.quantity_unit, s.batch_number, s.expiry_date, s.unit_price_xaf,
+               s.note, s.status, s.claimed_by_pharmacy_id, s.claimed_at,
+               s.auto_expire_at, s.created_at,
+               p.nom AS pharmacy_name,
+               (SELECT p2.nom FROM pharmacies p2 WHERE p2.id = s.claimed_by_pharmacy_id)
+                   AS claimed_by_name
+        FROM pharmacy_surplus s
+        JOIN pharmacies p ON p.id = s.pharmacy_id
+        WHERE p.user_id = $1
+          AND s.status IN ('open', 'claimed', 'sold')
+        ORDER BY
+            CASE s.status WHEN 'open' THEN 0 WHEN 'claimed' THEN 1 ELSE 2 END,
+            s.expiry_date ASC,
+            s.created_at DESC
+        LIMIT 100
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture surplus: {}", e)))?;
+
+    let items = surplus_rows_to_json(&rows);
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "items": items })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NearbySurplusQuery {
+    /// Pharmacie à partir de laquelle on cherche (doit appartenir à user)
+    pub pharmacy_id: i32,
+    /// Rayon en km. Défaut 50.
+    #[serde(default)]
+    pub radius_km: Option<f64>,
+    /// Filtre optionnel par nom médicament (ILIKE %query%)
+    #[serde(default)]
+    pub q: Option<String>,
+}
+
+/// GET /api/pharmacies/me/surplus/nearby — surplus disponibles près d'une de mes pharmacies
+pub async fn list_nearby_surplus(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    axum::extract::Query(q): axum::extract::Query<NearbySurplusQuery>,
+) -> AppResult<impl IntoResponse> {
+    let radius = q.radius_km.unwrap_or(50.0).clamp(1.0, 500.0);
+    let query_filter = q.q.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty());
+
+    // GPS de ma pharmacie
+    let gps: Option<String> = sqlx::query_scalar(
+        "SELECT gps FROM pharmacies WHERE id = $1 AND user_id = $2 AND is_active = TRUE",
+    )
+    .bind(q.pharmacy_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture pharmacie: {}", e)))?;
+
+    let Some(gps) = gps else {
+        return Err(AppError::Forbidden(
+            "Pharmacie introuvable ou ne vous appartient pas".to_string(),
+        ));
+    };
+
+    let parts: Vec<&str> = gps.split(',').collect();
+    if parts.len() != 2 {
+        return Err(AppError::BadRequest("GPS pharmacie invalide".to_string()));
+    }
+    let lat: f64 = parts[0].trim().parse().unwrap_or(0.0);
+    let lng: f64 = parts[1].trim().parse().unwrap_or(0.0);
+
+    let pattern = query_filter.map(|s| format!("%{}%", s));
+
+    let rows = sqlx::query(
+        r#"
+        SELECT s.id, s.pharmacy_id, s.medication_name, s.dosage, s.quantity,
+               s.quantity_unit, s.batch_number, s.expiry_date, s.unit_price_xaf,
+               s.note, s.status, s.claimed_by_pharmacy_id, s.claimed_at,
+               s.auto_expire_at, s.created_at,
+               p.nom AS pharmacy_name,
+               p.telephone AS pharmacy_phone,
+               p.gps AS pharmacy_gps,
+               6371.0 * 2 * ASIN(
+                   SQRT(
+                       POWER(SIN(RADIANS((split_part(p.gps, ',', 1)::DOUBLE PRECISION - $1) / 2)), 2)
+                     + COS(RADIANS($1)) * COS(RADIANS(split_part(p.gps, ',', 1)::DOUBLE PRECISION))
+                     * POWER(SIN(RADIANS((split_part(p.gps, ',', 2)::DOUBLE PRECISION - $2) / 2)), 2)
+                   )
+               ) AS distance_km
+        FROM pharmacy_surplus s
+        JOIN pharmacies p ON p.id = s.pharmacy_id
+        WHERE s.status = 'open'
+          AND s.expiry_date > CURRENT_DATE
+          AND s.auto_expire_at > NOW()
+          AND p.is_active = TRUE
+          AND p.id != $3
+          AND p.gps IS NOT NULL
+          AND ($4::TEXT IS NULL OR s.medication_name ILIKE $4)
+        HAVING 6371.0 * 2 * ASIN(
+            SQRT(
+                POWER(SIN(RADIANS((split_part(p.gps, ',', 1)::DOUBLE PRECISION - $1) / 2)), 2)
+              + COS(RADIANS($1)) * COS(RADIANS(split_part(p.gps, ',', 1)::DOUBLE PRECISION))
+              * POWER(SIN(RADIANS((split_part(p.gps, ',', 2)::DOUBLE PRECISION - $2) / 2)), 2)
+            )
+        ) <= $5
+        ORDER BY distance_km ASC, s.expiry_date ASC
+        LIMIT 50
+        "#,
+    )
+    .bind(lat)
+    .bind(lng)
+    .bind(q.pharmacy_id)
+    .bind(pattern)
+    .bind(radius)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture surplus voisin: {}", e)))?;
+
+    let mut items: Vec<serde_json::Value> = Vec::with_capacity(rows.len());
+    for r in &rows {
+        let mut obj = surplus_row_to_json_value(r);
+        if let serde_json::Value::Object(ref mut m) = obj {
+            m.insert(
+                "distance_km".to_string(),
+                json!(r.try_get::<f64, _>("distance_km").unwrap_or(0.0)),
+            );
+            m.insert(
+                "pharmacy_phone".to_string(),
+                json!(r.try_get::<Option<String>, _>("pharmacy_phone").unwrap_or(None)),
+            );
+        }
+        items.push(obj);
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "items": items })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClaimSurplusRequest {
+    /// Pharmacie de l'utilisateur qui réclame (doit lui appartenir)
+    pub pharmacy_id: i32,
+}
+
+/// POST /api/pharmacies/me/surplus/{id}/claim — réclamer un surplus
+pub async fn claim_surplus(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(id): Path<i64>,
+    Json(payload): Json<ClaimSurplusRequest>,
+) -> AppResult<impl IntoResponse> {
+    // Vérifie ownership pharmacie réclamante
+    let owns: Option<i32> = sqlx::query_scalar(
+        "SELECT id FROM pharmacies WHERE id = $1 AND user_id = $2 AND is_active = TRUE",
+    )
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture pharmacie: {}", e)))?;
+
+    if owns.is_none() {
+        return Err(AppError::Forbidden(
+            "Cette pharmacie ne vous appartient pas".to_string(),
+        ));
+    }
+
+    // Réclame atomiquement (status=open → claimed). Empêche l'auto-réclamation.
+    let res = sqlx::query(
+        r#"
+        UPDATE pharmacy_surplus
+        SET status = 'claimed',
+            claimed_by_pharmacy_id = $1,
+            claimed_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $2
+          AND status = 'open'
+          AND pharmacy_id != $1
+        "#,
+    )
+    .bind(payload.pharmacy_id)
+    .bind(id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur réclamation: {}", e)))?;
+
+    if res.rows_affected() == 0 {
+        return Err(AppError::BadRequest(
+            "Surplus déjà réclamé, expiré, ou vous appartient".to_string(),
+        ));
+    }
+
+    Ok((StatusCode::OK, Json(json!({ "success": true }))))
+}
+
+/// DELETE /api/pharmacies/me/surplus/{id} — retirer mon annonce
+pub async fn delete_surplus(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let res = sqlx::query(
+        r#"
+        DELETE FROM pharmacy_surplus
+        WHERE id = $1
+          AND pharmacy_id IN (SELECT id FROM pharmacies WHERE user_id = $2)
+        "#,
+    )
+    .bind(id)
+    .bind(user_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur suppression: {}", e)))?;
+
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound("Annonce introuvable".to_string()));
+    }
+
+    Ok((StatusCode::OK, Json(json!({ "success": true }))))
+}
+
+/// Helper : convertit une ligne SQL surplus en JSON
+fn surplus_row_to_json_value(r: &sqlx::postgres::PgRow) -> serde_json::Value {
+    json!({
+        "id": r.try_get::<i64, _>("id").unwrap_or(0),
+        "pharmacy_id": r.try_get::<i32, _>("pharmacy_id").unwrap_or(0),
+        "pharmacy_name": r.try_get::<String, _>("pharmacy_name").unwrap_or_default(),
+        "medication_name": r.try_get::<String, _>("medication_name").unwrap_or_default(),
+        "dosage": r.try_get::<Option<String>, _>("dosage").unwrap_or(None),
+        "quantity": r.try_get::<i32, _>("quantity").unwrap_or(0),
+        "quantity_unit": r.try_get::<String, _>("quantity_unit").unwrap_or_default(),
+        "batch_number": r.try_get::<Option<String>, _>("batch_number").unwrap_or(None),
+        "expiry_date": r.try_get::<chrono::NaiveDate, _>("expiry_date")
+            .map(|d| d.to_string())
+            .unwrap_or_default(),
+        "unit_price_xaf": r.try_get::<Option<f64>, _>("unit_price_xaf").unwrap_or(None),
+        "note": r.try_get::<Option<String>, _>("note").unwrap_or(None),
+        "status": r.try_get::<String, _>("status").unwrap_or_default(),
+        "claimed_by_pharmacy_id": r.try_get::<Option<i32>, _>("claimed_by_pharmacy_id").unwrap_or(None),
+        "claimed_at": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("claimed_at")
+            .unwrap_or(None)
+            .map(|d| d.to_rfc3339()),
+        "auto_expire_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("auto_expire_at")
+            .map(|d| d.to_rfc3339())
+            .unwrap_or_default(),
+        "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+            .map(|d| d.to_rfc3339())
+            .unwrap_or_default(),
+    })
+}
+
+fn surplus_rows_to_json(rows: &[sqlx::postgres::PgRow]) -> Vec<serde_json::Value> {
+    rows.iter()
+        .map(|r| {
+            let mut obj = surplus_row_to_json_value(r);
+            // Pour la liste "mes surplus" on a en plus claimed_by_name
+            if let serde_json::Value::Object(ref mut m) = obj {
+                if let Ok(claimed_name) = r.try_get::<Option<String>, _>("claimed_by_name") {
+                    m.insert("claimed_by_name".to_string(), json!(claimed_name));
+                }
+            }
+            obj
+        })
+        .collect()
+}
+
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie
 ///
 /// Conformité éthique/réglementaire : trace serveur pour prouver que
