@@ -297,6 +297,10 @@
       "swapMessage": "Bonjour {{name}}, seriez-vous disponible pour un échange de garde ?",
       "helpMessage": "Bonjour {{name}}, un patient cherche un médicament que je n'ai pas. Pourriez-vous m'aider ?"
     },
+    "alerts": {
+      "allergyWarning": "Allergie / contre-indication déclarée",
+      "allergyDisclaimer": "Déclaration patient à vérifier avant dispense."
+    },
     "prepare": {
       "cta": "Préparer à l'avance",
       "waitingPickup": "Préparé · en attente du retrait",
@@ -527,6 +531,8 @@
     "reminders": {
       "title": "Mes rappels de prise",
       "subtitle": "Une notification automatique aux heures choisies.",
+      "shortTitle": "Mes rappels",
+      "shortSubtitle": "Prises de médicaments",
       "loginRequired": "Connectez-vous pour gérer vos rappels.",
       "add": "Ajouter un rappel",
       "empty": "Aucun rappel configuré. Ajoutez-en un pour ne plus oublier vos prises.",
@@ -549,6 +555,66 @@
       "confirmDelete": "Supprimer ce rappel ?",
       "errMissing": "Nom et au moins une heure requis.",
       "disclaimer": "Les rappels Yukpo arrivent à la minute près tant que l'application a été ouverte au moins une fois et que les notifications sont autorisées sur votre appareil."
+    },
+    "allergies": {
+      "title": "Mes allergies & contre-indications",
+      "subtitle": "Déclarez-les une fois pour toutes — les pharmaciens seront automatiquement alertés à chaque demande.",
+      "shortTitle": "Mes allergies",
+      "shortSubtitle": "Contre-indications déclarées",
+      "loginRequired": "Connectez-vous pour gérer vos allergies.",
+      "declare": "Déclarer",
+      "kind": "Type",
+      "kinds": {
+        "allergy": "Allergie",
+        "condition": "Condition",
+        "intolerance": "Intolérance"
+      },
+      "groups": {
+        "allergies": "Allergies déclarées",
+        "conditions": "Conditions",
+        "intolerances": "Intolérances"
+      },
+      "label": "Substance / condition",
+      "choose": "Choisissez…",
+      "other": "Autre (saisir)",
+      "otherPlaceholder": "Précisez la substance ou la condition",
+      "labelRequired": "Choisissez une substance / condition.",
+      "severityLabel": "Sévérité",
+      "severity": {
+        "mild": "Légère",
+        "moderate": "Modérée",
+        "severe": "Sévère"
+      },
+      "note": "Note (optionnel)",
+      "notePlaceholder": "Ex : œdème de Quincke en 2024 avec Augmentin",
+      "saved": "Allergie enregistrée",
+      "deleted": "Allergie supprimée",
+      "confirmDelete": "Supprimer cette déclaration ?",
+      "empty": {
+        "title": "Aucune allergie déclarée",
+        "body": "Si vous avez une allergie médicamenteuse, une intolérance ou une condition (grossesse, asthme…), déclarez-la pour que les pharmaciens en soient automatiquement avertis."
+      },
+      "disclaimer": {
+        "title": "Auto-déclaration",
+        "body": "Ces informations sont retransmises au pharmacien comme une déclaration patient, pas un diagnostic. La décision de dispense lui revient."
+      },
+      "labels": {
+        "penicilline": "Pénicilline / Amoxicilline",
+        "cephalosporines": "Céphalosporines",
+        "sulfamides": "Sulfamides (Bactrim, Cotrimoxazole)",
+        "ains": "AINS (Ibuprofène, Diclofénac…)",
+        "aspirine": "Aspirine",
+        "codeine": "Codéine / Opioïdes",
+        "iode": "Iode (Bétadine, contraste)",
+        "tetracyclines": "Tétracyclines (Doxycycline…)",
+        "quinolones": "Quinolones (Ciprofloxacine…)",
+        "grossesse": "Grossesse",
+        "allaitement": "Allaitement",
+        "g6pd": "Déficit en G6PD",
+        "asthme": "Asthme",
+        "insuffisance_renale": "Insuffisance rénale",
+        "insuffisance_hepatique": "Insuffisance hépatique"
+      }
     }
   }
 }

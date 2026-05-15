@@ -110,6 +110,7 @@ use crate::routes::{
     publicite_pixel_routes::publicite_pixel_routes, // ✅ NOUVEAU: Routes tracking pixel avancé
     push_routes::push_routes,
     recommendation_routes::recommendation_routes,
+    referral_routes::referral_routes, // ✅ 2026-05-15: Parrainage
     reputation_routes::reputation_routes, // ✅ 2026-04-03: Monitoring mentions + crise
     restaurant_routes::restaurant_routes,
     // scheduling_search_routes::scheduling_search_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (scheduling_search_routes_merged)
@@ -319,6 +320,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let live = live_routes(state.clone());
     let live_ai = live_ai_routes(state.clone());
     let push = push_routes(state.clone());
+    let referral = referral_routes(state.clone()); // ✅ 2026-05-15: Parrainage
     let webrtc = webrtc_routes(state.clone());
     let webhooks = webhook_routes(); // Ne prend pas state
     let metrics = metrics_routes(state.clone());
@@ -491,6 +493,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(live)
         .merge(live_ai)
         .merge(push)
+        .merge(referral) // ✅ 2026-05-15: Parrainage
         .merge(webrtc)
         .merge(webhooks)
         .merge(metrics)

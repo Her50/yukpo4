@@ -28,6 +28,7 @@ import MedicationAlertPage from './pages/specialized/pharmacie/MedicationAlertPa
 import HealthRecordPage from './pages/specialized/pharmacie/HealthRecordPage';
 import AdminRuptureRadarPage from './pages/specialized/pharmacie/AdminRuptureRadarPage';
 import IntakeRemindersPage from './pages/specialized/pharmacie/IntakeRemindersPage';
+import AllergiesPage from './pages/specialized/pharmacie/AllergiesPage';
 import OfflineBanner from './components/OfflineBanner';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -117,6 +118,8 @@ function AppPharmacie() {
               <Route path="/admin/rupture-radar" element={<PharmacieLayout><AdminRuptureRadarPage /></PharmacieLayout>} />
               {/* Phase B2.2 : rappels de prise de médicaments */}
               <Route path="/reminders" element={<PharmacieLayout><IntakeRemindersPage /></PharmacieLayout>} />
+              {/* Phase C1 : allergies & contre-indications déclarées par le patient */}
+              <Route path="/allergies" element={<PharmacieLayout><AllergiesPage /></PharmacieLayout>} />
               <Route path="/:id" element={<PharmacieLayout><PharmacieDetailsPage /></PharmacieLayout>} />
 
               {/* Compat anciennes URLs */}

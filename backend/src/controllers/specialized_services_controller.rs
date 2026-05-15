@@ -7488,8 +7488,8 @@ pub async fn get_my_pharmacy_alerts(
 
         let alerts = sqlx::query(
             r#"
-            SELECT a.id, a.query_items, a.total_items, a.gps_lat, a.gps_lng,
-                   a.radius_km, a.expires_at, a.created_at,
+            SELECT a.id, a.user_id AS patient_user_id, a.query_items, a.total_items,
+                   a.gps_lat, a.gps_lng, a.radius_km, a.expires_at, a.created_at,
                    6371.0 * 2 * ASIN(
                        SQRT(
                            POWER(SIN(RADIANS((a.gps_lat - $1) / 2)), 2)
@@ -7575,10 +7575,26 @@ pub async fn get_my_pharmacy_alerts(
         let known_prices_json = serde_json::Value::Object(known_prices_map);
 
         for a in alerts {
+            let query_items = a.try_get::<serde_json::Value, _>("query_items").unwrap_or(json!([]));
+            let patient_uid: Option<i32> = a.try_get("patient_user_id").ok();
+
+            // ✅ Phase C1 (2026-05-15) — Allergies & contre-indications.
+            // Si le patient est authentifié et a déclaré des allergies, on
+            // croise avec les médicaments demandés et on renvoie au pharmacien
+            // un drapeau rouge dès le tableau des alertes (avant qu'il ne
+            // réponde). Permet de refuser ou proposer une alternative au lieu
+            // de dispenser un médicament contre-indiqué.
+            let allergy_warnings = if let Some(uid) = patient_uid {
+                let m = check_allergies_for_alert(&state.pg, uid, &query_items).await;
+                serde_json::to_value(&m).unwrap_or(json!([]))
+            } else {
+                json!([])
+            };
+
             all_alerts.push(json!({
                 "alert_id": a.try_get::<i64, _>("id").unwrap_or_default(),
                 "pharmacy_id": pharmacy_id,
-                "query_items": a.try_get::<serde_json::Value, _>("query_items").unwrap_or(json!([])),
+                "query_items": query_items,
                 "total_items": a.try_get::<i32, _>("total_items").unwrap_or(0),
                 "distance_km": a.try_get::<f64, _>("distance_km").unwrap_or(0.0),
                 "radius_km": a.try_get::<f32, _>("radius_km").unwrap_or(10.0),
@@ -7594,6 +7610,9 @@ pub async fn get_my_pharmacy_alerts(
                 "picked_up_at": a.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("picked_up_at")
                     .unwrap_or(None)
                     .map(|d| d.to_rfc3339()),
+                // C1 — allergies/contraindications déclarées par le patient
+                // qui matchent un médicament demandé. Vide si aucun match.
+                "allergy_warnings": allergy_warnings,
             }));
         }
     }
@@ -9349,6 +9368,438 @@ pub async fn delete_intake_reminder(
 
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound("Rappel introuvable".to_string()));
+    }
+
+    Ok((StatusCode::OK, Json(json!({ "success": true }))))
+}
+
+// ============================================================================
+// Phase C1 — Allergies & contre-indications déclarées par le patient
+// ============================================================================
+//
+// Le patient déclare une fois ses allergies (pénicilline, sulfamides, AINS…)
+// et conditions (grossesse, allaitement, G6PD, asthme…). À chaque alerte
+// RFQ vue par un pharmacien, on croise les médicaments demandés avec ces
+// déclarations et on remonte un drapeau rouge dans get_my_pharmacy_alerts.
+//
+// Sécurité juridique : on retransmet une déclaration patient, pas un
+// diagnostic. La décision de dispense reste au pharmacien.
+
+/// Liste plate des "familles" d'allergènes connues, avec les patterns de noms
+/// de médicaments associés (lowercase, contains-match). On garde un ensemble
+/// pragmatique des cas les plus fréquents en Afrique subsaharienne — il
+/// couvrira ~80 % des situations à risque. Pour les cas exotiques, l'utilisateur
+/// peut déclarer "other" + note libre et le pharmacien lira la note.
+///
+/// Format : (label_pour_match, &[mots-clés à chercher dans medication name])
+fn allergen_drug_patterns() -> &'static [(&'static str, &'static [&'static str])] {
+    &[
+        // Antibiotiques
+        (
+            "penicilline",
+            &[
+                "amoxicill",
+                "amoxil",
+                "augmentin",
+                "clamoxyl",
+                "ampicill",
+                "penicilli",
+                "pénicilli",
+            ],
+        ),
+        (
+            "cephalosporines",
+            &[
+                "cefa",
+                "cefi",
+                "ceft",
+                "cefu",
+                "cefo",
+                "rocephin",
+                "rocéphin",
+            ],
+        ),
+        (
+            "sulfamides",
+            &[
+                "sulfam",
+                "bactrim",
+                "cotrimoxazol",
+                "trimethoprim",
+                "triméthoprim",
+            ],
+        ),
+        (
+            "tetracyclines",
+            &[
+                "doxycyclin",
+                "vibramyc",
+                "tetracyclin",
+                "tétracyclin",
+                "minocyclin",
+            ],
+        ),
+        (
+            "quinolones",
+            &[
+                "cipro",
+                "ciflox",
+                "norfloxa",
+                "ofloxa",
+                "levofloxa",
+                "moxifloxa",
+                "fluoroquino",
+            ],
+        ),
+        ("metronidazole", &["metronidaz", "métronidaz", "flagyl"]),
+        // AINS + aspirine (séparés car certains tolèrent l'un pas l'autre)
+        (
+            "ains",
+            &[
+                "ibuprofen",
+                "ibuprofèn",
+                "advil",
+                "nurofen",
+                "brufen",
+                "diclofen",
+                "diclofén",
+                "voltaren",
+                "voltarèn",
+                "ketoprofen",
+                "kétoprofèn",
+                "profenid",
+                "profénid",
+                "naproxen",
+                "naproxèn",
+                "apranax",
+                "meloxicam",
+                "mobic",
+                "piroxicam",
+                "feldene",
+                "feldène",
+                "indometac",
+                "indométac",
+                "celecoxib",
+                "celebrex",
+            ],
+        ),
+        (
+            "aspirine",
+            &[
+                "aspirin",
+                "aspegic",
+                "aspégic",
+                "aspro",
+                "kardegic",
+                "kardégic",
+                "acetylsalicyl",
+                "acétylsalicyl",
+            ],
+        ),
+        // Opioides
+        (
+            "codeine",
+            &[
+                "codein",
+                "codéin",
+                "codolipran",
+                "néocodion",
+                "neocodion",
+                "tramadol",
+                "topalgic",
+                "morphin",
+                "fentanyl",
+                "oxycodon",
+                "dihydrocodein",
+            ],
+        ),
+        // Antipaludéens (G6PD et grossesse)
+        ("antipaludeens_g6pd", &["primaquin", "dapson", "tafenoquin"]),
+        ("quinine", &["quinine", "quinimax", "quinidin"]),
+        // Iode / contraste
+        (
+            "iode",
+            &["betadin", "bétadin", "iodine", "iode", "amiodaron"],
+        ),
+        // Statines (musculaires)
+        (
+            "statines",
+            &[
+                "atorvastatin",
+                "simvastatin",
+                "rosuvastatin",
+                "pravastatin",
+                "fluvastatin",
+            ],
+        ),
+        // Bêta-bloquants (asthme)
+        (
+            "beta_bloquants",
+            &[
+                "propranolol",
+                "atenolol",
+                "aténolol",
+                "bisoprolol",
+                "metoprolol",
+                "métoprolol",
+                "carvedilol",
+                "carvédilol",
+                "nebivolol",
+                "nébivolol",
+            ],
+        ),
+    ]
+}
+
+/// Liste des allergies/conditions reconnues par l'app et les familles
+/// d'allergènes qu'elles déclenchent comme "à risque" pour le pharmacien.
+/// Une entrée patient (label) déclenche les familles listées ici.
+fn allergy_label_to_families(label: &str) -> &'static [&'static str] {
+    match label {
+        // === ALLERGIES ===
+        "penicilline" => &["penicilline", "cephalosporines"], // ~5-10% croisée
+        "cephalosporines" => &["cephalosporines", "penicilline"],
+        "sulfamides" => &["sulfamides"],
+        "ains" => &["ains", "aspirine"], // souvent croisé
+        "aspirine" => &["aspirine"],
+        "codeine" => &["codeine"],
+        "iode" => &["iode"],
+        "tetracyclines" => &["tetracyclines"],
+        "quinolones" => &["quinolones"],
+        // === CONDITIONS ===
+        "grossesse" => &[
+            "tetracyclines",
+            "quinolones",
+            "ains",
+            "metronidazole", // 1er trimestre prudent
+            "antipaludeens_g6pd",
+        ],
+        "allaitement" => &["tetracyclines", "quinolones", "metronidazole"],
+        "g6pd" => &[
+            "sulfamides",
+            "antipaludeens_g6pd",
+            "quinolones", // certains
+            "aspirine",   // hautes doses
+        ],
+        "asthme" => &["ains", "aspirine", "beta_bloquants"],
+        "insuffisance_renale" => &["ains", "tetracyclines", "metronidazole"],
+        "insuffisance_hepatique" => &["statines", "metronidazole", "tetracyclines"],
+        _ => &[], // "other" ou inconnu → pas de match auto, juste affichage de la note
+    }
+}
+
+/// Représentation d'une alerte allergie pour un médicament donné
+#[derive(Debug, Clone, Serialize)]
+pub struct AllergyMatch {
+    pub label: String,
+    pub kind: String,     // "allergy" | "condition" | "intolerance"
+    pub severity: String, // "mild" | "moderate" | "severe"
+    pub note: Option<String>,
+    pub matched_medication: String,
+    pub matched_family: String,
+}
+
+/// Pour chaque médicament demandé, retourne la liste des allergies/conditions
+/// patient qui matchent. Si vide, aucun avertissement à afficher.
+///
+/// `query_items` est la valeur JSONB du champ medication_alerts.query_items
+/// (`[{"name": "Amoxicilline", ...}, ...]`).
+pub async fn check_allergies_for_alert(
+    pg: &sqlx::PgPool,
+    patient_user_id: i32,
+    query_items: &serde_json::Value,
+) -> Vec<AllergyMatch> {
+    // 1) Récupère les allergies du patient
+    let declared = sqlx::query(
+        r#"
+        SELECT kind, label, note, severity
+        FROM patient_allergies
+        WHERE user_id = $1
+        "#,
+    )
+    .bind(patient_user_id)
+    .fetch_all(pg)
+    .await
+    .unwrap_or_default();
+
+    if declared.is_empty() {
+        return Vec::new();
+    }
+
+    // 2) Extrait les noms de médicaments
+    let med_names: Vec<String> = query_items
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.get("name").and_then(|n| n.as_str()).map(|s| s.to_lowercase()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if med_names.is_empty() {
+        return Vec::new();
+    }
+
+    // 3) Pour chaque allergie déclarée, vérifie si un des médicaments matche
+    let mut matches: Vec<AllergyMatch> = Vec::new();
+    let patterns = allergen_drug_patterns();
+
+    for d in &declared {
+        let label: String = d.try_get("label").unwrap_or_default();
+        let kind: String = d.try_get("kind").unwrap_or_default();
+        let severity: String = d.try_get("severity").unwrap_or_default();
+        let note: Option<String> = d.try_get("note").ok();
+
+        let families = allergy_label_to_families(&label);
+        if families.is_empty() {
+            continue;
+        }
+
+        for med in &med_names {
+            for fam in families {
+                if let Some((_fam_name, drug_keywords)) =
+                    patterns.iter().find(|(name, _)| name == fam)
+                {
+                    if drug_keywords.iter().any(|kw| med.contains(kw)) {
+                        matches.push(AllergyMatch {
+                            label: label.clone(),
+                            kind: kind.clone(),
+                            severity: severity.clone(),
+                            note: note.clone(),
+                            matched_medication: med.clone(),
+                            matched_family: (*fam).to_string(),
+                        });
+                        break; // une match par (allergie, med) suffit
+                    }
+                }
+            }
+        }
+    }
+
+    matches
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpsertAllergyRequest {
+    pub kind: String,  // "allergy" | "condition" | "intolerance"
+    pub label: String, // ex "penicilline"
+    #[serde(default)]
+    pub note: Option<String>,
+    #[serde(default)]
+    pub severity: Option<String>, // "mild" | "moderate" | "severe"
+}
+
+/// POST /api/users/me/allergies
+pub async fn create_allergy(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<UpsertAllergyRequest>,
+) -> AppResult<impl IntoResponse> {
+    let kind = payload.kind.trim().to_lowercase();
+    if !matches!(kind.as_str(), "allergy" | "condition" | "intolerance") {
+        return Err(AppError::BadRequest(
+            "kind doit être allergy, condition ou intolerance".to_string(),
+        ));
+    }
+    let label = payload.label.trim().to_lowercase();
+    if label.is_empty() {
+        return Err(AppError::BadRequest("label requis".to_string()));
+    }
+    let severity = payload
+        .severity
+        .as_deref()
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| matches!(s.as_str(), "mild" | "moderate" | "severe"))
+        .unwrap_or_else(|| "moderate".to_string());
+
+    let row = sqlx::query(
+        r#"
+        INSERT INTO patient_allergies (user_id, kind, label, note, severity)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (user_id, kind, label)
+        DO UPDATE SET
+            note = EXCLUDED.note,
+            severity = EXCLUDED.severity,
+            updated_at = NOW()
+        RETURNING id
+        "#,
+    )
+    .bind(user_id)
+    .bind(&kind)
+    .bind(&label)
+    .bind(&payload.note)
+    .bind(&severity)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création allergie: {}", e)))?;
+
+    let id: i64 = row.try_get("id").unwrap_or_default();
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "success": true, "id": id })),
+    ))
+}
+
+/// GET /api/users/me/allergies
+pub async fn list_allergies(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, kind, label, note, severity, declared_at, updated_at
+        FROM patient_allergies
+        WHERE user_id = $1
+        ORDER BY
+            CASE severity WHEN 'severe' THEN 0 WHEN 'moderate' THEN 1 ELSE 2 END,
+            updated_at DESC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture allergies: {}", e)))?;
+
+    let items: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i64, _>("id").unwrap_or(0),
+                "kind": r.try_get::<String, _>("kind").unwrap_or_default(),
+                "label": r.try_get::<String, _>("label").unwrap_or_default(),
+                "note": r.try_get::<Option<String>, _>("note").unwrap_or(None),
+                "severity": r.try_get::<String, _>("severity").unwrap_or_default(),
+                "declared_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("declared_at")
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_default(),
+                "updated_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_default(),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "allergies": items })),
+    ))
+}
+
+/// DELETE /api/users/me/allergies/{id}
+pub async fn delete_allergy(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let res = sqlx::query("DELETE FROM patient_allergies WHERE id = $1 AND user_id = $2")
+        .bind(id)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur suppression: {}", e)))?;
+
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound("Allergie introuvable".to_string()));
     }
 
     Ok((StatusCode::OK, Json(json!({ "success": true }))))

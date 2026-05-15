@@ -1211,6 +1211,16 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/users/me/intake-reminders/{id}",
             delete(specialized_services_controller::delete_intake_reminder),
         )
+        // ✅ Phase C1 (2026-05-15) : allergies & contre-indications patient
+        .route(
+            "/api/users/me/allergies",
+            post(specialized_services_controller::create_allergy)
+                .get(specialized_services_controller::list_allergies),
+        )
+        .route(
+            "/api/users/me/allergies/{id}",
+            delete(specialized_services_controller::delete_allergy),
+        )
         .route(
             "/api/pharmacies/me/financial-movements",
             get(specialized_services_controller::get_pharmacy_financial_movements),

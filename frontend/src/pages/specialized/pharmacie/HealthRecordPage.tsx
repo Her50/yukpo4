@@ -9,7 +9,7 @@
 //
 // Mobile-first PWA : max-w-2xl, cards full-width, breakpoints responsive.
 
-import { AlertCircle, ArrowLeft, Calendar, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Phone, Pill, RotateCcw } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Bell, Calendar, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Phone, Pill, RotateCcw, ShieldAlert } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -145,6 +145,38 @@ const HealthRecordPage: React.FC = () => {
             <h1 className="text-lg font-bold leading-tight">{t('pharmacie.record.title')}</h1>
             <p className="text-xs text-blue-100 mt-0.5">{t('pharmacie.record.subtitle')}</p>
           </div>
+        </div>
+
+        {/* C1 — Raccourcis vers mes paramètres santé (allergies, rappels). */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            onClick={() => navigate('/allergies')}
+            className="rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 px-3 py-2.5 text-left inline-flex items-center gap-2 transition-colors"
+          >
+            <ShieldAlert className="w-4 h-4 text-white shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white leading-tight">
+                {t('pharmacie.allergies.shortTitle')}
+              </p>
+              <p className="text-[10px] text-blue-100 leading-tight truncate">
+                {t('pharmacie.allergies.shortSubtitle')}
+              </p>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/reminders')}
+            className="rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 px-3 py-2.5 text-left inline-flex items-center gap-2 transition-colors"
+          >
+            <Bell className="w-4 h-4 text-white shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white leading-tight">
+                {t('pharmacie.reminders.shortTitle')}
+              </p>
+              <p className="text-[10px] text-blue-100 leading-tight truncate">
+                {t('pharmacie.reminders.shortSubtitle')}
+              </p>
+            </div>
+          </button>
         </div>
 
         {/* Sélecteur période — chips scroll horizontal mobile */}

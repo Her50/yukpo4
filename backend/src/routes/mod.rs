@@ -94,6 +94,7 @@ pub mod publicite_pixel_routes;
 pub mod publicite_routes; // ✅ NOUVEAU: Routes pour système de publicité payante
 pub mod push_routes; // ✅ Routes de push notifications
 pub mod recommendation_routes; // ✅ NOUVEAU: Routes pour recommandations et tracking visibilité
+pub mod referral_routes; // ✅ 2026-05-15: Parrainage (code, stats, click tracking)
 pub mod reputation_routes; // ✅ 2026-04-03: Monitoring mentions + sentiment + alertes crise
 pub mod restaurant_routes;
 pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec planifications

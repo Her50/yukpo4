@@ -26,6 +26,7 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import ReferralCard from '../../components/referral/ReferralCard'; // ✅ 2026-05-15
 import { apiGet } from '../../services/apiService';
 
 interface Movement {
@@ -476,6 +477,11 @@ const ParentDashboardPage: React.FC = () => {
             </ul>
           )}
         </section>
+
+        {/* ✅ 2026-05-15 — Parrainage : viralité organique. Carte affichée à
+            tous les parents connectés, pas seulement ceux qui ont déjà
+            converti — premier message marketing dès l'inscription. */}
+        <ReferralCard />
 
         {/* Impact pédagogique */}
         <section

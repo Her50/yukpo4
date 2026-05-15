@@ -104,6 +104,7 @@ pub mod prometheus_metrics_controller; // ✅ Phase 3: Endpoint Prometheus centr
 pub mod publicite_controller; // ✅ NOUVEAU: Contrôleur pour système de publicité payante
 pub mod push_controller; // ✅ Contrôleur de push notifications
 pub mod recommendation_controller; // ✅ NOUVEAU: Contrôleur pour recommandations et tracking visibilité
+pub mod referral_controller; // ✅ 2026-05-15: Parrainage Yukpo (code, stats, click tracking)
 pub mod restaurant_controller; // ✅ 2026-03-31: Gestion restaurant (salle, plan, codes partenaires)
 pub mod scheduling_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche avec planifications
 pub mod scoring_controller; // ✅ Contrôleur pour scoring de services

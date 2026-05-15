@@ -22,6 +22,15 @@ interface QueryItem {
   dosage?: string;
 }
 
+interface AllergyWarning {
+  label: string;
+  kind: 'allergy' | 'condition' | 'intolerance';
+  severity: 'mild' | 'moderate' | 'severe';
+  note?: string | null;
+  matched_medication: string;
+  matched_family: string;
+}
+
 interface IncomingAlert {
   alert_id: number;
   pharmacy_id: number;
@@ -39,6 +48,9 @@ interface IncomingAlert {
   response_id?: number | null;
   prepared_at?: string | null;
   picked_up_at?: string | null;
+  /** C1 — allergies/contre-indications déclarées par le patient qui matchent
+   *  un médicament demandé. Vide si aucun match. */
+  allergy_warnings?: AllergyWarning[];
 }
 
 interface ItemStatusInput {
@@ -288,6 +300,44 @@ const AlertCard: React.FC<{
 
       {expanded && (
         <div className="border-t border-gray-100 bg-white p-4 space-y-3">
+          {/* C1 — Bannière allergies & contre-indications déclarées par le patient.
+              Drapeau rouge si au moins une famille d'allergène matche un médicament
+              demandé. Le pharmacien voit instantanément qu'il faut refuser ou
+              proposer une alternative AVANT de cocher disponible. */}
+          {alert.allergy_warnings && alert.allergy_warnings.length > 0 && (
+            <div className="rounded-xl border-2 border-red-300 bg-red-50 p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <p className="text-xs font-bold text-red-700 uppercase tracking-wide">
+                  {t('pharmaPartner.alerts.allergyWarning')}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {alert.allergy_warnings.map((w, i) => (
+                  <div key={i} className="text-xs text-red-900 leading-snug">
+                    <span className="font-semibold">
+                      {t(`pharmacie.allergies.labels.${w.label}`, w.label)}
+                    </span>
+                    {' '}
+                    <span className="text-red-600">
+                      ({t(`pharmacie.allergies.severity.${w.severity}`)})
+                    </span>
+                    {' → '}
+                    <span className="font-semibold capitalize">{w.matched_medication}</span>
+                    {w.note && (
+                      <span className="block text-[11px] text-red-700/80 italic mt-0.5">
+                        « {w.note} »
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-red-700/70 mt-2 italic">
+                {t('pharmaPartner.alerts.allergyDisclaimer')}
+              </p>
+            </div>
+          )}
+
           {/* Liste des médicaments demandés avec checkbox + prix */}
           <div className="space-y-2">
             {items.map((it, idx) => (

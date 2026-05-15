@@ -202,6 +202,9 @@ pub struct RegisterInput {
     // ✅ NOUVEAU: Images base64 pour vérification Vision API
     pub rccm_doc_base64: Option<String>, // Scan/photo du certificat RCCM
     pub niu_doc_base64: Option<String>,  // Scan/photo de l'attestation NIU (chauffeurs/coursiers)
+    // ✅ 2026-05-15: Parrainage — code du parrain capturé via ?ref=XXX sur le
+    // landing, propagé par le frontend lors du signup. Optionnel.
+    pub ref_code: Option<String>,
 }
 
 /// ? Inscription manuelle
@@ -765,6 +768,47 @@ pub async fn register_user(
             return Err(e.into());
         }
     };
+
+    // ✅ 2026-05-15 : Parrainage — étape post-INSERT, non bloquante.
+    // 1. Génère un referral_code unique pour le nouvel utilisateur (sera utilisé
+    //    pour qu'il parraine à son tour).
+    // 2. Si un ref_code parrain a été fourni (capturé via ?ref=XXX sur le
+    //    landing), attache le filleul → parrain et crée une ligne `referrals`.
+    // En cas d'erreur, on log mais on ne bloque pas l'inscription : le code
+    // pourra être généré au prochain GET /api/referral/me.
+    if let Err(e) = crate::services::referral_service::ensure_referral_code(db, new.id).await {
+        error!(
+            "[register_user] referral_code generation failed for user {}: {e:?}",
+            new.id
+        );
+    }
+    if let Some(ref ref_code) = payload.ref_code {
+        let trimmed = ref_code.trim();
+        if !trimmed.is_empty() {
+            match crate::services::referral_service::attach_referrer(db, new.id, trimmed).await {
+                Ok(Some(parrain_id)) => {
+                    info!(
+                        "[register_user] user {} attached to parrain {} via code '{}'",
+                        new.id, parrain_id, trimmed
+                    );
+                }
+                Ok(None) => {
+                    // Code invalide ou déjà attribué — silencieux côté API
+                    info!(
+                        "[register_user] ref_code '{}' did not resolve to a parrain for user {}",
+                        trimmed, new.id
+                    );
+                }
+                Err(e) => {
+                    error!(
+                        "[register_user] attach_referrer failed for user {} code '{}': {e:?}",
+                        new.id, trimmed
+                    );
+                }
+            }
+        }
+    }
+
     // ✅ NOUVEAU: Si c'est un partenaire, créer l'enregistrement dans delivery_partners
     let mut logo_url: Option<String> = None;
     if user_role == "partenaire" {

@@ -1,6 +1,7 @@
 import OAuthButton from "@/components/auth/OAuthButton";
 import { useUser } from '@/hooks/useUser';
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import { clearStoredRefCode, getStoredRefCode } from '@/utils/referralStorage';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -58,6 +59,10 @@ const RegisterPage: React.FC = () => {
       return;
     }
     try {
+      // ✅ 2026-05-15 — Code de parrainage capturé via ?ref=XXX au boot.
+      // Le backend l'utilise pour set users.referred_by + créer la ligne
+      // referrals(status='pending'). Non bloquant si absent ou invalide.
+      const refCode = getStoredRefCode();
       const res = await fetch(`/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,11 +75,15 @@ const RegisterPage: React.FC = () => {
           phone: form.phone.trim(),
           phone_country: form.phone_country,
           lang: 'fr',
+          ...(refCode ? { ref_code: refCode } : {}),
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
+        // ✅ 2026-05-15 : le code parrain a été consommé côté backend.
+        // On le retire du storage pour ne pas le réutiliser à un futur signup.
+        clearStoredRefCode();
         // Inscription réussie
         setRegistrationSuccess(true);
         toast.success('Compte créé avec succès ! 🎉');

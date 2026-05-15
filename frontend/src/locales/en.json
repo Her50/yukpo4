@@ -297,6 +297,10 @@
       "swapMessage": "Hi {{name}}, would you be available to swap a duty shift?",
       "helpMessage": "Hi {{name}}, a patient is looking for a drug I don't have. Could you help?"
     },
+    "alerts": {
+      "allergyWarning": "Declared allergy / contraindication",
+      "allergyDisclaimer": "Patient declaration to verify before dispensing."
+    },
     "prepare": {
       "cta": "Prepare for pickup",
       "waitingPickup": "Prepared · waiting for pickup",
@@ -543,7 +547,69 @@
       "deleted": "Reminder deleted",
       "confirmDelete": "Delete this reminder?",
       "errMissing": "Name and at least one time required.",
-      "disclaimer": "Yukpo reminders fire to the minute as long as the app has been opened at least once and notifications are allowed on your device."
+      "disclaimer": "Yukpo reminders fire to the minute as long as the app has been opened at least once and notifications are allowed on your device.",
+      "shortTitle": "My reminders",
+      "shortSubtitle": "Medication intake"
+    },
+    "allergies": {
+      "title": "My allergies & contraindications",
+      "subtitle": "Declare them once — pharmacists will be automatically warned on every request.",
+      "shortTitle": "My allergies",
+      "shortSubtitle": "Declared contraindications",
+      "loginRequired": "Sign in to manage your allergies.",
+      "declare": "Declare",
+      "kind": "Type",
+      "kinds": {
+        "allergy": "Allergy",
+        "condition": "Condition",
+        "intolerance": "Intolerance"
+      },
+      "groups": {
+        "allergies": "Declared allergies",
+        "conditions": "Conditions",
+        "intolerances": "Intolerances"
+      },
+      "label": "Substance / condition",
+      "choose": "Choose…",
+      "other": "Other (enter)",
+      "otherPlaceholder": "Enter the substance or condition",
+      "labelRequired": "Pick a substance / condition.",
+      "severityLabel": "Severity",
+      "severity": {
+        "mild": "Mild",
+        "moderate": "Moderate",
+        "severe": "Severe"
+      },
+      "note": "Note (optional)",
+      "notePlaceholder": "E.g. anaphylaxis in 2024 with Augmentin",
+      "saved": "Allergy saved",
+      "deleted": "Allergy removed",
+      "confirmDelete": "Delete this declaration?",
+      "empty": {
+        "title": "No allergy declared",
+        "body": "If you have a drug allergy, intolerance, or condition (pregnancy, asthma…), declare it so pharmacists are automatically warned."
+      },
+      "disclaimer": {
+        "title": "Self-declaration",
+        "body": "This information is passed to the pharmacist as a patient declaration, not a diagnosis. The dispensing decision is theirs."
+      },
+      "labels": {
+        "penicilline": "Penicillin / Amoxicillin",
+        "cephalosporines": "Cephalosporins",
+        "sulfamides": "Sulfonamides (Bactrim, Cotrimoxazole)",
+        "ains": "NSAIDs (Ibuprofen, Diclofenac…)",
+        "aspirine": "Aspirin",
+        "codeine": "Codeine / Opioids",
+        "iode": "Iodine (Betadine, contrast)",
+        "tetracyclines": "Tetracyclines (Doxycycline…)",
+        "quinolones": "Quinolones (Ciprofloxacin…)",
+        "grossesse": "Pregnancy",
+        "allaitement": "Breastfeeding",
+        "g6pd": "G6PD deficiency",
+        "asthme": "Asthma",
+        "insuffisance_renale": "Kidney failure",
+        "insuffisance_hepatique": "Liver failure"
+      }
     }
   }
 }

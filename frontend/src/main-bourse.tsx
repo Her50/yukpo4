@@ -3,6 +3,12 @@ import { createRoot } from 'react-dom/client';
 import AppBourse from './AppBourse';
 import './i18n/i18nAutoDetector'; // i18n + détection auto langue système téléphone
 import './index.css';
+import { captureRefFromUrl } from './utils/referralStorage'; // ✅ 2026-05-15 : parrainage ?ref=XXX
+
+// ✅ 2026-05-15 — Capture le code parrain dès le boot (avant rendu), pour
+// que même si l'user n'arrive jamais sur la page d'inscription, le code soit
+// déjà tracké côté backend. Le call backend est fire-and-forget.
+captureRefFromUrl();
 
 // ✅ 2026-05-08 — Kill-switch : si l'app détecte une migration majeure (changement
 // de version), elle purge tous les Service Workers + caches + storage et recharge.
