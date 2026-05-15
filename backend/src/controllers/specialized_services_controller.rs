@@ -7604,6 +7604,12 @@ pub struct ArchivePrescriptionRequest {
     /// Métadonnées libres : doctor_name, hospital, city (extraites par IA)
     #[serde(default)]
     pub doctor_name: Option<String>,
+    /// Numéro d'ordre / matricule professionnel du médecin (Ordre des
+    /// Médecins). Extrait par IA depuis l'en-tête ou tampon, ou saisi
+    /// manuellement par le pharmacien. Utile pour vérifier l'authenticité
+    /// de l'ordonnance en cas de litige.
+    #[serde(default)]
+    pub doctor_id_number: Option<String>,
     #[serde(default)]
     pub hospital: Option<String>,
     #[serde(default)]
@@ -7651,6 +7657,7 @@ pub async fn archive_prescription(
     // optionnelles à la table — la BD reste simple, on stocke en JSON souple).
     let meta_json = serde_json::json!({
         "doctor_name": payload.doctor_name,
+        "doctor_id_number": payload.doctor_id_number,
         "hospital": payload.hospital,
         "city": payload.city,
         "medications": payload.extracted_medications,

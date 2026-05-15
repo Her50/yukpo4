@@ -26,6 +26,7 @@ interface ExtractedMedication {
 interface ExtractedMetadata {
   patient_name?: string;
   doctor_name?: string;
+  doctor_id_number?: string;
   hospital?: string;
   city?: string;
   prescription_date?: string;
@@ -67,6 +68,7 @@ const PharmacyArchivesTab: React.FC<{ pharmacies: MyPharmacy[] }> = ({ pharmacie
   const [draftPatient, setDraftPatient] = useState('');
   const [draftPhone, setDraftPhone] = useState('');
   const [draftDoctor, setDraftDoctor] = useState('');
+  const [draftDoctorId, setDraftDoctorId] = useState('');
   const [draftHospital, setDraftHospital] = useState('');
   const [draftCity, setDraftCity] = useState('');
   const [draftDate, setDraftDate] = useState('');
@@ -101,6 +103,7 @@ const PharmacyArchivesTab: React.FC<{ pharmacies: MyPharmacy[] }> = ({ pharmacie
     setDraftPatient('');
     setDraftPhone('');
     setDraftDoctor('');
+    setDraftDoctorId('');
     setDraftHospital('');
     setDraftCity('');
     setDraftDate('');
@@ -128,6 +131,7 @@ const PharmacyArchivesTab: React.FC<{ pharmacies: MyPharmacy[] }> = ({ pharmacie
         const meta: ExtractedMetadata = data?.metadata || {};
         setDraftPatient(meta.patient_name || '');
         setDraftDoctor(meta.doctor_name || '');
+        setDraftDoctorId(meta.doctor_id_number || '');
         setDraftHospital(meta.hospital || '');
         setDraftCity(meta.city || '');
         setDraftDate(meta.prescription_date || '');
@@ -153,6 +157,7 @@ const PharmacyArchivesTab: React.FC<{ pharmacies: MyPharmacy[] }> = ({ pharmacie
         extracted_medications: draftMeds,
         prescription_date: draftDate || undefined,
         doctor_name: draftDoctor.trim() || undefined,
+        doctor_id_number: draftDoctorId.trim() || undefined,
         hospital: draftHospital.trim() || undefined,
         city: draftCity.trim() || undefined,
       });
@@ -299,6 +304,11 @@ const PharmacyArchivesTab: React.FC<{ pharmacies: MyPharmacy[] }> = ({ pharmacie
                             <span className="text-gray-700">{meta.doctor_name}</span>
                           </div>
                         )}
+                        {meta.doctor_id_number && (
+                          <div className="text-gray-500 text-[11px] col-span-2">
+                            N° Ordre : <span className="font-mono text-gray-700">{meta.doctor_id_number}</span>
+                          </div>
+                        )}
                         {meta.hospital && (
                           <div className="text-gray-700 truncate">{meta.hospital}</div>
                         )}
@@ -424,6 +434,15 @@ const PharmacyArchivesTab: React.FC<{ pharmacies: MyPharmacy[] }> = ({ pharmacie
                   />
                 </Field>
               </div>
+              <Field label="N° d'ordre / matricule du médecin">
+                <input
+                  type="text"
+                  value={draftDoctorId}
+                  onChange={e => setDraftDoctorId(e.target.value)}
+                  placeholder="Ex : CM-2018-457 ou 457/CNOM"
+                  className="w-full px-2 py-2 border border-gray-200 rounded-lg text-sm"
+                />
+              </Field>
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Hôpital / Clinique">
                   <input

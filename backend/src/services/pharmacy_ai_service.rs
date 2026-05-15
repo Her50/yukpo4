@@ -430,9 +430,14 @@ CONTEXTE IMPORTANT :
 - L'orthographe peut être phonétique ou approximative (ex : "paracetamol", "amoxiciline", "ibuprofene")
 - Médicaments courants à reconnaître (liste non exhaustive) : Paracétamol/Doliprane/Efferalgan, Amoxicilline/Clamoxyl, Ibuprofène/Advil/Nurofen, Cotrimoxazole/Bactrim, Métronidazole/Flagyl, Oméprazole/Mopral, Azithromycine/Zithromax, Ciprofloxacine/Ciflox, Doxycycline, Artémether-Luméfantrine/Coartem, Salbutamol/Ventoline, Amlodipine, Metformine/Glucophage, Diclofénac/Voltarène, Tramadol, Prednisolone, Cétirizine/Zyrtec, Loratadine/Clarityne, Fluconazole/Triflucan, Clotrimazole/Canesten, etc.
 
-TÂCHE : Analyse l'image et identifie TOUS les médicaments visibles, même partiellement lisibles.
+TÂCHE : Analyse l'image et extrait :
+  (A) TOUS les médicaments visibles, même partiellement lisibles
+  (B) Les MÉTADONNÉES de l'ordonnance : nom du patient, nom du médecin
+      prescripteur, NUMÉRO D'ORDRE / MATRICULE du médecin, hôpital/clinique
+      d'origine, ville, date de l'ordonnance. Si l'image est une boîte de
+      médicament (pas une ordonnance), laisse les champs métadonnées à null.
 
-RÈGLES D'EXTRACTION :
+RÈGLES D'EXTRACTION MÉDICAMENTS :
 1. Déchiffre l'écriture avec le maximum d'effort — même sur des écritures très difficiles, propose toujours le nom médical le plus probable
 2. Pour les noms partiellement lisibles : propose le nom complet le plus probable (ex : "Amoxici..." → "Amoxicilline")
 3. Corrige les orthographes phonétiques ou approximatives vers le nom médical standard
@@ -442,27 +447,51 @@ RÈGLES D'EXTRACTION :
 7. Si c'est un emballage : extrait le nom du médicament principal et son dosage
 8. N'omets aucun médicament visible, même si tu n'as qu'une partie du nom
 
-RÉPONSE ATTENDUE (JSON strict, tableau, SANS texte autour) :
-[
-  {{
-    "name": "Amoxicilline",
-    "dosage": "500mg",
-    "quantity": 21,
-    "posologie": "1 comprimé 3 fois par jour pendant 7 jours"
-  }},
-  {{
-    "name": "Paracétamol",
-    "dosage": "1000mg",
-    "quantity": 16,
-    "posologie": "1 comprimé toutes les 6 heures si douleur"
+RÈGLES D'EXTRACTION MÉTADONNÉES :
+- patient_name : nom complet du patient (haut de l'ordonnance, préfixé par
+  "Patient :", "Nom :", "M./Mme/Mlle", ou en zone d'identification)
+- doctor_name : nom du médecin prescripteur (près de la signature/tampon,
+  préfixé par "Dr.", "Docteur", "Médecin :")
+- doctor_id_number : NUMÉRO D'ORDRE / MATRICULE du médecin (Ordre des
+  Médecins du Cameroun ou équivalent). Souvent imprimé sur l'en-tête,
+  près du nom du médecin ou de son tampon. Préfixes typiques :
+  "N° Ordre", "N°", "Inscrit n°", "Matricule", "Inscription :",
+  "Conseil de l'Ordre n°". Garde le numéro tel quel (peut contenir
+  des lettres : ex. "CM-2018-457", "457/CNOM"). Crucial pour traçabilité
+  et vérification d'authenticité.
+- hospital : nom de l'hôpital, clinique, cabinet médical, ou centre de
+  santé (en-tête, logo, papier à en-tête)
+- city : ville où exerce le médecin (en-tête, sous l'établissement)
+- prescription_date : date de l'ordonnance au format ISO YYYY-MM-DD si lisible
+- Si un champ est illisible ou absent, mets null (NE PAS inventer).
+
+RÉPONSE ATTENDUE (JSON strict, OBJET, SANS texte autour) :
+{{
+  "medications": [
+    {{
+      "name": "Amoxicilline",
+      "dosage": "500mg",
+      "quantity": 21,
+      "posologie": "1 comprimé 3 fois par jour pendant 7 jours"
+    }}
+  ],
+  "metadata": {{
+    "patient_name": "Mbarga Jean-Paul",
+    "doctor_name": "Dr. Ngono Marie",
+    "doctor_id_number": "CM-2018-457",
+    "hospital": "Hôpital Général de Yaoundé",
+    "city": "Yaoundé",
+    "prescription_date": "2026-05-12"
   }}
-]
+}}
 
 IMPORTANT :
-- Réponds UNIQUEMENT avec le tableau JSON, rien d'autre
-- Si vraiment aucun médicament n'est identifiable (image totalement illisible, hors sujet), retourne : []
+- Réponds UNIQUEMENT avec l'objet JSON, rien d'autre
+- Si vraiment aucun médicament n'est identifiable, retourne :
+  {{"medications": [], "metadata": {{}}}}
 - Ne mets JAMAIS de texte avant ou après le JSON
 - Ne mets JAMAIS de balises markdown ```json``` autour du JSON
+- N'INVENTE PAS de nom de patient/médecin/hôpital/numéro — si pas sûr, mets null
 "#,
             geo_context
         );
