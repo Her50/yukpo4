@@ -580,7 +580,18 @@
       "deleted": "Rappel supprimé",
       "confirmDelete": "Supprimer ce rappel ?",
       "errMissing": "Nom et au moins une heure requis.",
-      "disclaimer": "Les rappels Yukpo arrivent à la minute près tant que l'application a été ouverte au moins une fois et que les notifications sont autorisées sur votre appareil."
+      "disclaimer": "Les rappels Yukpo arrivent à la minute près tant que l'application a été ouverte au moins une fois et que les notifications sont autorisées sur votre appareil.",
+      "refill": {
+        "label": "Renouvellement auto",
+        "activeBadge": "tous les {{days}} j",
+        "disabledBadge": "désactivé",
+        "intervalLabel": "Tous les",
+        "days": "jours",
+        "nextIn": "Prochaine RFQ dans {{days}} j",
+        "dueNow": "Prochaine RFQ imminente",
+        "enabled": "Renouvellement automatique activé",
+        "disabled": "Renouvellement automatique désactivé"
+      }
     },
     "allergies": {
       "title": "Mes allergies & contre-indications",

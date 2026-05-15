@@ -135,6 +135,7 @@ pub mod troc_livres_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur troc livr
 pub mod vehicle_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de véhicules (autocomplete)
 pub mod video_ml_controller;
 pub mod video_upload_controller; // ✅ NOUVEAU: Contrôleur ML pour recommandations vidéo personnalisées
+pub mod wallet_payout_controller; // ✅ 2026-05-15: Payout cash universel OM/MoMo + treasury summary admin
 pub mod webhook_controller;
 pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables // ✅ NOUVEAU 2025-01-29: Contrôleur prix dynamique IA (Leadership 100%) // ✅ NOUVEAU 2026-03-17: Contrôleur validation téléphone et partage WhatsApp/SMS // ✅ 2026-04-03: Social AI Engine (content gen, chatbot, ads, inbox, webhooks)
 

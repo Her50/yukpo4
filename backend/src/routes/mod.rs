@@ -126,6 +126,7 @@ pub mod video_hls_routes;
 pub mod video_metrics_routes;
 pub mod video_ml_routes;
 pub mod video_routes;
+pub mod wallet_payout_routes; // ✅ 2026-05-15 (PR #3): Payout cash universel + admin treasury
 pub mod weather_routes;
 pub mod webhook_routes;
 pub mod webrtc_routes; // ✅ Routes WebRTC pour appels // ✅ NOUVEAU: Routes pour feature flags

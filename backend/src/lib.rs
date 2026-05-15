@@ -139,6 +139,7 @@ use crate::routes::{
     video_hls_routes::video_hls_routes,
     video_ml_routes::video_ml_routes, // ✅ NOUVEAU: Routes ML pour recommandations et hashtags
     video_routes::video_routes,       // ✅ NOUVEAU: Routes pour récupération des vidéos utilisateur
+    wallet_payout_routes::wallet_payout_routes, // ✅ 2026-05-15 (PR #3): Payout cash + admin
     // weather_routes::weather_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     webhook_routes::webhook_routes,
     webrtc_routes::webrtc_routes,
@@ -321,6 +322,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let live_ai = live_ai_routes(state.clone());
     let push = push_routes(state.clone());
     let referral = referral_routes(state.clone()); // ✅ 2026-05-15: Parrainage
+    let wallet_payout = wallet_payout_routes(state.clone()); // ✅ 2026-05-15 (PR #3)
     let webrtc = webrtc_routes(state.clone());
     let webhooks = webhook_routes(); // Ne prend pas state
     let metrics = metrics_routes(state.clone());
@@ -494,6 +496,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(live_ai)
         .merge(push)
         .merge(referral) // ✅ 2026-05-15: Parrainage
+        .merge(wallet_payout) // ✅ 2026-05-15 (PR #3): Payout cash
         .merge(webrtc)
         .merge(webhooks)
         .merge(metrics)

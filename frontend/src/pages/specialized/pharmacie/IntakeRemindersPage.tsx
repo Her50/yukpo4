@@ -12,7 +12,7 @@
 // Mobile-first PWA : max-w-2xl, sheets bottom sur mobile.
 
 import {
-  AlertTriangle, ArrowLeft, Bell, Calendar, Clock, Loader2, Plus, Trash2, X,
+  AlertTriangle, ArrowLeft, Bell, Calendar, Clock, Loader2, Plus, RefreshCw, Trash2, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,12 @@ interface Reminder {
   is_active: boolean;
   last_sent_at?: string | null;
   created_at: string;
+  // C4 — renouvellement chronique automatique
+  auto_refill?: boolean;
+  refill_interval_days?: number;
+  refill_lead_days?: number;
+  next_refill_at?: string | null;
+  last_refill_alert_id?: number | null;
 }
 
 const QUICK_PRESETS: Array<{ label: string; times: string[] }> = [
@@ -158,7 +164,7 @@ const IntakeRemindersPage: React.FC = () => {
                 </h2>
                 <ul className="space-y-2">
                   {activeItems.map(r => (
-                    <ReminderCard key={r.id} reminder={r} onDelete={() => handleDelete(r.id)} />
+                    <ReminderCard key={r.id} reminder={r} onDelete={() => handleDelete(r.id)} onRefresh={load} />
                   ))}
                 </ul>
               </section>
@@ -170,7 +176,7 @@ const IntakeRemindersPage: React.FC = () => {
                 </h2>
                 <ul className="space-y-2">
                   {inactiveItems.map(r => (
-                    <ReminderCard key={r.id} reminder={r} onDelete={() => handleDelete(r.id)} />
+                    <ReminderCard key={r.id} reminder={r} onDelete={() => handleDelete(r.id)} onRefresh={load} />
                   ))}
                 </ul>
               </section>
@@ -198,15 +204,63 @@ const IntakeRemindersPage: React.FC = () => {
   );
 };
 
-const ReminderCard: React.FC<{ reminder: Reminder; onDelete: () => void }> = ({
-  reminder,
-  onDelete,
-}) => {
+const ReminderCard: React.FC<{
+  reminder: Reminder;
+  onDelete: () => void;
+  onRefresh: () => void;
+}> = ({ reminder, onDelete, onRefresh }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const [interval, setInterval] = useState(reminder.refill_interval_days ?? 28);
+
+  const toggleAutoRefill = async (enable: boolean) => {
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/users/me/intake-reminders/${reminder.id}/auto-refill`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+        },
+        body: JSON.stringify({
+          enabled: enable,
+          interval_days: interval,
+          lead_days: reminder.refill_lead_days ?? 3,
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      toast({
+        title: enable
+          ? t('pharmacie.reminders.refill.enabled')
+          : t('pharmacie.reminders.refill.disabled'),
+      });
+      onRefresh();
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const nextRefillLabel = useMemo(() => {
+    if (!reminder.auto_refill || !reminder.next_refill_at) return null;
+    try {
+      const d = new Date(reminder.next_refill_at);
+      const days = Math.ceil((d.getTime() - Date.now()) / 86400000);
+      if (days <= 0) return t('pharmacie.reminders.refill.dueNow');
+      return t('pharmacie.reminders.refill.nextIn', { days });
+    } catch {
+      return null;
+    }
+  }, [reminder.auto_refill, reminder.next_refill_at, t]);
+
   return (
     <li className="bg-white rounded-xl shadow-sm p-3">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-semibold text-sm">{reminder.medication_name}</p>
           {reminder.posology && (
             <p className="text-xs text-gray-500 mt-0.5">{reminder.posology}</p>
@@ -226,10 +280,83 @@ const ReminderCard: React.FC<{ reminder: Reminder; onDelete: () => void }> = ({
               <Calendar size={10} /> {t('pharmacie.reminders.until', { date: reminder.end_at })}
             </p>
           )}
+
+          {/* C4 — Renouvellement chronique automatique */}
+          {reminder.is_active && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  onClick={() => setShowConfig(v => !v)}
+                  className="inline-flex items-center gap-1.5 text-[11px] text-gray-600 hover:text-gray-900"
+                >
+                  <RefreshCw
+                    size={12}
+                    className={reminder.auto_refill ? 'text-emerald-600' : 'text-gray-400'}
+                  />
+                  <span className="font-semibold">
+                    {t('pharmacie.reminders.refill.label')}
+                  </span>
+                  {reminder.auto_refill ? (
+                    <span className="text-emerald-700 text-[10px]">
+                      ✓ {t('pharmacie.reminders.refill.activeBadge', {
+                        days: reminder.refill_interval_days ?? 28,
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-[10px]">
+                      {t('pharmacie.reminders.refill.disabledBadge')}
+                    </span>
+                  )}
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => toggleAutoRefill(!reminder.auto_refill)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
+                    reminder.auto_refill ? 'bg-emerald-600' : 'bg-gray-300'
+                  }`}
+                  aria-label={t('pharmacie.reminders.refill.label')}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition ${
+                      reminder.auto_refill ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              {nextRefillLabel && (
+                <p className="text-[10px] text-emerald-700 mt-1">{nextRefillLabel}</p>
+              )}
+              {showConfig && reminder.auto_refill && (
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="text-[11px] text-gray-600">
+                    {t('pharmacie.reminders.refill.intervalLabel')}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={interval}
+                    onChange={e => setInterval(Math.max(1, parseInt(e.target.value) || 28))}
+                    className="w-16 px-2 py-1 rounded-lg border border-gray-200 text-xs"
+                  />
+                  <span className="text-[11px] text-gray-500">
+                    {t('pharmacie.reminders.refill.days')}
+                  </span>
+                  <button
+                    onClick={() => toggleAutoRefill(true)}
+                    disabled={busy}
+                    className="ml-auto px-2 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-semibold disabled:opacity-50"
+                  >
+                    {t('common.save')}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <button
           onClick={onDelete}
-          className="text-gray-400 hover:text-red-600 p-1"
+          className="text-gray-400 hover:text-red-600 p-1 shrink-0"
           aria-label="Supprimer"
         >
           <Trash2 size={16} />

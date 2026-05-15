@@ -575,7 +575,18 @@
       "errMissing": "Name and at least one time required.",
       "disclaimer": "Yukpo reminders fire to the minute as long as the app has been opened at least once and notifications are allowed on your device.",
       "shortTitle": "My reminders",
-      "shortSubtitle": "Medication intake"
+      "shortSubtitle": "Medication intake",
+      "refill": {
+        "label": "Auto refill",
+        "activeBadge": "every {{days}}d",
+        "disabledBadge": "off",
+        "intervalLabel": "Every",
+        "days": "days",
+        "nextIn": "Next RFQ in {{days}}d",
+        "dueNow": "Next RFQ imminent",
+        "enabled": "Automatic refill enabled",
+        "disabled": "Automatic refill disabled"
+      }
     },
     "allergies": {
       "title": "My allergies & contraindications",

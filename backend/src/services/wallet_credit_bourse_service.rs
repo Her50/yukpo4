@@ -19,6 +19,9 @@
 //   - "manual_admin_adjustment"   : ajustement par un admin Yukpo
 //   - "referral_bonus"            : bonus parrain crédité à la conversion
 //                                   (1ère commande filleul ≥ 10 000 FCFA)
+//   - "payout_reserved"           : débit à la création d'une demande de
+//                                   payout cash (réserve les fonds)
+//   - "payout_refunded"           : recrédit si l'admin rejette la demande
 
 use rust_decimal::Decimal;
 use sqlx::{PgPool, Postgres, Transaction};
@@ -34,6 +37,11 @@ pub enum CreditSource {
     /// ✅ 2026-05-15 : bonus parrain. Crédité quand le filleul passe sa
     /// première commande ≥ 10 000 FCFA en statut `Completed`.
     ReferralBonus,
+    /// ✅ 2026-05-15 (PR #3) : débit pour réserver les fonds d'une demande
+    /// de payout cash (avant approbation admin).
+    PayoutReserved,
+    /// ✅ 2026-05-15 (PR #3) : recrédit si l'admin rejette la demande payout.
+    PayoutRefunded,
 }
 
 impl CreditSource {
@@ -46,6 +54,8 @@ impl CreditSource {
             CreditSource::ConsignationRecovery => "consignation_recovery",
             CreditSource::ManualAdminAdjustment => "manual_admin_adjustment",
             CreditSource::ReferralBonus => "referral_bonus",
+            CreditSource::PayoutReserved => "payout_reserved",
+            CreditSource::PayoutRefunded => "payout_refunded",
         }
     }
 }

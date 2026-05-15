@@ -9312,7 +9312,10 @@ pub async fn list_intake_reminders(
     let rows = sqlx::query(
         r#"
         SELECT id, medication_name, posology, times_of_day, end_at, timezone,
-               is_active, last_sent_at, created_at
+               is_active, last_sent_at, created_at,
+               -- Phase C4 (renouvellement chronique)
+               auto_refill, refill_interval_days, refill_lead_days,
+               next_refill_at, last_refill_alert_id
         FROM medication_intake_reminders
         WHERE user_id = $1
         ORDER BY is_active DESC, created_at DESC
@@ -9343,6 +9346,14 @@ pub async fn list_intake_reminders(
                 "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
                     .map(|d| d.to_rfc3339())
                     .unwrap_or_default(),
+                // C4 — renouvellement chronique automatique
+                "auto_refill": r.try_get::<bool, _>("auto_refill").unwrap_or(false),
+                "refill_interval_days": r.try_get::<i32, _>("refill_interval_days").unwrap_or(28),
+                "refill_lead_days": r.try_get::<i32, _>("refill_lead_days").unwrap_or(3),
+                "next_refill_at": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("next_refill_at")
+                    .unwrap_or(None)
+                    .map(|d| d.to_rfc3339()),
+                "last_refill_alert_id": r.try_get::<Option<i64>, _>("last_refill_alert_id").unwrap_or(None),
             })
         })
         .collect();
@@ -9350,6 +9361,82 @@ pub async fn list_intake_reminders(
     Ok((
         StatusCode::OK,
         Json(json!({ "success": true, "reminders": reminders })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateAutoRefillRequest {
+    pub enabled: bool,
+    #[serde(default)]
+    pub interval_days: Option<i32>,
+    #[serde(default)]
+    pub lead_days: Option<i32>,
+}
+
+/// PATCH /api/users/me/intake-reminders/{id}/auto-refill — Phase C4
+/// Toggle/configure le renouvellement chronique automatique sur un rappel.
+pub async fn update_auto_refill(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(id): Path<i64>,
+    Json(payload): Json<UpdateAutoRefillRequest>,
+) -> AppResult<impl IntoResponse> {
+    let interval = payload.interval_days.unwrap_or(28).clamp(1, 365);
+    let lead = payload.lead_days.unwrap_or(3).clamp(0, 14);
+
+    // Activation : on programme à NOW() + (interval - lead) jours pour
+    // ne pas spammer une RFQ instantanée à l'activation.
+    // Désactivation : on reset next_refill_at à NULL.
+    let res = if payload.enabled {
+        sqlx::query(
+            r#"
+            UPDATE medication_intake_reminders
+            SET auto_refill = TRUE,
+                refill_interval_days = $1,
+                refill_lead_days = $2,
+                next_refill_at = COALESCE(
+                    next_refill_at,
+                    NOW() + ($1 - $2) * INTERVAL '1 day'
+                ),
+                updated_at = NOW()
+            WHERE id = $3 AND user_id = $4
+            "#,
+        )
+        .bind(interval as i64)
+        .bind(lead as i64)
+        .bind(id)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await
+    } else {
+        sqlx::query(
+            r#"
+            UPDATE medication_intake_reminders
+            SET auto_refill = FALSE,
+                next_refill_at = NULL,
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(id)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await
+    };
+
+    let res = res.map_err(|e| AppError::Internal(format!("Erreur update: {}", e)))?;
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound("Rappel introuvable".to_string()));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "auto_refill": payload.enabled,
+            "interval_days": interval,
+            "lead_days": lead,
+        })),
     ))
 }
 

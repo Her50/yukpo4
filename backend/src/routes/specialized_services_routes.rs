@@ -1216,6 +1216,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/users/me/intake-reminders/{id}",
             delete(specialized_services_controller::delete_intake_reminder),
         )
+        // ✅ Phase C4 (2026-05-15) : renouvellement chronique automatique
+        .route(
+            "/api/users/me/intake-reminders/{id}/auto-refill",
+            axum::routing::patch(specialized_services_controller::update_auto_refill),
+        )
         // ✅ Phase C1 (2026-05-15) : allergies & contre-indications patient
         .route(
             "/api/users/me/allergies",

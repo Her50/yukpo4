@@ -2681,6 +2681,12 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // local matche les times_of_day du patient.
     yukpomnang_backend::services::intake_reminder_worker::spawn_worker(app_state.clone());
 
+    // ✅ 2026-05-15 Phase C4 — worker renouvellement chronique automatique.
+    // Polle toutes les 10 min les rappels avec auto_refill=TRUE. Quand
+    // next_refill_at est dépassé, crée une nouvelle alerte RFQ pour le
+    // médicament et avance next_refill_at de refill_interval_days.
+    yukpomnang_backend::services::chronic_refill_worker::spawn_worker(app_state.clone());
+
     // ✅ OPTIMISÉ Cloud Run 2026-02-14: Lancer toutes les migrations SQLx en arrière-plan pour Cloud Run
     // ✅ CORRIGÉ 2026-04-01: Réutiliser pg_pool (déjà configuré avec PgConnectOptions + attente socket)
     //    au lieu de créer un nouveau pool avec connect_lazy(URL) qui échoue pour les Unix sockets Cloud SQL

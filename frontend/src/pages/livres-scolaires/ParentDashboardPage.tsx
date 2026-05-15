@@ -27,6 +27,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ReferralCard from '../../components/referral/ReferralCard'; // ✅ 2026-05-15
+import WalletPayoutSection from '../../components/wallet/WalletPayoutSection'; // ✅ 2026-05-15 PR #3
 import { apiGet } from '../../services/apiService';
 
 interface Movement {
@@ -482,6 +483,10 @@ const ParentDashboardPage: React.FC = () => {
             tous les parents connectés, pas seulement ceux qui ont déjà
             converti — premier message marketing dès l'inscription. */}
         <ReferralCard />
+
+        {/* ✅ 2026-05-15 PR #3 — Retrait cash. S'auto-masque si solde wallet
+            sous le seuil minimum ET aucun historique de demandes. */}
+        <WalletPayoutSection />
 
         {/* Impact pédagogique */}
         <section

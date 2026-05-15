@@ -242,6 +242,7 @@ pub mod video_renderer;
 pub mod visual_generation_service; // ✅ NOUVEAU: Génération visuels marketing / invitations
 pub mod voice_profile_service;
 pub mod wallet_credit_bourse_service; // ✅ 2026-05-10: Crédit Bourse séparé (modèle troc immédiat) // ✅ 2026-05-10: Maintenance cron troc (expiration + fail-chain)
+pub mod wallet_payout_service; // ✅ 2026-05-15 (PR #3): Payout cash universel OM/MoMo + treasury summary
 pub mod whatsapp_notification_service; // ✅ 2026-05-11: File d'attente WhatsApp + helpers events troc/commande
                                        // ✅ NOUVEAU 2025-01-XX: Services de scalabilité pour millions de créations vidéo simultanées
 pub mod covoiturage_insurance_service; // ✅ NOUVEAU 2025-01-29: Service assurance passagers
@@ -284,6 +285,7 @@ pub mod ar_3d_render_service;
 pub mod ar_preview_service; // ✅ NOUVEAU Phase 3.2: Service de rendu 3D pour preview AR
 pub mod brand_voice_service; // ✅ 2026-04-03: Brand Voice Training — style IA par partenaire
 pub mod candidatures_service; // ✅ NOUVEAU 2025-01-28: Service candidatures
+pub mod chronic_refill_worker;
 pub mod concours_entree_service; // ✅ NOUVEAU 2025-01-28: Service concours d'entrée
 pub mod conferences_lives_service; // ✅ NOUVEAU 2025-01-28: Service conférences et lives scolaires
 pub mod customer_memory_service; // ✅ 2026-04-03: Mémoire persistante clients chatbot (CRM IA)
