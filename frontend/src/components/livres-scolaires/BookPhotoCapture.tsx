@@ -206,25 +206,12 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
     }
   };
 
-  // Auto-ouverture de l'input verso dès que le recto est capturé.
-  // On tente à 400ms puis 1200ms : si l'OS ferme encore la caméra du recto
-  // au 1er essai, le 2e essai prend la main quand le focus revient à la page.
-  useEffect(() => {
-    if (step !== 'recto-taken' || !rectoBase64 || versoBase64) return;
-    let cancelled = false;
-    const delays = [400, 1200];
-    const timers = delays.map(d =>
-      setTimeout(() => {
-        if (cancelled) return;
-        // Si l'utilisateur a déjà capturé le verso entre-temps, on ne re-clique pas.
-        if (!versoBase64) versoInputRef.current?.click();
-      }, d),
-    );
-    return () => {
-      cancelled = true;
-      timers.forEach(clearTimeout);
-    };
-  }, [step, rectoBase64, versoBase64]);
+  // ✅ 2026-05-14 : Plus d'auto-ouverture de l'input verso. La double tentative
+  // 400ms+1200ms causait une race condition : si l'user cliquait verso
+  // manuellement entre les deux, le 2e auto-click ré-ouvrait la caméra et
+  // ANNULAIT la sélection en cours (bug "premier scan ne prend pas, faut
+  // refaire"). L'user clique simplement sur le bouton Verso quand il est
+  // prêt — c'est plus prévisible.
 
   const handleVerso = async (file: File | undefined) => {
     if (!file || !rectoBase64) return;
@@ -471,14 +458,21 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
         {t('bourse.bookCapture.helper')}
       </p>
 
-      {/* Inputs cachés — déclenchés au clic */}
+      {/* Inputs cachés — déclenchés au clic. value='' reset après chaque
+          pick permet de re-sélectionner le MÊME fichier (sinon onChange ne
+          se déclenche pas car la value n'a pas changé). Empêche le bug
+          "premier scan ne prend pas, faut recommencer". */}
       <input
         ref={rectoInputRef}
         type="file"
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={e => handleRecto(e.target.files?.[0])}
+        onChange={e => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          handleRecto(f);
+        }}
       />
       <input
         ref={versoInputRef}
@@ -486,7 +480,11 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={e => handleVerso(e.target.files?.[0])}
+        onChange={e => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          handleVerso(f);
+        }}
       />
 
       <div className="grid grid-cols-2 gap-2">

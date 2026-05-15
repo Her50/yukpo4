@@ -6786,9 +6786,21 @@ pub struct CreateMedicationAlertRequest {
     pub ttl_minutes: Option<i32>,
 }
 
-/// Worker async : pour chaque pharmacie du rayon, envoie une notif push
-/// au user_id propriétaire + un message WhatsApp si pharmacies.whatsapp est
-/// renseigné. Silencieux : les erreurs sont loggées mais ne lèvent pas.
+/// Worker async : 3 relances espacées sur la fenêtre 5 min de l'alerte.
+///
+/// Pour chaque pharmacie du rayon, spawn une tâche dédiée qui :
+///   - 1ère notif (push + WhatsApp) immédiatement (t=0, "5 min restantes")
+///   - Sleep 2 min, check `pharmacy_responses` → si répondu : STOP
+///   - 2ème relance "⏰ Rappel — 3 min restantes" (t=2 min)
+///   - Sleep 2 min, re-check → si répondu : STOP
+///   - 3ème relance "⚠️ Dernier rappel — 1 min restante" (t=4 min)
+///
+/// Effet : un pharmacien qui valide à t=30s reçoit UNE seule notif. S'il ne
+/// répond pas, il est relancé 3 fois échelonnées avec rappel du temps restant.
+///
+/// Payload push enrichi : `priority: high`, `tag` (remplace ancienne notif),
+/// `requireInteraction: true` (persistance Service Worker PWA),
+/// `vibrate` + `channelId` pour Android haute priorité avec son et vibreur.
 async fn broadcast_alert_to_pharmacies(
     pool: &sqlx::PgPool,
     alert_id: i64,
@@ -6797,10 +6809,6 @@ async fn broadcast_alert_to_pharmacies(
     radius_km: f64,
     med_names: Vec<String>,
 ) {
-    use crate::services::push_notification_service;
-    use crate::services::whatsapp_alert_service::send_whatsapp_outbound;
-
-    // Récupère les pharmacies du rayon avec user_id propriétaire + whatsapp.
     let rows = sqlx::query(
         r#"
         WITH parsed AS (
@@ -6847,6 +6855,63 @@ async fn broadcast_alert_to_pharmacies(
         }
     };
 
+    log::info!(
+        "[broadcast_alert] alert_id={} : {} pharmacie(s) ciblée(s), 3 relances échelonnées (t=0/2/4 min) avec stop auto sur réponse",
+        alert_id,
+        rows.len()
+    );
+
+    for row in rows {
+        let pharmacy_id: i32 = row.try_get("id").unwrap_or(0);
+        let user_id: i32 = row.try_get("user_id").unwrap_or(0);
+        if user_id <= 0 || pharmacy_id <= 0 {
+            continue;
+        }
+        let whatsapp: Option<String> = row.try_get("whatsapp").ok().flatten();
+        let distance_km: f64 = row.try_get("distance_km").unwrap_or(0.0);
+
+        // Une task par pharmacie pour ses 3 relances échelonnées.
+        let pool_clone = pool.clone();
+        let med_names_clone = med_names.clone();
+        tokio::spawn(async move {
+            send_three_pharmacy_reminders(
+                &pool_clone,
+                alert_id,
+                pharmacy_id,
+                user_id,
+                whatsapp,
+                distance_km,
+                med_names_clone,
+            )
+            .await;
+        });
+    }
+}
+
+/// Envoie jusqu'à 3 notifications espacées de 2 minutes à une pharmacie, avec
+/// arrêt immédiat dès que la pharmacie a soumis sa réponse (table
+/// pharmacy_responses) ou que l'alerte est expirée/close.
+async fn send_three_pharmacy_reminders(
+    pool: &sqlx::PgPool,
+    alert_id: i64,
+    pharmacy_id: i32,
+    user_id: i32,
+    whatsapp: Option<String>,
+    distance_km: f64,
+    med_names: Vec<String>,
+) {
+    use crate::services::push_notification_service;
+    use crate::services::whatsapp_alert_service::send_whatsapp_outbound;
+    use std::time::Duration;
+
+    // Délais (en secondes) avant chaque envoi
+    //   1ère relance à t=0 (immédiate)
+    //   2ème relance à t=120s (2 min plus tard)
+    //   3ème relance à t=240s (4 min, ~1 min avant expiration)
+    const STEP_DELAYS_SECS: [u64; 3] = [0, 120, 120];
+    // Temps restant affiché côté pharmacien (titre/message) — minutes
+    const STEP_REMAINING_MIN: [u32; 3] = [5, 3, 1];
+
     let med_summary = if med_names.len() <= 3 {
         med_names.join(", ")
     } else {
@@ -6856,50 +6921,118 @@ async fn broadcast_alert_to_pharmacies(
             med_names.len() - 3
         )
     };
-    let push_title = "🔔 Demande de médicaments Yukpo".to_string();
-    let push_body = format!("Patient à proximité cherche : {}", med_summary);
-    let push_data = serde_json::json!({
-        "type": "medication_alert",
-        "alert_id": alert_id,
-        "deep_link": "/dashboard/alertes",
-    });
+    let whatsapp = whatsapp.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(String::from);
 
-    for row in rows {
-        let user_id: i32 = row.try_get("user_id").unwrap_or(0);
-        if user_id <= 0 {
-            continue;
+    for (attempt, &delay) in STEP_DELAYS_SECS.iter().enumerate() {
+        if delay > 0 {
+            tokio::time::sleep(Duration::from_secs(delay)).await;
         }
-        let whatsapp: Option<String> = row.try_get("whatsapp").ok().flatten();
-        let distance_km: f64 = row.try_get("distance_km").unwrap_or(0.0);
 
-        // Push web (silent fail)
+        // Anti-spam #1 : pharmacie a déjà répondu → on s'arrête net.
+        let already_responded: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM pharmacy_responses WHERE alert_id = $1 AND pharmacy_id = $2)",
+        )
+        .bind(alert_id)
+        .bind(pharmacy_id)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(false);
+
+        if already_responded {
+            log::info!(
+                "[broadcast_alert] alert={} pharmacy={} a répondu après {} relance(s) — arrêt",
+                alert_id,
+                pharmacy_id,
+                attempt
+            );
+            return;
+        }
+
+        // Anti-spam #2 : alerte expirée ou fermée → on s'arrête.
+        let alert_still_open: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM medication_alerts WHERE id = $1 AND status = 'open' AND expires_at > NOW())",
+        )
+        .bind(alert_id)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(false);
+
+        if !alert_still_open {
+            log::info!(
+                "[broadcast_alert] alert={} expirée/fermée — arrêt relances pharmacy={}",
+                alert_id,
+                pharmacy_id
+            );
+            return;
+        }
+
+        let remaining_min = STEP_REMAINING_MIN[attempt];
+        let attempt_label = match attempt {
+            0 => "🔔",
+            1 => "⏰ Rappel",
+            _ => "⚠️ Dernier rappel",
+        };
+
+        // Push notification persistante + sonore.
+        // Flags consommés côté Service Worker PWA (notif sticky qui ne se ferme
+        // qu'au tap utilisateur) et Expo channel haute priorité Android.
+        let push_title = format!(
+            "{} Yukpo Pharmacie — {} min restantes",
+            attempt_label, remaining_min
+        );
+        let push_body = format!(
+            "Patient à {:.1} km : {}\nValidez la disponibilité maintenant.",
+            distance_km, med_summary
+        );
+        let push_data = serde_json::json!({
+            "type": "medication_alert",
+            "alert_id": alert_id,
+            "pharmacy_id": pharmacy_id,
+            "deep_link": "/dashboard/alertes",
+            "attempt": attempt + 1,
+            "max_attempts": 3,
+            "remaining_minutes": remaining_min,
+            // Flags Service Worker PWA — notif persistante + sonore
+            "priority": "high",
+            "tag": format!("yukpo-alert-{}", alert_id),
+            "renotify": true,
+            "requireInteraction": true,
+            "vibrate": [500, 200, 500, 200, 500],
+            // Expo (Android haute priorité avec son et vibreur)
+            "channelId": "yukpo-urgent-alerts",
+        });
+
         let _ = push_notification_service::send_push_notification(
             pool,
             user_id,
             push_title.clone(),
             push_body.clone(),
-            Some(push_data.clone()),
+            Some(push_data),
             Some("default".to_string()),
         )
         .await;
 
-        // WhatsApp si numéro renseigné. send_whatsapp_outbound retourne bool,
-        // pas d'erreur à propager.
-        if let Some(wa) = whatsapp.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
-            let msg = format!(
-                "🔔 *Yukpo Pharmacie*\n\nUn patient à environ {:.1} km cherche :\n• {}\n\nVous avez 5 minutes pour répondre directement depuis votre dashboard :\nhttps://pharmacie.yukpomnang.com/dashboard/alertes",
+        // WhatsApp : plus fiable que push web pour réveiller un téléphone en
+        // veille au Cameroun. Inclut le rappel du temps restant.
+        if let Some(wa) = whatsapp.as_deref() {
+            let wa_msg = format!(
+                "{} *Yukpo Pharmacie*\n\nUn patient à environ {:.1} km cherche :\n• {}\n\n⏱ *Il reste {} minute(s)* pour valider la disponibilité.\n\nRépondez ici :\nhttps://pharmacie.yukpomnang.com/dashboard/alertes",
+                attempt_label,
                 distance_km,
                 med_names.join("\n• "),
+                remaining_min,
             );
-            let _ = send_whatsapp_outbound(wa, &msg).await;
+            let _ = send_whatsapp_outbound(wa, &wa_msg).await;
         }
-    }
 
-    log::info!(
-        "[broadcast_alert] alert_id={} : broadcast terminé pour {} médicament(s)",
-        alert_id,
-        med_names.len()
-    );
+        log::debug!(
+            "[broadcast_alert] alert={} pharmacy={} relance #{}/3 envoyée ({}min restantes)",
+            alert_id,
+            pharmacy_id,
+            attempt + 1,
+            remaining_min
+        );
+    }
 }
 
 /// Crée une alerte de demande de disponibilité et broadcast aux pharmacies
