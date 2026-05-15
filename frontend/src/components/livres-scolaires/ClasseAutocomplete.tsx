@@ -54,18 +54,25 @@ interface ClasseAutocompleteProps {
   allowedClasses?: Array<{ niveau?: string | null; classe: string }>;
 }
 
-/** Alias courants → forme canonique. Insensible à la casse/accents. */
+/** Alias courants → forme canonique. Insensible à la casse/accents.
+ *  ✅ 2026-05-15 : Enrichi avec les NOMS LONGS (Première, Deuxième, etc.)
+ *  pour que l'autocomplete trouve la classe même quand l'user tape la
+ *  forme longue au lieu de l'abréviation. */
 const ALIASES: Record<string, string> = {
   // Maternelle CM-fr — l'app utilise "Maternelle 1ère année" / "2ème année"
   'ps': 'Maternelle 1ère année',
   'petite section': 'Maternelle 1ère année',
   'maternelle 1': 'Maternelle 1ère année',
+  'maternelle premiere annee': 'Maternelle 1ère année',
+  'maternelle 1ere annee': 'Maternelle 1ère année',
   'mat 1': 'Maternelle 1ère année',
   'ms': 'Maternelle 1ère année', // moyenne section → on map vers 1ère année (système CM = 2 ans)
   'moyenne section': 'Maternelle 1ère année',
   'gs': 'Maternelle 2ème année',
   'grande section': 'Maternelle 2ème année',
   'maternelle 2': 'Maternelle 2ème année',
+  'maternelle deuxieme annee': 'Maternelle 2ème année',
+  'maternelle 2eme annee': 'Maternelle 2ème année',
   'mat 2': 'Maternelle 2ème année',
   // Anglophone Nursery
   'nursery': 'Nursery 1',
@@ -75,27 +82,62 @@ const ALIASES: Record<string, string> = {
   'pre-school 2': 'Nursery 2',
   // Primaire FR
   'sil': 'SIL',
-  'cours préparatoire': 'CP',
+  'section initiation langue': 'SIL',
+  'cours preparatoire': 'CP',
   'cours élémentaire 1': 'CE1',
+  'cours elementaire 1': 'CE1',
   'cours élémentaire 2': 'CE2',
+  'cours elementaire 2': 'CE2',
   'cours moyen 1': 'CM1',
   'cours moyen 2': 'CM2',
-  // Terminale → Tle (forme canonique)
+  // Collège FR : 6ème, 5ème, 4ème, 3ème
+  'sixieme': '6ème',
+  'cinquieme': '5ème',
+  'quatrieme': '4ème',
+  'troisieme': '3ème',
+  // Lycée FR : Seconde / Première / Terminale
+  'seconde': '2nde',
+  'premiere': '1ère',
+  'première': '1ère',
   'terminale': 'Tle',
   'terminale a': 'Tle A',
   'terminale c': 'Tle C',
   'terminale d': 'Tle D',
   'terminale ti': 'Tle TI',
-  // 2nde / Seconde
-  'seconde': '2nde',
-  // Anglais
+  'terminale f2': 'Tle F2',
+  'terminale f3': 'Tle F3',
+  'premiere a': '1ère A',
+  'premiere c': '1ère C',
+  'premiere d': '1ère D',
+  'seconde a': '2nde A',
+  'seconde c': '2nde C',
+  // Anglais — Form/Class
   'class one': 'Class 1',
   'class two': 'Class 2',
   'class three': 'Class 3',
   'class four': 'Class 4',
   'class five': 'Class 5',
   'class six': 'Class 6',
+  'form one': 'Form 1',
+  'form two': 'Form 2',
+  'form three': 'Form 3',
+  'form four': 'Form 4',
+  'form five': 'Form 5',
+  'upper sixth': 'Upper Sixth',
+  'lower sixth': 'Lower Sixth',
 };
+
+/** Inverse de ALIASES : pour chaque forme canonique (valeur), liste les
+ *  longueurs qui y mènent. Utilisé pour matcher la query contre les noms
+ *  longs en plus de la forme canonique. */
+const ALIASES_INVERSE: Record<string, string[]> = (() => {
+  const inv: Record<string, string[]> = {};
+  for (const [longForm, canonical] of Object.entries(ALIASES)) {
+    if (!inv[canonical]) inv[canonical] = [];
+    inv[canonical].push(longForm);
+  }
+  return inv;
+})();
 
 /** Normalisation : minuscules + suppression accents + trim + double-espace. */
 const norm = (s: string): string =>
@@ -221,7 +263,11 @@ const ClasseAutocomplete: React.FC<ClasseAutocompleteProps> = ({
     const nq = norm(query);
     if (!nq) return opts.slice(0, 30); // Vue par défaut : 30 premières
 
-    // Résolution alias
+    // ✅ 2026-05-15 : Résolution alias enrichie. Si la query exacte match
+    // une clé d'alias, on prend la forme canonique pour le score principal.
+    // En plus, pour chaque option on score aussi contre TOUS les long-forms
+    // alias (ex : "terminale a" matche aussi "Tle A"). Permet à l'user de
+    // taper "terminale", "premiere", "deuxieme année" sans connaître l'abrev.
     const aliasResolved = ALIASES[nq];
     const effectiveQ = aliasResolved ? norm(aliasResolved) : nq;
 
@@ -230,7 +276,17 @@ const ClasseAutocomplete: React.FC<ClasseAutocompleteProps> = ({
         // Score sur la classe complète et sur le niveau (utile pour fuzzy)
         const scoreClasse = scoreMatch(effectiveQ, o.classe);
         const scoreNiveau = scoreMatch(effectiveQ, o.niveau);
-        return { ...o, matchScore: Math.max(scoreClasse, scoreNiveau * 0.3) };
+        // Score aussi contre les long-forms enregistrés pour cette classe.
+        // Ex : si o.classe = "Tle A" et user tape "terminal", on score nq
+        // contre "terminale a" et on prend le meilleur.
+        const longForms = ALIASES_INVERSE[o.classe] || [];
+        let scoreLongForm = 0;
+        for (const lf of longForms) {
+          const s = scoreMatch(nq, lf);
+          if (s > scoreLongForm) scoreLongForm = s;
+        }
+        const finalScore = Math.max(scoreClasse, scoreNiveau * 0.3, scoreLongForm);
+        return { ...o, matchScore: finalScore };
       })
       .filter(o => o.matchScore > 0)
       .sort((a, b) => b.matchScore - a.matchScore);
