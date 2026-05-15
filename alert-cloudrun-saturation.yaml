@@ -1,0 +1,19 @@
+displayName: "Yukpo — Cloud Run instances > 25 (saturation proche)"
+documentation:
+  content: "yukpo-backend a dépassé 25 instances actives (sur 30 max). Pic de trafic — augmenter maxScale."
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "Cloud Run instance count > 25"
+    conditionThreshold:
+      filter: 'resource.type = "cloud_run_revision" AND resource.labels.service_name = "yukpo-backend" AND metric.type = "run.googleapis.com/container/instance_count"'
+      comparison: COMPARISON_GT
+      thresholdValue: 25
+      duration: 60s
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_MAX
+notificationChannels:
+  - projects/yukpo-project/notificationChannels/649839886922112123
+alertStrategy:
+  autoClose: 1800s

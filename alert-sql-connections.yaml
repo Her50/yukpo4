@@ -1,0 +1,19 @@
+displayName: "Yukpo — Cloud SQL connexions > 80% (saturation DB proche)"
+documentation:
+  content: "Cloud SQL yukpo-postgres approche sa limite de connexions. Upgrade le tier ou augmenter max_connections."
+  mimeType: text/markdown
+combiner: OR
+conditions:
+  - displayName: "DB connections > 120"
+    conditionThreshold:
+      filter: 'resource.type = "cloudsql_database" AND resource.labels.database_id = "yukpo-project:yukpo-postgres" AND metric.type = "cloudsql.googleapis.com/database/postgresql/num_backends"'
+      comparison: COMPARISON_GT
+      thresholdValue: 120
+      duration: 120s
+      aggregations:
+        - alignmentPeriod: 60s
+          perSeriesAligner: ALIGN_MEAN
+notificationChannels:
+  - projects/yukpo-project/notificationChannels/649839886922112123
+alertStrategy:
+  autoClose: 1800s

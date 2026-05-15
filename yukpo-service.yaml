@@ -1,0 +1,570 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: yukpo-backend
+  namespace: '376093909298'
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '10'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 556.0.0
+        run.googleapis.com/cloudsql-instances: yukpo-project:europe-west1:yukpo-postgres
+        run.googleapis.com/cpu-throttling: 'true'
+        run.googleapis.com/operation-id: 1b0035f3-762a-4e51-9de6-90eb0138aa52
+        run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/vpc-access-connector: yukpo-connector-v2
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+        serving.knative.dev/creator: lelehernandez2007@gmail.com
+      labels:
+        client.knative.dev/nonce: pvsvkflcki
+        cloud.googleapis.com/location: europe-west1
+        run.googleapis.com/startupProbeType: Custom
+        serving.knative.dev/configuration: yukpo-backend
+        serving.knative.dev/configurationGeneration: '792'
+        serving.knative.dev/route: yukpo-backend
+        serving.knative.dev/service: yukpo-backend
+        serving.knative.dev/serviceUid: ec3fde95-32a6-4758-acf7-fd09108e26d7
+    spec:
+      containerConcurrency: 80
+      containers:
+      - env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: jwt-secret
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: redis-url
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: s3-access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: s3-secret-key
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: openai-api-key
+        - name: LIVEKIT_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: livekit-api-secret
+        - name: AUPHONIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: auphonic-api-key
+        - name: PIXABAY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: pixabay-api-key
+        - name: PEXELS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: pexels-api-key
+        - name: UNSPLASH_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: unsplash-access-key
+        - name: GOOGLE_MAPS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: google-maps-api-key
+        - name: YOUTUBE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: youtube-client-secret
+        - name: YUKPO_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: yukpo-api-key
+        - name: LIVEKIT_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: livekit-api-key
+        - name: EMBEDDING_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: embedding-api-key
+        - name: VIDEO_RENDERER_RPC_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: video-renderer-rpc-token
+        - name: GOOGLE_TRANSLATE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: google-translate-api-key
+        - name: SORA_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: sora-api-key
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: database-url
+        - name: TWILIO_WHATSAPP_NUMBER
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: twilio-whatsapp-number
+        - name: YOUTUBE_OAUTH
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: youtube-oauth
+        - name: OPENWEATHERMAP_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: openweathermap-api-key
+        - name: CINETPAY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: cinetpay-api-key
+        - name: CINETPAY_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: cinetpay-secret-key
+        - name: NOTCHPAY_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: notchpay-public-key
+        - name: NOTCHPAY_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: notchpay-secret-key
+        - name: FLUTTERWAVE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: flutterwave-secret-key
+        - name: FLUTTERWAVE_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: flutterwave-public-key
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: stripe-secret-key
+        - name: STRIPE_PUBLISHABLE_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: stripe-publishable-key
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: stripe-webhook-secret
+        - name: PAYPAL_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: paypal-client-id
+        - name: PAYPAL_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: paypal-client-secret
+        - name: PAYPAL_WEBHOOK_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: paypal-webhook-id
+        - name: ORANGE_MONEY_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: orange-money-webhook-secret
+        - name: MTN_MONEY_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: mtn-money-webhook-secret
+        - name: CINETPAY_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: cinetpay-api-password
+        - name: CINETPAY_SITE_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: cinetpay-site-id
+        - name: TWILIO_ACCOUNT_SID
+          valueFrom:
+            secretKeyRef:
+              key: '2'
+              name: twilio-account-sid
+        - name: TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: '2'
+              name: twilio-auth-token
+        - name: TWILIO_FROM_NUMBER
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: twilio-from-number
+        - name: CLOUD_RUN
+          value: 'true'
+        - name: ENVIRONMENT
+          value: production
+        - name: GCP_PROJECT_ID
+          value: 'null'
+        - name: REDIS_SCALING_ENABLED
+          value: 'false'
+        - name: ENABLE_AUTO_MIGRATIONS
+          value: 'true'
+        - name: SQLX_OFFLINE
+          value: 'true'
+        - name: RUST_LOG
+          value: info
+        - name: LOG_FORMAT
+          value: json
+        - name: APP_ENV
+          value: production
+        - name: LAUNCH_PHASE_START_DATE
+          value: '2026-02-10T00:00:00Z'
+        - name: INSTANCE_ID
+          value: backend-1
+        - name: DB_POOL_SIZE
+          value: '30'
+        - name: DB_POOL_MIN_SIZE
+          value: '5'
+        - name: DB_ACQUIRE_TIMEOUT_SECS
+          value: '45'
+        - name: DB_HEALTH_CHECK_INTERVAL_SECS
+          value: '30'
+        - name: DATABASE_TIMEOUT
+          value: '10'
+        - name: API_MAX_PAYLOAD_SIZE
+          value: '10485760'
+        - name: API_RATE_LIMIT_PER_MINUTE
+          value: '100'
+        - name: API_REQUEST_TIMEOUT
+          value: '30'
+        - name: REQUEST_TIMEOUT
+          value: '30'
+        - name: RATE_LIMIT_IP
+          value: '200'
+        - name: AI_REQUEST_TIMEOUT_SECONDS
+          value: '120'
+        - name: ENABLE_AI_OPTIMIZATIONS
+          value: 'true'
+        - name: EMBEDDING_MAX_RETRIES
+          value: '3'
+        - name: EMBEDDING_TIMEOUT_SECONDS
+          value: '60'
+        - name: YUKPO_IA_BILLING_ENABLED
+          value: 'true'
+        - name: YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET
+          value: '4000'
+        - name: YUKPO_IA_TOKEN_MULTIPLIER
+          value: '1.0'
+        - name: GPU_ENABLED
+          value: 'true'
+        - name: GPU_ENDPOINT
+          value: http://34.78.117.187:8080
+        - name: GPU_ZONE
+          value: europe-west1-b
+        - name: GPU_INSTANCE_NAME
+          value: yukpo-gpu-worker
+        - name: GPU_MONTHLY_BUDGET
+          value: '100.0'
+        - name: GPU_SCALE_UP_THRESHOLD
+          value: '70.0'
+        - name: GPU_SCALE_DOWN_THRESHOLD
+          value: '20.0'
+        - name: GPU_MAX_INSTANCES
+          value: '2'
+        - name: GPU_MIN_INSTANCES
+          value: '0'
+        - name: GPU_SCALE_DOWN_COOLDOWN
+          value: '300'
+        - name: GPU_REQUEST_TIMEOUT
+          value: '60'
+        - name: VIDEO_GENERATION_TIMEOUT_SECONDS
+          value: '600'
+        - name: VIDEO_ANALYSIS_TIMEOUT_SECONDS
+          value: '180'
+        - name: VIDEO_RENDERER_ENABLE_GPU
+          value: 'true'
+        - name: VIDEO_RENDERER_MAX_RETRIES
+          value: '2'
+        - name: VIDEO_RENDERER_TIMEOUT_SECS
+          value: '900'
+        - name: VIDEO_RENDERER_RPC_URL
+          value: http://34.78.117.187:8080/render
+        - name: AUDIO_SYNC_TIMEOUT_SECONDS
+          value: '180'
+        - name: MAX_VIDEO_SIZE_MB
+          value: '50'
+        - name: MAX_AUDIO_SIZE_MB
+          value: '10'
+        - name: MAX_IMAGE_SIZE_MB
+          value: '10'
+        - name: MAX_DOC_SIZE_MB
+          value: '10'
+        - name: MAX_EXCEL_SIZE_MB
+          value: '5'
+        - name: SORA_API_URL
+          value: https://api.openai.com/v1/video/generations
+        - name: UPLOAD_BASE_URL
+          value: https://storage.googleapis.com/yukpo-project-yukpo-backend-media
+        - name: PUBLIC_BASE_URL
+          value: https://storage.googleapis.com/yukpo-project-yukpo-backend-media
+        - name: SHARE_BASE_URL
+          value: https://yukpo-backend-376093909298.europe-west1.run.app
+        - name: UPLOAD_STORAGE_PATH
+          value: uploads
+        - name: S3_BUCKET
+          value: yukpo-project-yukpo-backend-media
+        - name: S3_REGION
+          value: europe-west1
+        - name: S3_ENDPOINT
+          value: https://storage.googleapis.com
+        - name: S3_FORCE_PATH_STYLE
+          value: 'false'
+        - name: RENDERER_S3_UPLOAD
+          value: 'true'
+        - name: LIVEKIT_INGRESS_MODE
+          value: rtmp
+        - name: LIVEKIT_INGRESS_NAME
+          value: prod-ingress-1
+        - name: LIVEKIT_INGRESS_REGION
+          value: europe-west1
+        - name: LIVEKIT_INGRESS_ROOM
+          value: live-events
+        - name: LIVEKIT_API_URL
+          value: http://35.195.101.90:7880
+        - name: LIVEKIT_WS_URL
+          value: ws://35.195.101.90:7880
+        - name: LIVE_FALLBACK_ENABLED
+          value: 'true'
+        - name: LIVE_RECORDING_ENABLED
+          value: 'true'
+        - name: FEATURE_FLAG_CONNECTORS_LIVEKIT
+          value: 'true'
+        - name: APP_DOMAIN
+          value: yukpo.com
+        - name: API_BASE_URL
+          value: https://yukpo-backend-376093909298.europe-west1.run.app
+        - name: BACKEND_URL
+          value: https://yukpo-backend-376093909298.europe-west1.run.app
+        - name: WEBHOOK_BASE_URL
+          value: https://yukpo-backend-376093909298.europe-west1.run.app
+        - name: FRONTEND_URL
+          value: https://yukpo.com
+        - name: PAYMENT_PRIMARY_PROVIDER
+          value: cinetpay
+        - name: EMAIL_ENABLED
+          value: 'true'
+        - name: EMAIL_PROVIDER
+          value: sendgrid
+        - name: SENDGRID_FROM_EMAIL
+          value: noreply@yukpo.com
+        - name: SENDGRID_FROM_NAME
+          value: Yukpo
+        - name: SMS_ENABLED
+          value: 'true'
+        - name: SMS_PROVIDER
+          value: twilio
+        - name: SEARCH_DEFAULT_LANGUAGE
+          value: fr
+        - name: SEARCH_DEFAULT_RADIUS_KM
+          value: '20'
+        - name: SEARCH_MAX_RESULTS
+          value: '50'
+        - name: SEARCH_TITLE_BOOST
+          value: '2.0'
+        - name: SEMANTIC_CACHE_THRESHOLD
+          value: '0.85'
+        - name: CACHE_DEFAULT_TTL
+          value: '3600'
+        - name: CACHE_TTL_SEARCH
+          value: '600'
+        - name: DELIVERY_MATCHING_WORKER_BATCH_SIZE
+          value: '50'
+        - name: DELIVERY_MATCHING_WORKER_INTERVAL_SECS
+          value: '30'
+        - name: DELIVERY_MATCHING_WORKER_PARALLEL
+          value: '3'
+        - name: DELIVERY_PENDING_TIMEOUT_MINUTES
+          value: '60'
+        - name: DELIVERY_TIMEOUT_MONITOR_INTERVAL_SECS
+          value: '60'
+        - name: MATCHING_MIN_SCORE_THRESHOLD
+          value: '0.6'
+        - name: SLA_PROMISED_MINUTES
+          value: '30'
+        - name: SLA_THRESHOLD_RATIO
+          value: '1.10'
+        - name: SLA_LOOKBACK_MINUTES
+          value: '60'
+        - name: SLA_MONITOR_INTERVAL_SECONDS
+          value: '300'
+        - name: GLOBAL_PROMO_SCHEDULER_INTERVAL_SECS
+          value: '30'
+        - name: JWT_EXPIRATION_HOURS
+          value: '24'
+        - name: KYC_PROVIDER
+          value: manual
+        - name: ML_MODELS_DIR
+          value: models
+        - name: YUKPO_IMMO_COMMISSION_RATE
+          value: '0.05'
+        - name: GOOGLE_CLIENT_ID
+          value: 738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com
+        - name: CORS_ALLOWED_ORIGINS
+          value: https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app
+        - name: GOOGLE_VISION_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: google-vision-api-key
+        - name: LIVEKIT_VM_AUTOSCALE
+          value: 'true'
+        - name: LIVEKIT_VM_INSTANCE_NAME
+          value: yukpo-livekit-server
+        - name: LIVEKIT_VM_COOLDOWN_SECS
+          value: '600'
+        - name: LIVEKIT_VM_CHECK_INTERVAL_SECS
+          value: '120'
+        - name: META_WEBHOOK_VERIFY_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-webhook-verify-token
+        - name: WHATSAPP_PHONE_NUMBER_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: whatsapp-phone-number-id
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: anthropic-api-key
+        - name: META_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-access-token
+        - name: WHATSAPP_BUSINESS_ACCOUNT_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: whatsapp-business-account-id
+        - name: META_APP_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-app-id
+        - name: META_APP_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-app-secret
+        - name: FACEBOOK_APP_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-app-id
+        - name: FACEBOOK_APP_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-app-secret
+        - name: INSTAGRAM_APP_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-app-id
+        - name: INSTAGRAM_APP_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-app-secret
+        - name: INSTAGRAM_MONITOR_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-access-token
+        - name: WHATSAPP_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: meta-access-token
+        - name: FACEBOOK_REDIRECT_URI
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: FACEBOOK_REDIRECT_URI
+        - name: YOUTUBE_API_KEY
+          value: 'null'
+        - name: NEWSAPI_KEY
+          value: 'null'
+        - name: TWITTER_BEARER_TOKEN
+          value: 'null'
+        - name: SERPAPI_KEY
+          value: 'null'
+        - name: WHATSAPP_REDIRECT_URI
+          value: https://yukpo-backend-376093909298.europe-west1.run.app/api/social/whatsapp/callback
+        - name: INSTAGRAM_REDIRECT_URI
+          value: https://yukpo-backend-376093909298.europe-west1.run.app/api/social/instagram/callback
+        - name: WHATSAPP_ENABLED
+          value: 'true'
+        - name: WHATSAPP_PROVIDER
+          value: twilio
+        image: europe-west1-docker.pkg.dev/yukpo-project/yukpo-backend/yukpo-backend:latest
+        name: yukpo-backend-1
+        ports:
+        - containerPort: 8080
+          name: http1
+        resources:
+          limits:
+            cpu: '2'
+            memory: 4Gi
+        startupProbe:
+          failureThreshold: 60
+          periodSeconds: 10
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 3
+      serviceAccountName: github-actions@yukpo-project.iam.gserviceaccount.com
+      timeoutSeconds: 900
+  traffic:
+  - percent: 100
+    latestRevision: true

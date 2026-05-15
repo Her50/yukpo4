@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light only" />
+    <meta name="theme-color" content="#d97706" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Bourse Livres" />
+    <style>html,body{background:#fff!important;color:#111!important}</style>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons-bourse/icon-192.png" />
+    <link rel="icon" type="image/png" href="/icons-bourse/icon-192.png" />
+    <title>Yukpo Bourse du Livre — Achetez, échangez, vendez</title>
+    <meta name="description" content="Scannez la liste de votre enfant, trouvez et échangez ses livres scolaires en quelques clics." />
+  </head>
+  <body style="background:#fff;margin:0;padding:0">
+    <div id="diag" style="position:fixed;top:0;left:0;right:0;background:#fff;z-index:99999;padding:12px;font-family:monospace;font-size:12px;display:none"></div>
+    <div id="root" style="background:#fff"><p style="padding:20px;font-family:sans-serif;color:#333;font-size:16px">⏳ Chargement Bourse du Livre...</p></div>
+    <script>
+      var diag = document.getElementById('diag');
+      function showErr(msg) {
+        diag.style.display = 'block';
+        diag.style.background = '#fff';
+        diag.style.color = '#c00';
+        diag.style.border = '3px solid red';
+        diag.innerHTML = '<b>ERREUR:</b><br>' + String(msg).replace(/</g,'&lt;').slice(0,800);
+        document.getElementById('root').innerHTML = '';
+      }
+      window.onerror = function(msg, src, line, col, err) {
+        showErr(msg + '\n' + src + ':' + line + '\n' + (err && err.stack ? err.stack : ''));
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        showErr('Promise rejetée: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '\n' + (e.reason && e.reason.stack ? e.reason.stack : ''));
+      });
+    </script>
+    <script type="module" src="/src/main-bourse.tsx"></script>
+  </body>
+</html>

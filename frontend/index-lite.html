@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1a73e8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Yukpo — Pharmacie · Livres · Restaurant</title>
+  </head>
+  <body>
+    <div id="root"><p id="loading" style="padding:20px;font-family:sans-serif;color:#555">Chargement...</p></div>
+    <script>
+      window.onerror = function(msg, src, line, col, err) {
+        document.body.innerHTML = '<div style="padding:20px;font-family:monospace"><h2 style="color:red">Erreur JS</h2><pre style="white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:6px">' + msg + '\n\n' + src + ' ligne ' + line + '\n\n' + (err ? err.stack : '') + '</pre></div>';
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        document.body.innerHTML = '<div style="padding:20px;font-family:monospace"><h2 style="color:red">Promise rejetée</h2><pre style="white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:6px">' + (e.reason && e.reason.stack ? e.reason.stack : String(e.reason)) + '</pre></div>';
+      });
+      // Auto-recovery : si l'app n'a pas démarré dans les 8s, désinscrit SW + clear caches + reload (1 fois).
+      (function () {
+        if (/[?&]_recovered=/.test(location.search)) return;
+        setTimeout(function () {
+          if (!document.getElementById('loading')) return;
+          var p = Promise.resolve();
+          if ('serviceWorker' in navigator) {
+            p = p.then(function () { return navigator.serviceWorker.getRegistrations(); })
+                 .then(function (regs) { return Promise.all((regs || []).map(function (r) { return r.unregister(); })); })
+                 .catch(function () {});
+          }
+          if ('caches' in window) {
+            p = p.then(function () { return caches.keys(); })
+                 .then(function (keys) { return Promise.all((keys || []).map(function (k) { return caches.delete(k); })); })
+                 .catch(function () {});
+          }
+          p.then(function () {
+            location.replace(location.pathname + (location.search ? location.search + '&' : '?') + '_recovered=' + Date.now());
+          });
+        }, 8000);
+      })();
+    </script>
+    <script type="module" src="/src/main-lite.tsx"></script>
+  </body>
+</html>
