@@ -24,15 +24,15 @@ pub fn wallet_payout_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(wallet_payout_controller::admin_list),
         )
         .route(
-            "/api/admin/wallet/payouts/:id/approve",
+            "/api/admin/wallet/payouts/{id}/approve",
             post(wallet_payout_controller::admin_approve),
         )
         .route(
-            "/api/admin/wallet/payouts/:id/paid",
+            "/api/admin/wallet/payouts/{id}/paid",
             post(wallet_payout_controller::admin_mark_paid),
         )
         .route(
-            "/api/admin/wallet/payouts/:id/reject",
+            "/api/admin/wallet/payouts/{id}/reject",
             post(wallet_payout_controller::admin_reject),
         )
         .route(
