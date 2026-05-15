@@ -2472,6 +2472,35 @@ impl DeliveryService {
                             delivery_id,
                             order_total_xaf
                         );
+                        // ✅ 2026-05-15 PR #4 — Push notif au parrain : effet
+                        // viral immédiat (le parrain voit le crédit arriver) +
+                        // incite à parrainer d'autres personnes. Best-effort,
+                        // n'impacte pas le crédit s'il échoue.
+                        let title = format!("🎉 Bonus parrainage {} FCFA gagné !", bonus_xaf);
+                        let body = format!(
+                            "Votre filleul vient de faire sa première commande Yukpo. Le bonus est dans votre solde — partagez votre code pour en gagner d'autres."
+                        );
+                        let data = serde_json::json!({
+                            "type": "referral_bonus_credited",
+                            "bonus_xaf": bonus_xaf,
+                            "order_total_xaf": order_total_xaf,
+                        });
+                        if let Err(e) =
+                            crate::services::push_notification_service::send_push_notification(
+                                &pool,
+                                parrain_id,
+                                title,
+                                body,
+                                Some(data),
+                                Some("default".to_string()),
+                            )
+                            .await
+                        {
+                            log::warn!(
+                                "[referral] push notif au parrain {} échouée: {e:?}",
+                                parrain_id
+                            );
+                        }
                     }
                     Ok(crate::services::referral_service::ConversionOutcome::BelowThreshold {
                         parrain_id,

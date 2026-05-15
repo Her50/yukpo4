@@ -9,6 +9,7 @@ import ApiKeyManager from "@/components/admin/ApiKeyManager";
 import FixFrontendButton from "@/components/admin/FixFrontendButton";
 import GlobalPromoManager from '@/components/admin/GlobalPromoManager';
 import NotificationLog from "@/components/admin/NotificationLog";
+import PayoutsPanel from "@/components/admin/PayoutsPanel"; // ✅ 2026-05-15 PR #4
 import QuotaDashboard from "@/components/admin/QuotaDashboard";
 import ScheduleManager from "@/components/admin/ScheduleManager";
 import SchedulerStatusCard from "@/components/SchedulerStatusCard";
@@ -98,6 +99,13 @@ const AdminPanel: React.FC = () => {
 
         <div className="mt-10">
           <GlobalPromoManager />
+        </div>
+
+        {/* ✅ 2026-05-15 PR #4 — Payouts cash : badge "à traiter" si demandes
+            pending → l'admin voit immédiatement la file d'attente. Inclut
+            treasury summary (revenu net Yukpo vs dette wallet clients). */}
+        <div className="mt-10">
+          <PayoutsPanel />
         </div>
       </ResponsiveContainer>
     </RequireAccess>
