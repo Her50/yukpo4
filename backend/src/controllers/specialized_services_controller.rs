@@ -9589,7 +9589,7 @@ fn allergy_label_to_families(label: &str) -> &'static [&'static str] {
 }
 
 /// Représentation d'une alerte allergie pour un médicament donné
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct AllergyMatch {
     pub label: String,
     pub kind: String,     // "allergy" | "condition" | "intolerance"
