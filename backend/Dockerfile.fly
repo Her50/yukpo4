@@ -36,15 +36,13 @@ ENV SQLX_OFFLINE=true
 # Note: target-cpu=native retiré pour compatibilité AWS Fargate (évite "Illegal instruction")
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
-# ⚠️ 2026-05-13 : SIGKILL OOM répétés sur le builder distant Fly avec
-#    codegen-units=16 (défaut release). Forçage à 1 unit pour drastiquement
-#    réduire le pic mémoire de rustc (compromise : build plus lent, binaire
-#    un peu plus optimisé). Affecte uniquement le profile release.
-ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
-# CI = GH Actions runner avec 16 GB RAM via `flyctl deploy --local-only`.
-# On garde les paramètres release par défaut (opt-level=2, codegen-units=16)
-# qui passent confortablement avec 16 GB. Les overrides --jobs sont définis
-# par étape de cargo build ci-dessous (cache 2, build final 2).
+# ⚠️ 2026-05-13 : SIGKILL OOM avec codegen-units=16 → forçage à 1.
+# ✅ 2026-05-15 : LA SITUATION S'EST INVERSÉE. Le crate yukpomnang_backend
+#    a grossi (250+ services, 150+ controllers). Avec codegen-units=1, LLVM
+#    optimise TOUT en un seul module → ~12+ GB peak RAM → SIGKILL même avec
+#    8 GB de VM. On laisse Cargo.toml piloter (codegen-units=16 + opt-level=1)
+#    pour découper la codegen en petits morceaux qui tiennent en RAM.
+# ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1   # retiré 2026-05-15
 
 # Copier les fichiers de configuration Rust (LAYER CACHE)
 COPY Cargo.toml Cargo.lock ./
