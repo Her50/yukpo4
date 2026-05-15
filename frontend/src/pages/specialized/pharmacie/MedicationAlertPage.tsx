@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPost } from '@/services/apiService';
 import { useGpsWithFallback } from '@/hooks/useGpsWithFallback';
+import PersonalInteractionsBanner from '@/components/pharmacie/PersonalInteractionsBanner';
 
 interface ItemStatus {
   name: string;
@@ -121,10 +122,8 @@ const MedicationAlertPage: React.FC = () => {
     if (!data || !gps) return;
     setWidening(true);
     try {
-      // On ré-émet une nouvelle alerte avec un rayon plus large.
-      // L'ancienne reste consultable, la nouvelle a un nouvel ID.
-      // Max 50 km (clamp backend) → permet d'aller jusqu'à 50 km en
-      // partant du défaut 20 km via un seul élargissement.
+      // On ré-émet une nouvelle alerte avec un rayon plus large (×2 jusqu'à
+      // 50 km max). Défaut 10 km → 20 → 40 → 50 (3 élargissements possibles).
       const newRadius = Math.min(50, data.radius_km * 2);
       const items = data.matches[0]?.items_status?.map(s => ({ name: s.name }))
         ?? Array(data.total_items).fill(0).map((_, i) => ({ name: `Médicament ${i + 1}` }));
@@ -232,6 +231,15 @@ const MedicationAlertPage: React.FC = () => {
       {/* Body */}
       <div className="bg-white rounded-t-3xl min-h-screen pb-28">
         <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
+          {/* Phase B1 : bandeau interactions personnelles — croise les
+              médicaments de l'ordonnance avec le carnet santé du patient
+              connecté. Invisible si non connecté ou aucune interaction. */}
+          {data.matches.length > 0 && data.matches[0].items_status?.length > 0 && (
+            <PersonalInteractionsBanner
+              medications={data.matches[0].items_status.map(s => s.name)}
+            />
+          )}
+
           {/* Budget total de l'ordonnance — visible en haut. Les prix des
               médicaments sont harmonisés au Cameroun (régulation MINSANTE)
               donc cette valeur est valide quelle que soit la pharmacie

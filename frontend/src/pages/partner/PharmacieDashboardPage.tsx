@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   RefreshCw, ClipboardList, BarChart3, QrCode, Wallet, Package,
   Check, X, Plus, Edit2, Trash2, Upload, Save, Search, FileText, Link as LinkIcon, FileUp, AlertCircle,
-  Bell,
+  Bell, ShieldCheck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,10 +16,11 @@ import PharmacyAlertsTab from './PharmacyAlertsTab';
 import PharmacyArchivesTab from './PharmacyArchivesTab';
 import PharmacyAnalyticsTab from './PharmacyAnalyticsTab';
 import PharmacyPharmacovigilanceTab from './PharmacyPharmacovigilanceTab';
+import PharmacyDutyNetworkTab from './PharmacyDutyNetworkTab';
 // Note : pas de YukpoCostBadge côté pharmacien partenaire — outils internes gratuits
 // (la marge plateforme se fait sur le client patient final, pas sur le partenaire métier).
 
-type TabKey = 'alertes' | 'commandes' | 'archives' | 'pharmacovigilance' | 'produits' | 'stats' | 'qr' | 'finances';
+type TabKey = 'alertes' | 'commandes' | 'archives' | 'pharmacovigilance' | 'garde' | 'produits' | 'stats' | 'qr' | 'finances';
 
 const TABS: Array<{ key: TabKey; labelKey: string; icon: any }> = [
   // Tab "Alertes" en premier : workflow RFQ — demandes en temps réel des
@@ -32,6 +33,9 @@ const TABS: Array<{ key: TabKey; labelKey: string; icon: any }> = [
   { key: 'archives',  labelKey: 'pharmaPartner.tab.archives',  icon: FileText },
   // Pharmacovigilance : signalement effets indésirables / problèmes médicament
   { key: 'pharmacovigilance', labelKey: 'pharmaPartner.tab.pharmacovigilance', icon: AlertCircle },
+  // Garde (Phase B1) : coordination réseau pharmacies du quartier — voir
+  // qui est de garde maintenant, demander un dépannage ou échanger une garde.
+  { key: 'garde',     labelKey: 'pharmaPartner.tab.duty',       icon: ShieldCheck },
   { key: 'produits',  labelKey: 'pharmaPartner.tab.products',  icon: Package },
   { key: 'stats',     labelKey: 'pharmaPartner.tab.stats',     icon: BarChart3 },
   { key: 'qr',        labelKey: 'pharmaPartner.tab.qr',        icon: QrCode },
@@ -66,7 +70,7 @@ const PharmacieDashboardPage: React.FC = () => {
   // Détection du tab depuis URL : /dashboard, /dashboard/commandes, /dashboard/stats, etc.
   const pathTab = useMemo<TabKey>(() => {
     const seg = window.location.pathname.split('/').pop();
-    if (seg && ['alertes', 'commandes', 'archives', 'pharmacovigilance', 'produits', 'stats', 'qr', 'finances'].includes(seg)) return seg as TabKey;
+    if (seg && ['alertes', 'commandes', 'archives', 'pharmacovigilance', 'garde', 'produits', 'stats', 'qr', 'finances'].includes(seg)) return seg as TabKey;
     return (params.get('tab') as TabKey) || 'commandes';
   }, [params]);
 
@@ -308,6 +312,8 @@ const PharmacieDashboardPage: React.FC = () => {
         {tab === 'pharmacovigilance' && (
           <PharmacyPharmacovigilanceTab pharmacyId={pharmacyId} />
         )}
+
+        {tab === 'garde' && <PharmacyDutyNetworkTab />}
 
         {tab === 'commandes' && (
           <>

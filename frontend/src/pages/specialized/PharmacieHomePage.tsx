@@ -86,7 +86,7 @@ const PharmacieHomePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [onDutyOnly, setOnDutyOnly] = useState(false);
-  const [radiusKm, setRadiusKm] = useState(20);
+  const [radiusKm, setRadiusKm] = useState(10);
   const [activeChip, setActiveChip] = useState<string | null>(null);
 
   // Sheets — Le sheet "Que voulez-vous faire ?" a été supprimé : le bouton
@@ -279,7 +279,7 @@ const PharmacieHomePage: React.FC = () => {
             query_items: meds.map(name => ({ name })),
             gps_lat: gps?.lat ?? 4.0511,
             gps_lng: gps?.lng ?? 9.7679,
-            radius_km: 20,
+            radius_km: 10,
           },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

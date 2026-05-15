@@ -596,25 +596,9 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           />
         </div>
 
-        {/* Sélection enfant cible (si plusieurs) */}
-        {enfants.length > 1 && loaded && items.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ajouter pour</p>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {enfants.map(e => (
-                <button key={e.id} onClick={() => setSelectedEnfantId(e.id)}
-                  className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold ${
-                    selectedEnfantId === e.id
-                      ? 'bg-amber-500 text-white border-amber-500'
-                      : 'bg-white text-gray-700 border-gray-200'
-                  }`}>
-                  <span>{e.classe}</span>
-                  {e.niveau && <span className="text-[10px] opacity-70">{e.niveau}</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* ✅ 2026-05-15 : Bloc "Ajouter pour..." retiré (workflow class-only).
+            Le seul enfant interne actif est celui dont la classe correspond ;
+            si plusieurs sont stockés, le panier les agrège côté Recap. */}
 
         {/* États : loading / error / vide */}
         {loading && (
@@ -640,7 +624,22 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           </div>
         )}
 
-        {/* Bandeau récap sélection (visible quand items chargés) */}
+        {/* ✅ 2026-05-15 : Description "Cochez les livres..." DÉPLACÉE
+            avant le résumé statistique. Explique le workflow à l'user
+            (toggle Neuf/Occasion/Échange) avant qu'il ne voie les chiffres. */}
+        {loaded && items.some(it => isOccasionableType(it.type)) && (
+          <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-[11px] text-amber-900 leading-snug">
+              💡 Cochez les livres voulus, puis choisissez par item :
+              <strong className="text-emerald-700"> Neuf</strong> (plein tarif),
+              <strong className="text-orange-700"> Occasion</strong> (usagé moins cher) ou
+              <strong className="text-cyan-700"> Échange</strong> (vous donnez votre ancien livre contre crédit).
+            </p>
+          </div>
+        )}
+
+        {/* Bandeau récap sélection + lien tout désélectionner — contient
+            déjà le total estimé, donc plus de ruban sticky séparé. */}
         {loaded && items.length > 0 && (
           <div className="bg-amber-100 border border-amber-200 rounded-2xl p-3 mb-3 flex items-center justify-between">
             <div className="text-amber-900">
@@ -662,32 +661,8 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           </div>
         )}
 
-        {/* Bandeau d'orientation : explique les 3 modes par item. Affiché
-            seulement si on a chargé une liste avec au moins 1 livre éligible
-            (pas pour fournitures pures où le toggle n'apparaît pas). */}
-        {loaded && items.some(it => isOccasionableType(it.type)) && (
-          <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-[11px] text-amber-900 leading-snug">
-              💡 Cochez les livres voulus, puis choisissez par item :
-              <strong className="text-emerald-700"> Neuf</strong> (plein tarif),
-              <strong className="text-orange-700"> Occasion</strong> (usagé moins cher) ou
-              <strong className="text-cyan-700"> Échange</strong> (vous donnez votre ancien livre contre crédit).
-            </p>
-          </div>
-        )}
-
-        {/* ✅ 2026-05-13 : Total estimé sticky au-dessus du premier tableau.
-            Réactif : recalculé à chaque coche/décoche/changement de quantité. */}
-        {loaded && items.length > 0 && totalEstime > 0 && (
-          <div className="sticky top-0 z-20 mb-2 bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
-            <span className="text-[10px] text-amber-700 uppercase font-bold tracking-wide">
-              Total estimé
-            </span>
-            <span className="text-base font-bold text-amber-700 tabular-nums">
-              {formatPrix(totalEstime, pays)}
-            </span>
-          </div>
-        )}
+        {/* ✅ 2026-05-15 : Ruban "TOTAL ESTIMÉ" sticky retiré — l'information
+            est déjà dans le résumé statistique au-dessus. Évite la redondance. */}
 
         {/* ✅ 2026-05-14 : Champ de recherche/filtre sur les items affichés.
             Insensible casse+accents, filtre titre/matière/éditeur/auteur. */}

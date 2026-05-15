@@ -7054,10 +7054,11 @@ pub async fn create_medication_alert(
     }
 
     let total = payload.query_items.len() as i32;
-    // Rayon par défaut 20 km (mise à jour 2026-05-15) — assure une couverture
-    // plus large des pharmacies notifiées au Cameroun où la densité de
-    // partenaires est encore variable. clamp 1-50 km pour laisser l'élargissement.
-    let radius_km = payload.radius_km.unwrap_or(20.0).clamp(1.0, 50.0);
+    // Rayon par défaut 10 km (ajustement 2026-05-15) — bon compromis entre
+    // couverture (densité partenaires Cameroun) et pertinence (réponses
+    // pharmacies réellement accessibles à pied/moto-taxi pour le patient).
+    // clamp 1-50 km pour permettre l'élargissement manuel via le bouton fallback.
+    let radius_km = payload.radius_km.unwrap_or(10.0).clamp(1.0, 50.0);
     let ttl = payload.ttl_minutes.unwrap_or(5).clamp(1, 60);
     let user_id = user.as_ref().map(|u| u.0.id);
 
@@ -7557,7 +7558,7 @@ pub async fn get_my_pharmacy_alerts(
                 "query_items": a.try_get::<serde_json::Value, _>("query_items").unwrap_or(json!([])),
                 "total_items": a.try_get::<i32, _>("total_items").unwrap_or(0),
                 "distance_km": a.try_get::<f64, _>("distance_km").unwrap_or(0.0),
-                "radius_km": a.try_get::<f32, _>("radius_km").unwrap_or(20.0),
+                "radius_km": a.try_get::<f32, _>("radius_km").unwrap_or(10.0),
                 "expires_at": a.try_get::<chrono::DateTime<chrono::Utc>, _>("expires_at")
                     .map(|d| d.to_rfc3339()).unwrap_or_default(),
                 "already_responded": a.try_get::<bool, _>("already_responded").unwrap_or(false),
@@ -8339,7 +8340,7 @@ pub async fn reorder_medication_alert(
         ));
     }
 
-    let radius_km = payload.radius_km.unwrap_or(20.0).clamp(1.0, 50.0);
+    let radius_km = payload.radius_km.unwrap_or(10.0).clamp(1.0, 50.0);
 
     // Création de la nouvelle alerte (même TTL 5 min par défaut)
     let row = sqlx::query(
@@ -8613,6 +8614,359 @@ pub async fn list_pharmacovigilance_reports(
     ))
 }
 
+// ============================================================================
+// PHASE B - SUGGESTIONS COMPLEMENTAIRES
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Alertes d'interactions personnalisées (croise carnet santé du patient avec
+// une nouvelle liste de médicaments)
+// ----------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct CheckPersonalInteractionsRequest {
+    /// Nouveaux médicaments à vérifier (généralement la liste extraite par
+    /// le scan ou la dernière alerte)
+    pub new_medications: Vec<String>,
+    /// Nombre de jours à regarder dans le carnet santé pour le contexte
+    /// (par défaut 90)
+    #[serde(default)]
+    pub days: Option<i32>,
+}
+
+/// POST /api/users/me/check-interactions
+/// Récupère les médicaments récents du carnet santé du patient connecté
+/// et croise avec les nouveaux médicaments via l'IA `check_medication_interactions`.
+pub async fn check_personal_interactions(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<CheckPersonalInteractionsRequest>,
+) -> AppResult<impl IntoResponse> {
+    use crate::services::pharmacy_ai_service::PharmacyAIService;
+
+    if payload.new_medications.is_empty() {
+        return Err(AppError::BadRequest(
+            "new_medications est requis".to_string(),
+        ));
+    }
+    let days = payload.days.unwrap_or(90).clamp(7, 365);
+
+    // Récupère les médicaments effectivement obtenus par le patient (available=true)
+    // dans les N derniers jours, depuis ses pharmacy_responses
+    let rows = sqlx::query(
+        r#"
+        SELECT DISTINCT lower(trim(item->>'name')) AS name
+        FROM medication_alerts a
+        JOIN pharmacy_responses pr ON pr.alert_id = a.id,
+             jsonb_array_elements(pr.items_status) AS item
+        WHERE a.user_id = $1
+          AND a.created_at >= NOW() - ($2 || ' days')::INTERVAL
+          AND (item->>'available')::BOOLEAN = TRUE
+          AND length(trim(item->>'name')) > 0
+        ORDER BY name
+        LIMIT 50
+        "#,
+    )
+    .bind(user_id)
+    .bind(days.to_string())
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let recent_meds: Vec<String> =
+        rows.iter().filter_map(|r| r.try_get::<String, _>("name").ok()).collect();
+
+    // Si pas de carnet → on appelle quand même l'IA avec uniquement les nouveaux.
+    // ✅ 2026-05-15 : fix E0271/E0599 — on construit la HashSet directement
+    // sur les Strings owned, sans gymnastique de Box::leak.
+    let mut all_meds_set: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for m in &recent_meds {
+        all_meds_set.insert(m.clone());
+    }
+    for m in &payload.new_medications {
+        let normalized = m.trim().to_lowercase();
+        if !normalized.is_empty() {
+            all_meds_set.insert(normalized);
+        }
+    }
+    let all_meds: Vec<String> = all_meds_set.into_iter().collect();
+
+    if all_meds.len() < 2 {
+        // Pas d'interaction possible avec moins de 2 médicaments
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "severity": "none",
+                "description": "Pas d'interaction possible : carnet santé vide ou un seul médicament.",
+                "recommendation": "",
+                "alternative_suggestions": [],
+                "context_size": recent_meds.len(),
+            })),
+        ));
+    }
+
+    let ai_service = PharmacyAIService::new(state.ia.clone());
+    let interaction = ai_service.check_medication_interactions(all_meds, None, None).await?;
+
+    info!(
+        "[check_personal_interactions] user={} context={} new={} → severity={}",
+        user_id,
+        recent_meds.len(),
+        payload.new_medications.len(),
+        interaction.severity
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "severity": interaction.severity,
+            "description": interaction.description,
+            "recommendation": interaction.recommendation,
+            "alternative_suggestions": interaction.alternative_suggestions,
+            "context_size": recent_meds.len(),
+            "context_medications": recent_meds,
+        })),
+    ))
+}
+
+// ----------------------------------------------------------------------------
+// Réseau de garde — pharmacies de garde voisines (coordination)
+// ----------------------------------------------------------------------------
+
+/// GET /api/pharmacies/me/duty-network
+/// Liste les pharmacies de garde actives dans le rayon de la pharmacie
+/// connectée (ville/quartier). Permet la coordination des gardes (qui est
+/// dispo ce week-end, échange de garde, etc.).
+pub async fn get_pharmacy_duty_network(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    // Récupère la première pharmacie du user (ou officielle si admin) pour
+    // déterminer la zone de coordination.
+    let me = sqlx::query(
+        r#"
+        SELECT id, gps, ville, quartier
+        FROM pharmacies
+        WHERE (user_id = $1
+               OR (is_official = TRUE AND $2 IN ('admin', 'super_admin')))
+          AND is_active = TRUE
+          AND gps IS NOT NULL
+          AND gps ~ '^-?[0-9.]+,-?[0-9.]+$'
+        ORDER BY id ASC
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id)
+    .bind(&user_role)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    let Some(me_row) = me else {
+        return Ok((
+            StatusCode::OK,
+            Json(json!({ "success": true, "neighbors": [], "self": null })),
+        ));
+    };
+
+    let my_pharmacy_id: i32 = me_row.try_get("id").unwrap_or(0);
+    let my_gps: Option<String> = me_row.try_get("gps").ok();
+    let ville: Option<String> = me_row.try_get("ville").ok().flatten();
+    let quartier: Option<String> = me_row.try_get("quartier").ok().flatten();
+
+    let (lat, lng) = match my_gps {
+        Some(g) => {
+            let parts: Vec<&str> = g.split(',').collect();
+            if parts.len() == 2 {
+                (
+                    parts[0].trim().parse::<f64>().unwrap_or(0.0),
+                    parts[1].trim().parse::<f64>().unwrap_or(0.0),
+                )
+            } else {
+                (0.0, 0.0)
+            }
+        }
+        None => (0.0, 0.0),
+    };
+
+    // Pharmacies de la même ville (ou rayon 25 km), excluant la mienne.
+    // Note : pas de filtre on_duty=true ici — on retourne TOUTES les
+    // pharmacies du réseau, et le frontend affiche le statut de garde.
+    let rows = sqlx::query(
+        r#"
+        WITH parsed AS (
+            SELECT id, nom, ville, quartier, telephone, whatsapp,
+                   is_on_duty_now, jours_garde, permanent_24h,
+                   split_part(gps, ',', 1)::DOUBLE PRECISION AS lat,
+                   split_part(gps, ',', 2)::DOUBLE PRECISION AS lng
+            FROM pharmacies
+            WHERE is_active = TRUE
+              AND gps IS NOT NULL
+              AND gps ~ '^-?[0-9.]+,-?[0-9.]+$'
+              AND id <> $4
+        )
+        SELECT *,
+            6371.0 * 2 * ASIN(
+                SQRT(
+                    POWER(SIN(RADIANS((lat - $1) / 2)), 2)
+                  + COS(RADIANS($1)) * COS(RADIANS(lat))
+                  * POWER(SIN(RADIANS((lng - $2) / 2)), 2)
+                )
+            ) AS distance_km
+        FROM parsed
+        WHERE 6371.0 * 2 * ASIN(
+            SQRT(
+                POWER(SIN(RADIANS((lat - $1) / 2)), 2)
+              + COS(RADIANS($1)) * COS(RADIANS(lat))
+              * POWER(SIN(RADIANS((lng - $2) / 2)), 2)
+            )
+        ) <= 25.0
+        ORDER BY is_on_duty_now DESC, distance_km ASC
+        LIMIT 30
+        "#,
+    )
+    .bind(lat)
+    .bind(lng)
+    .bind(&ville)
+    .bind(my_pharmacy_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur réseau: {}", e)))?;
+
+    let neighbors: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i32, _>("id").unwrap_or(0),
+                "nom": r.try_get::<String, _>("nom").unwrap_or_default(),
+                "ville": r.try_get::<Option<String>, _>("ville").unwrap_or(None),
+                "quartier": r.try_get::<Option<String>, _>("quartier").unwrap_or(None),
+                "telephone": r.try_get::<Option<String>, _>("telephone").unwrap_or(None),
+                "whatsapp": r.try_get::<Option<String>, _>("whatsapp").unwrap_or(None),
+                "is_on_duty_now": r.try_get::<bool, _>("is_on_duty_now").unwrap_or(false),
+                "jours_garde": r.try_get::<Option<String>, _>("jours_garde").unwrap_or(None),
+                "permanent_24h": r.try_get::<bool, _>("permanent_24h").unwrap_or(false),
+                "distance_km": r.try_get::<f64, _>("distance_km").unwrap_or(0.0),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "self": {
+                "id": my_pharmacy_id,
+                "ville": ville,
+                "quartier": quartier,
+            },
+            "neighbors": neighbors,
+        })),
+    ))
+}
+
+// ----------------------------------------------------------------------------
+// Radar de rupture nationale (admin only)
+// ----------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct RuptureRadarQuery {
+    /// Période d'analyse en jours (défaut 7)
+    pub days: Option<i32>,
+    /// Filtrer par ville
+    pub city: Option<String>,
+    /// Seuil minimum d'occurrences (défaut 3 : au moins 3 indispos
+    /// pour considérer comme rupture)
+    pub threshold: Option<i32>,
+}
+
+/// GET /api/admin/pharmacie/rupture-radar
+/// Liste les médicaments les plus demandés mais non-trouvés sur la période,
+/// avec le nombre de pharmacies impactées et leur ville. Réservé aux admins
+/// Yukpo.
+pub async fn admin_get_rupture_radar(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        role: user_role, ..
+    }): Extension<AuthenticatedUser>,
+    Query(params): Query<RuptureRadarQuery>,
+) -> AppResult<impl IntoResponse> {
+    use crate::utils::role_helpers::ensure_admin_role_str;
+    ensure_admin_role_str(&user_role)
+        .map_err(|_| AppError::Forbidden("Accès réservé aux administrateurs Yukpo".to_string()))?;
+
+    let days = params.days.unwrap_or(7).clamp(1, 90);
+    let threshold = params.threshold.unwrap_or(3).clamp(1, 100);
+    let city = params.city.unwrap_or_default();
+    let city_filter = city.trim().to_lowercase();
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            lower(trim(item->>'name')) AS medication,
+            COUNT(*)::BIGINT AS unavailable_count,
+            COUNT(DISTINCT pr.pharmacy_id)::BIGINT AS pharmacies_affected,
+            COUNT(DISTINCT lower(coalesce(p.ville, ''))) AS cities_affected,
+            ARRAY_AGG(DISTINCT lower(coalesce(p.ville, ''))) FILTER (WHERE p.ville IS NOT NULL) AS cities
+        FROM pharmacy_responses pr
+        JOIN medication_alerts a ON a.id = pr.alert_id
+        JOIN pharmacies p ON p.id = pr.pharmacy_id,
+             jsonb_array_elements(pr.items_status) AS item
+        WHERE pr.responded_at >= NOW() - ($1 || ' days')::INTERVAL
+          AND (item->>'available')::BOOLEAN = FALSE
+          AND length(trim(item->>'name')) > 0
+          AND ($2::TEXT = '' OR lower(coalesce(p.ville, '')) = $2)
+        GROUP BY lower(trim(item->>'name'))
+        HAVING COUNT(*) >= $3
+        ORDER BY unavailable_count DESC, pharmacies_affected DESC
+        LIMIT 50
+        "#,
+    )
+    .bind(days.to_string())
+    .bind(&city_filter)
+    .bind(threshold as i64)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur radar: {}", e)))?;
+
+    let radar: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "medication": r.try_get::<String, _>("medication").unwrap_or_default(),
+                "unavailable_count": r.try_get::<i64, _>("unavailable_count").unwrap_or(0),
+                "pharmacies_affected": r.try_get::<i64, _>("pharmacies_affected").unwrap_or(0),
+                "cities_affected": r.try_get::<i64, _>("cities_affected").unwrap_or(0),
+                "cities": r
+                    .try_get::<Option<Vec<String>>, _>("cities")
+                    .unwrap_or(None)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<String>>(),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "days": days,
+            "threshold": threshold,
+            "city_filter": city_filter,
+            "count": radar.len(),
+            "radar": radar,
+        })),
+    ))
+}
+
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie
 ///
 /// Conformité éthique/réglementaire : trace serveur pour prouver que
@@ -8782,14 +9136,16 @@ pub async fn get_my_pharmacy_orders(
     ))
 }
 
-/// Analytics d'une pharmacie
-pub async fn get_pharmacy_analytics(
+/// Analytics d'une pharmacie spécifique (par ID, style REST)
+/// ✅ 2026-05-15 : renommé pour éviter le conflit E0428 avec la version
+/// /me/analytics qui prend Query<AnalyticsQuery> (cf. line 7919).
+pub async fn get_pharmacy_analytics_by_id(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!(
-        "[get_pharmacy_analytics] pharmacy_id={}, user_id={}",
+        "[get_pharmacy_analytics_by_id] pharmacy_id={}, user_id={}",
         pharmacy_id, user_id
     );
 

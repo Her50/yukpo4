@@ -281,10 +281,21 @@
       "orders": "Orders",
       "archives": "Archives",
       "pharmacovigilance": "Reports",
+      "duty": "On-duty",
       "products": "Products",
       "stats": "Stats",
       "qr": "Scanner",
       "finances": "Finances"
+    },
+    "duty": {
+      "title": "On-duty network",
+      "notice": "Active pharmacies within 25 km. Contact a peer to swap duty or request backup for a missing drug.",
+      "empty": "No nearby pharmacies detected. Check that your profile has GPS coordinates.",
+      "onDutyNow": "On duty now ({{count}})",
+      "others": "Other pharmacies ({{count}})",
+      "badge": { "onDuty": "On duty" },
+      "swapMessage": "Hi {{name}}, would you be available to swap a duty shift?",
+      "helpMessage": "Hi {{name}}, a patient is looking for a drug I don't have. Could you help?"
     },
     "orders": {
       "filter": {
@@ -467,5 +478,41 @@
     "addressRequiredDesc": "Provide the delivery address.",
     "timeRequired": "Time required",
     "timeRequiredDesc": "Choose your arrival time."
+  },
+  "pharmacie": {
+    "interactions": {
+      "checking": "Yukpo is checking interactions with your health record…",
+      "contextLabel": "{{count}} recent medication in memory",
+      "contextLabel_plural": "{{count}} recent medications in memory",
+      "disclaimer": "Informational only. Final decision belongs to your doctor or pharmacist.",
+      "severity": {
+        "mild": "Mild interaction",
+        "moderate": "Moderate interaction",
+        "major": "Major interaction",
+        "contraindicated": "Contraindication"
+      }
+    },
+    "adminRupture": {
+      "title": "National stockout radar",
+      "subtitle": "Drugs most frequently flagged unavailable by pharmacists.",
+      "back": "Back",
+      "forbidden": "Access restricted to Yukpo administrators.",
+      "filters": "Filters",
+      "period": { "1d": "24h", "7d": "7d", "30d": "30d", "90d": "90d" },
+      "cityPlaceholder": "City (optional)",
+      "thresholdHelp": "Minimum unavailability threshold",
+      "empty": "No stockout detected for this period. Good news!",
+      "unavailableCount": "{{count}} unavailable",
+      "unavailableCount_plural": "{{count}} unavailable",
+      "pharmaciesAffected": "{{count}} pharmacy affected",
+      "pharmaciesAffected_plural": "{{count}} pharmacies affected",
+      "footer": "Data sourced from pharmacist responses to Yukpo RFQ workflow."
+    },
+    "pharmacovigilance": {
+      "title": "Pharmacovigilance",
+      "cta": "New report",
+      "anonymousNotice": "Patient data is anonymized (age + gender only).",
+      "listEmpty": "No reports yet."
+    }
   }
 }

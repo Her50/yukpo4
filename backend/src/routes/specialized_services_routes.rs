@@ -1173,6 +1173,25 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(specialized_services_controller::submit_pharmacovigilance_report)
                 .get(specialized_services_controller::list_pharmacovigilance_reports),
         )
+        // ✅ Phase B1 (2026-05-15) : Interactions personnelles (croise historique
+        // 90 j du patient avec nouveaux médicaments via IA). Sensible : pas en
+        // public — toujours associé à un user_id.
+        .route(
+            "/api/users/me/check-interactions",
+            post(specialized_services_controller::check_personal_interactions),
+        )
+        // ✅ Phase B1 (2026-05-15) : Coordination réseau de garde (pharmacies
+        // voisines ≤ 25 km du pharmacien connecté, on_duty DESC + distance ASC)
+        .route(
+            "/api/pharmacies/me/duty-network",
+            get(specialized_services_controller::get_pharmacy_duty_network),
+        )
+        // ✅ Phase B1 (2026-05-15) : Radar rupture nationale (admin only —
+        // agrégation des médicaments unavailable=false dans pharmacy_responses)
+        .route(
+            "/api/admin/pharmacie/rupture-radar",
+            get(specialized_services_controller::admin_get_rupture_radar),
+        )
         .route(
             "/api/pharmacies/me/financial-movements",
             get(specialized_services_controller::get_pharmacy_financial_movements),
@@ -1183,7 +1202,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         .route(
             "/api/pharmacies/{id}/analytics",
-            get(specialized_services_controller::get_pharmacy_analytics),
+            get(specialized_services_controller::get_pharmacy_analytics_by_id),
         )
         // ✅ QR codes pharmacie : génération, affichage, validation + reversal financier
         .route(

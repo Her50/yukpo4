@@ -112,7 +112,7 @@ const HealthRecordPage: React.FC = () => {
       const res = await apiPost(`/api/medication-alerts/${entry.alert_id}/reorder`, {
         gps_lat: gps.lat,
         gps_lng: gps.lng,
-        radius_km: 20,
+        radius_km: 10,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
