@@ -133,7 +133,7 @@ fn const_time_eq(a: &[u8], b: &[u8]) -> bool {
     diff == 0
 }
 
-fn verify_hmac(body: &[u8], headers: &HeaderMap, secret: &str) -> Result<(), &'static str> {
+pub fn verify_hmac(body: &[u8], headers: &HeaderMap, secret: &str) -> Result<(), &'static str> {
     let sig_b64 = headers
         .get("x-yukpo-signature")
         .and_then(|v| v.to_str().ok())

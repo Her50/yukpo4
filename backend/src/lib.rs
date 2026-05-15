@@ -72,6 +72,7 @@ use crate::routes::{
     hotel_group_routes::hotel_group_routes, // ✅ 2026-04-01: Routes groupes, form config, profils clients
     hotel_room_management_routes::hotel_room_management_routes, // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
     ia_routes::ia_routes,
+    integrations_yukposhop_promo_routes::integrations_yukposhop_promo_routes, // ✅ 2026-05-15: Bridge promo/loyalty/similar/abandoned
     integrations_yukposhop_routes::integrations_yukposhop_routes, // ✅ 2026-05-14: Bridge YukpoShop -> marketplace
     kyc_admin_routes::kyc_admin_routes, // ✅ NOUVEAU 2025-01-29: Routes admin KYC
     kyc_webhook_routes::kyc_webhook_routes, // ✅ NOUVEAU 2025-01-29: Routes webhook KYC
@@ -242,6 +243,8 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let services = service_routes(state.clone());
     // ✅ 2026-05-14: Bridge YukpoShop -> marketplace (auth HMAC, pas JWT)
     let integrations_yukposhop = integrations_yukposhop_routes(state.clone());
+    // ✅ 2026-05-15: Bridge YukpoShop promo/loyalty/similar/abandoned (HMAC)
+    let integrations_yukposhop_promo = integrations_yukposhop_promo_routes(state.clone());
     // Media routes (public ou protégées selon module)
     let media = media_routes(state.clone());
     // ✅ NOUVEAU: Video routes (récupération des vidéos utilisateur)
@@ -439,6 +442,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(admin_users) // ✅ NOUVEAU: Routes admin gestion des rôles
         .merge(services)
         .merge(integrations_yukposhop) // ✅ 2026-05-14: Bridge YukpoShop -> marketplace
+        .merge(integrations_yukposhop_promo) // ✅ 2026-05-15: Bridge YukpoShop promo/loyalty/similar/abandoned
         .merge(media)
         .merge(stock_media) // ✅ NOUVEAU Phase 2: Routes Stock Media Integration
         .merge(plugins) // ✅ NOUVEAU Phase 2: Routes gestion des plugins

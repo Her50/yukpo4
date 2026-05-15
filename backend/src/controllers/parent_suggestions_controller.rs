@@ -314,6 +314,11 @@ pub async fn fournitures_aggregees(
         nom: String,
         nom_normalise: String,
         gamme_defaut: Option<String>,
+        /// Prix selon la gamme : standard = prix_median, premium = prix_max.
+        /// Si prix_max absent → fallback prix_median × 1.5 côté frontend.
+        prix_standard: Option<f64>,
+        prix_premium: Option<f64>,
+        /// Gardé pour rétro-compatibilité du frontend qui lit prix_median.
         prix_median: Option<f64>,
         devise: Option<String>,
         occurrences_total: i64,
@@ -340,7 +345,9 @@ pub async fn fournitures_aggregees(
         }
         let rows = sqlx::query(
             r#"SELECT id, nom, nom_normalise, gamme_defaut,
+                      prix_min::float8  AS prix_min,
                       prix_median::float8 AS prix_median,
+                      prix_max::float8  AS prix_max,
                       devise,
                       quantite_mediane,
                       occurrences
@@ -367,11 +374,20 @@ pub async fn fournitures_aggregees(
             let occ: i32 = r.try_get("occurrences").unwrap_or(0);
             let sous_total = qte_med * nb;
 
+            // ✅ 2026-05-15 : Mapping 2 gammes pour l'UI :
+            //   - Standard = prix_median (par défaut affiché)
+            //   - Premium  = prix_max si dispo, sinon prix_median × 1.5 (estimation)
+            let prix_median_db = r.try_get::<Option<f64>, _>("prix_median").ok().flatten();
+            let prix_max_db = r.try_get::<Option<f64>, _>("prix_max").ok().flatten();
+            let prix_premium = prix_max_db.or_else(|| prix_median_db.map(|p| p * 1.5));
+
             let entry = agg.entry(nom_norm.clone()).or_insert_with(|| ItemAgrege {
                 nom: nom.clone(),
                 nom_normalise: nom_norm.clone(),
                 gamme_defaut: r.try_get::<Option<String>, _>("gamme_defaut").ok().flatten(),
-                prix_median: r.try_get::<Option<f64>, _>("prix_median").ok().flatten(),
+                prix_standard: prix_median_db,
+                prix_premium,
+                prix_median: prix_median_db,
                 devise: r.try_get::<Option<String>, _>("devise").ok().flatten(),
                 occurrences_total: 0,
                 quantite_totale: 0,

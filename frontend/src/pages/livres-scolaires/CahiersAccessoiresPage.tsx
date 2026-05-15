@@ -43,12 +43,22 @@ interface ItemAgrege {
   nom: string;
   nom_normalise: string;
   gamme_defaut?: string | null;
+  /** ✅ 2026-05-15 : prix selon la gamme choisie par l'user.
+   *  - prix_standard = prix médian (par défaut)
+   *  - prix_premium  = prix max (haut de gamme)
+   *  Le frontend bascule entre les deux via un toggle global ou per-item. */
+  prix_standard?: number | null;
+  prix_premium?: number | null;
+  /** Conservé pour rétro-compat — équivalent à prix_standard. */
   prix_median?: number | null;
   devise?: string | null;
   occurrences_total: number;
   quantite_totale: number;
   breakdown: BreakdownClasse[];
 }
+
+/** Niveau de gamme sélectionné pour un article. */
+type Gamme = 'standard' | 'premium';
 
 const CahiersAccessoiresPage: React.FC = () => {
   const { t } = useTranslation();
@@ -117,6 +127,22 @@ const CahiersAccessoiresPage: React.FC = () => {
   const [qteOverrides, setQteOverrides] = useState<Record<string, number>>({});
   /** Items explicitement supprimés (icône poubelle). nom_normalise → true. */
   const [deletedItems, setDeletedItems] = useState<Record<string, boolean>>({});
+  /** ✅ 2026-05-15 : Gamme globale appliquée par défaut à tous les items.
+   *  L'user peut basculer entre 'standard' et 'premium' depuis le header. */
+  const [globalGamme, setGlobalGamme] = useState<Gamme>('standard');
+  /** Override per-item : si présent, force la gamme de CET item (l'user
+   *  veut un haut de gamme spécifique tout en restant en standard pour le
+   *  reste). nom_normalise → 'standard' | 'premium'. */
+  const [gammeOverrides, setGammeOverrides] = useState<Record<string, Gamme>>({});
+
+  const getGammeFor = (nomNorm: string): Gamme => gammeOverrides[nomNorm] ?? globalGamme;
+  const getPriceFor = (it: ItemAgrege): number => {
+    const g = getGammeFor(it.nom_normalise);
+    if (g === 'premium') {
+      return it.prix_premium ?? (it.prix_standard ? it.prix_standard * 1.5 : 0);
+    }
+    return it.prix_standard ?? it.prix_median ?? 0;
+  };
 
   useEffect(() => {
     if (classesSelected.length === 0) {
@@ -168,10 +194,11 @@ const CahiersAccessoiresPage: React.FC = () => {
 
   const totalGeneral = useMemo(() => {
     return itemsAffiches.reduce((sum, it) => {
-      const prix = it.prix_median || 0;
+      const prix = getPriceFor(it);
       return sum + prix * it.quantite_effective;
     }, 0);
-  }, [itemsAffiches]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsAffiches, globalGamme, gammeOverrides]);
 
   // ──── Actions panier ────
   const onAjouterAuPanier = () => {
@@ -188,15 +215,19 @@ const CahiersAccessoiresPage: React.FC = () => {
     // un seul panier consolidé par parent). Si l'user veut séparer par
     // classe, il pourra le faire dans le Recap.
     const targetEnfant: Enfant = enfants[0];
-    const toAdd = itemsAffiches.map(it => ({
-      enfantId: targetEnfant.id,
-      titre: it.nom,
-      type: 'fourniture' as const,
-      prixNeuf: it.prix_median || undefined,
-      choix: 'neuf' as const,
-      quantite: it.quantite_effective,
-      gamme: (it.gamme_defaut as any) || 'standard',
-    }));
+    const toAdd = itemsAffiches.map(it => {
+      const g = getGammeFor(it.nom_normalise);
+      return {
+        enfantId: targetEnfant.id,
+        titre: it.nom,
+        type: 'fourniture' as const,
+        // ✅ 2026-05-15 : prix selon la gamme effective choisie par l'user
+        prixNeuf: getPriceFor(it) || undefined,
+        choix: 'neuf' as const,
+        quantite: it.quantite_effective,
+        gamme: (g === 'premium' ? 'premium' : 'standard') as any,
+      };
+    });
     addItems(toAdd);
     toast({
       title: t('bourse.cahiers.added_to_cart', {
@@ -313,23 +344,60 @@ const CahiersAccessoiresPage: React.FC = () => {
           )}
         </div>
 
-        {/* ──── Total estimé sticky ──── */}
+        {/* ──── Total estimé sticky + toggle gamme globale ──── */}
         {!loading && totalGeneral > 0 && (
-          <div className="sticky top-0 z-20 mb-2 bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
-            <div className="flex flex-col min-w-0">
-              <span className="text-[10px] text-amber-700 uppercase font-bold tracking-wide">
-                {t('bourse.cahiers.total_label', { defaultValue: 'Total estimé' })}
+          <div className="sticky top-0 z-20 mb-2 bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] text-amber-700 uppercase font-bold tracking-wide">
+                  {t('bourse.cahiers.total_label', { defaultValue: 'Total estimé' })}
+                </span>
+                <span className="text-[10px] text-gray-600">
+                  {t('bourse.cahiers.items_count', {
+                    defaultValue: '{{count}} article(s)',
+                    count: itemsAffiches.length,
+                  })}
+                </span>
+              </div>
+              <span className="text-base font-bold text-amber-700 tabular-nums">
+                {totalGeneral.toLocaleString('fr-FR')} XAF
               </span>
-              <span className="text-[10px] text-gray-600">
-                {t('bourse.cahiers.items_count', {
-                  defaultValue: '{{count}} article(s)',
-                  count: itemsAffiches.length,
+            </div>
+            {/* ✅ 2026-05-15 : Toggle Standard / Haut de gamme appliqué à
+                TOUS les articles. Cliquer reset aussi les overrides per-item
+                pour que la sélection soit cohérente. */}
+            <div className="flex items-center gap-2 pt-2 border-t border-amber-200">
+              <span className="text-[10px] text-gray-600 font-semibold">
+                {t('bourse.cahiers.gamme_label', { defaultValue: 'Gamme :' })}
+              </span>
+              <div className="inline-flex bg-white rounded-md border border-amber-300 overflow-hidden shadow-sm">
+                <button
+                  onClick={() => { setGlobalGamme('standard'); setGammeOverrides({}); }}
+                  className={`px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                    globalGamme === 'standard'
+                      ? 'bg-amber-500 text-white'
+                      : 'text-gray-600 hover:bg-amber-50'
+                  }`}
+                >
+                  {t('bourse.cahiers.gamme_standard', { defaultValue: 'Standard' })}
+                </button>
+                <button
+                  onClick={() => { setGlobalGamme('premium'); setGammeOverrides({}); }}
+                  className={`px-2.5 py-1 text-[11px] font-bold transition-colors border-l border-amber-300 ${
+                    globalGamme === 'premium'
+                      ? 'bg-gradient-to-r from-amber-600 to-yellow-600 text-white'
+                      : 'text-gray-600 hover:bg-amber-50'
+                  }`}
+                >
+                  ✨ {t('bourse.cahiers.gamme_premium', { defaultValue: 'Haut de gamme' })}
+                </button>
+              </div>
+              <span className="text-[9px] text-gray-400 italic flex-1 text-right truncate">
+                {t('bourse.cahiers.gamme_hint', {
+                  defaultValue: 'Cliquez sur un article pour le changer individuellement',
                 })}
               </span>
             </div>
-            <span className="text-base font-bold text-amber-700 tabular-nums">
-              {totalGeneral.toLocaleString('fr-FR')} XAF
-            </span>
           </div>
         )}
 
@@ -373,13 +441,50 @@ const CahiersAccessoiresPage: React.FC = () => {
             </div>
 
             <ul className="divide-y divide-gray-100">
-              {itemsAffiches.map(it => (
+              {itemsAffiches.map(it => {
+                const itemGamme = getGammeFor(it.nom_normalise);
+                const prixCourant = getPriceFor(it);
+                const isPremium = itemGamme === 'premium';
+                /** Toggle individuel sur le tag → bascule cet article uniquement. */
+                const toggleItemGamme = () => {
+                  setGammeOverrides(prev => {
+                    const next = { ...prev };
+                    const newG: Gamme = isPremium ? 'standard' : 'premium';
+                    if (newG === globalGamme) {
+                      // L'item revient à la gamme globale → on retire l'override
+                      delete next[it.nom_normalise];
+                    } else {
+                      next[it.nom_normalise] = newG;
+                    }
+                    return next;
+                  });
+                };
+                return (
                 <li key={it.nom_normalise} className="px-3 py-3">
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[13px] text-gray-900" title={it.nom}>
-                        {it.nom}
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-semibold text-[13px] text-gray-900" title={it.nom}>
+                          {it.nom}
+                        </p>
+                        {/* ✅ 2026-05-15 : Tag gamme cliquable. Bascule Standard ⇄ Premium
+                            pour CET article uniquement. Couleur distincte :
+                            - Standard = gris/neutre
+                            - Haut de gamme = doré (gradient amber-yellow) */}
+                        <button
+                          onClick={toggleItemGamme}
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase leading-none transition-colors ${
+                            isPremium
+                              ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-sm'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                          title={t('bourse.cahiers.tag_toggle_hint', {
+                            defaultValue: 'Cliquer pour basculer Standard / Haut de gamme',
+                          })}
+                        >
+                          {isPremium ? '✨ Haut de gamme' : 'Standard'}
+                        </button>
+                      </div>
                       {/* Détail par classe (transparence) */}
                       <p className="text-[10px] text-gray-500 leading-snug mt-0.5">
                         {it.breakdown.map((b, i) => (
@@ -392,15 +497,15 @@ const CahiersAccessoiresPage: React.FC = () => {
                           </span>
                         ))}
                       </p>
-                      {/* Prix unitaire + sous-total */}
-                      {it.prix_median ? (
+                      {/* Prix unitaire + sous-total (selon gamme effective) */}
+                      {prixCourant > 0 ? (
                         <div className="flex items-baseline gap-2 mt-1">
-                          <span className="text-[10px] text-gray-400">
-                            {it.prix_median.toLocaleString('fr-FR')} {it.devise || 'XAF'} ×
+                          <span className={`text-[10px] ${isPremium ? 'text-amber-600' : 'text-gray-400'}`}>
+                            {prixCourant.toLocaleString('fr-FR')} {it.devise || 'XAF'} ×
                           </span>
                           <span className="text-[10px] text-gray-400">{it.quantite_effective}</span>
-                          <span className="text-[11px] font-bold text-amber-700 tabular-nums">
-                            = {(it.prix_median * it.quantite_effective).toLocaleString('fr-FR')} {it.devise || 'XAF'}
+                          <span className={`text-[11px] font-bold tabular-nums ${isPremium ? 'text-amber-700' : 'text-amber-700'}`}>
+                            = {(prixCourant * it.quantite_effective).toLocaleString('fr-FR')} {it.devise || 'XAF'}
                           </span>
                         </div>
                       ) : (
@@ -445,7 +550,8 @@ const CahiersAccessoiresPage: React.FC = () => {
                     </button>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         )}
