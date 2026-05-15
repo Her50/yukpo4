@@ -22,6 +22,7 @@ import LivreScolaireDetailsPage from './pages/livres-scolaires/LivreScolaireDeta
 import LivreScolaireFormPage from './pages/livres-scolaires/LivreScolaireFormPage';
 import MesLivresPage from './pages/livres-scolaires/MesLivresPage';
 import ParentDashboardPage from './pages/livres-scolaires/ParentDashboardPage';
+import ReferralPage from './pages/livres-scolaires/ReferralPage'; // ✅ 2026-05-15
 import ParentSelectionPage from './pages/livres-scolaires/ParentSelectionPage';
 import ScanProgrammePage from './pages/livres-scolaires/ScanProgrammePage';
 import RecapAchatPage from './pages/livres-scolaires/RecapAchatPage';
@@ -168,6 +169,13 @@ function AppBourse() {
               <Route path="/recharge" element={<BourseLayout><RequireAuth><RechargePage /></RequireAuth></BourseLayout>} />
               {/* Tableau de bord parent — solde Yukpo + crédit estimé/libéré + commandes + colis */}
               <Route path="/tableau-de-bord" element={<BourseLayout><RequireAuth><ParentDashboardPage /></RequireAuth></BourseLayout>} />
+
+              {/* ✅ 2026-05-15 — Page parrainage dédiée et partageable.
+                  PAS DE RequireAuth : si un filleul arrive ici via le lien
+                  partagé (avec ?ref=XXX), il voit le pitch d'invitation
+                  avant de s'inscrire. Si user connecté, il voit sa propre
+                  carte parrainage + retrait cash. */}
+              <Route path="/parrainage" element={<BourseLayout><ReferralPage /></BourseLayout>} />
 
               {/* Acceptation d'invitation d'équipe (lien WhatsApp) */}
               <Route path="/team/accept" element={<TeamInvitationAcceptPage />} />

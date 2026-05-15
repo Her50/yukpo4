@@ -42,9 +42,15 @@ pub async fn get_my_referral(
     // URL publique de partage. Le frontend bourse est l'expérience la plus
     // virale (parents + scan liste scolaire), donc on pointe par défaut là.
     // Override possible via env REFERRAL_SHARE_BASE_URL (ex: pour staging).
+    // ✅ 2026-05-15 — On pointe vers /parrainage (page dédiée) plutôt que /
+    //    pour que le filleul voie le pitch invitation avant de s'inscrire.
     let base = std::env::var("REFERRAL_SHARE_BASE_URL")
         .unwrap_or_else(|_| "https://bourse.yukpomnang.com".to_string());
-    let share_url = format!("{}/?ref={}", base.trim_end_matches('/'), stats.code);
+    let share_url = format!(
+        "{}/parrainage?ref={}",
+        base.trim_end_matches('/'),
+        stats.code
+    );
 
     Ok(Json(MyReferralResponse {
         code: stats.code,

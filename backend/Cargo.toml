@@ -178,11 +178,14 @@ tiny-skia = "0.11"
 # async-stripe = "1.0.0-rc.2"  # Réactiver une fois les dépendances corrigées
 
 # Profil release optimisé pour builders à RAM limitée (Fly remote builder ~7 GB).
-# opt-level=2 réduit la RAM peak de rustc d'environ 30 % vs opt-level=3, sans
-# perte significative de perf runtime sur ce backend I/O-bound.
-# codegen-units=16 (défaut) permet de paralléliser la codegen en petits morceaux.
+# ✅ 2026-05-15 — opt-level=1 (avant: 2) car le crate yukpomnang_backend est
+# devenu trop monolithique : rustc/LLVM consomme ~10+ GB en codegen avec
+# opt-level=2. opt-level=1 garde les optimisations triviales (inlining basique)
+# mais saute le pass LLVM coûteux. Perf runtime ~5-10% moindre sur du code CPU,
+# négligeable sur ce backend I/O-bound (DB + HTTP).
+# codegen-units=16 permet de paralléliser la codegen en petits morceaux.
 [profile.release]
-opt-level = 2
+opt-level = 1
 codegen-units = 16
 lto = false
 incremental = false
