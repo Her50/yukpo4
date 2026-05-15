@@ -514,50 +514,51 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-4">
-        {/* Sélecteur établissement */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">École</p>
-          <button
-            onClick={() => setShowPicker(true)}
-            className="w-full flex items-center justify-between gap-2 px-3 py-3 rounded-xl border border-gray-200 hover:border-amber-300 text-left bg-white"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <School className="w-4 h-4 text-amber-600 shrink-0" />
-              {etablissement ? (
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{etablissement.nom}</p>
-                  {etablissement.ville && <p className="text-xs text-gray-500 truncate">{etablissement.ville}</p>}
-                </div>
-              ) : (
-                <span className="text-sm text-gray-500">Choisir une école partenaire…</span>
-              )}
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-          </button>
-
-          {/* ✅ 2026-05-14 : Indication CLAIRE que sans école = programme national.
-              Bandeau coloré au lieu d'un hint gris discret. Cliquable pour
-              effacer l'école si déjà choisie. */}
-          {!etablissement ? (
-            <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-              <span className="text-emerald-600 mt-0.5">✓</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-emerald-800">Programme national (par défaut)</p>
-                <p className="text-[10px] text-emerald-700 leading-snug">
-                  Vous pouvez aussi choisir votre école partenaire ci-dessus pour voir SA liste exacte.
-                </p>
-              </div>
-            </div>
-          ) : (
+        {/* ✅ 2026-05-15 : En mode national pur (?reset=1), on cache le sélecteur
+            d'école : l'user vient pour le programme national, pas besoin de lui
+            re-proposer de choisir une école (retour navigation pour ça). */}
+        {!resetMode && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">École</p>
             <button
-              onClick={() => setEtablissement(null)}
-              className="mt-2 w-full text-left flex items-center gap-2 text-[11px] text-amber-700 hover:text-amber-800 px-2 py-1.5 rounded-lg hover:bg-amber-50"
+              onClick={() => setShowPicker(true)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-3 rounded-xl border border-gray-200 hover:border-amber-300 text-left bg-white"
             >
-              <X className="w-3 h-3" />
-              Revenir au programme national
+              <div className="flex items-center gap-2 min-w-0">
+                <School className="w-4 h-4 text-amber-600 shrink-0" />
+                {etablissement ? (
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{etablissement.nom}</p>
+                    {etablissement.ville && <p className="text-xs text-gray-500 truncate">{etablissement.ville}</p>}
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-500">Choisir une école partenaire…</span>
+                )}
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
             </button>
-          )}
-        </div>
+
+            {!etablissement ? (
+              <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                <span className="text-emerald-600 mt-0.5">✓</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-emerald-800">Programme national (par défaut)</p>
+                  <p className="text-[10px] text-emerald-700 leading-snug">
+                    Vous pouvez aussi choisir votre école partenaire ci-dessus pour voir SA liste exacte.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setEtablissement(null)}
+                className="mt-2 w-full text-left flex items-center gap-2 text-[11px] text-amber-700 hover:text-amber-800 px-2 py-1.5 rounded-lg hover:bg-amber-50"
+              >
+                <X className="w-3 h-3" />
+                Revenir au programme national
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ✅ 2026-05-13 : Sélecteur de classe unifié — ClasseAutocomplete
             intelligent (fuzzy/alias/accents) au lieu du multi-step manuel
@@ -576,7 +577,10 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           </p>
           <ClasseAutocomplete
             initialPays={pays}
-            showPaysSelector={!etablissement}
+            /* ✅ 2026-05-15 : Pays toujours caché — l'app connaît le pays
+                de l'user (paramètre initialPays seedé). En mode national
+                ou en mode école, on ne demande JAMAIS de choisir le pays. */
+            showPaysSelector={false}
             placeholder={classeNom ? `Classe active : ${classe} — tapez pour changer…` : 'Cherchez votre classe…'}
             allowedClasses={classesDispo}
             onSelect={(sel: ClasseSelection) => {
@@ -943,21 +947,9 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           </div>
         )}
 
-        {/* État initial : aucune classe sélectionnée → message clair pour
-            inviter l'user à utiliser le ClasseAutocomplete au-dessus. */}
-        {!loading && !error && !loaded && !classeNom && (
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
-            <BookOpen className="w-10 h-10 text-amber-500 mb-2" />
-            <p className="text-sm text-amber-900 font-bold mb-1">
-              {etablissement
-                ? 'Choisissez la classe pour voir le programme de l\'école'
-                : 'Choisissez votre classe pour voir le programme national'}
-            </p>
-            <p className="text-xs text-amber-700">
-              Tapez le nom de votre classe dans le champ ci-dessus (ex : « 6ème », « CP », « Tle A »…).
-            </p>
-          </div>
-        )}
+        {/* ✅ 2026-05-15 : Le grand bloc "Choisissez votre classe..." a été
+            retiré — redondant avec le mini-hint au-dessus du ClasseAutocomplete.
+            En mode national, on est minimaliste : hint + champ, c'est tout. */}
 
         {/* État classe choisie mais programme pas encore chargé (rare, transition) */}
         {!loading && !error && !loaded && classeNom && (

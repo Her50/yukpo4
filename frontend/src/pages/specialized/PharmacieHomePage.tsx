@@ -399,6 +399,48 @@ const PharmacieHomePage: React.FC = () => {
           <LanguageSwitcherBourse variant="minimal" tone="white" />
         </div>
 
+        {/* Quick actions patient : mode urgence + carnet santé.
+            Visible pour tous les utilisateurs authentifiés (non-partenaires). */}
+        {!showPartnerCta && (
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => {
+                if (!gps) {
+                  redetectGps();
+                  return;
+                }
+                setOnDutyOnly(true);
+                setRadiusKm(20);
+                setActiveChip('garde');
+                loadMedications();
+              }}
+              className="bg-red-500/95 hover:bg-red-500 active:bg-red-600 text-white rounded-2xl px-3 py-2.5 text-left inline-flex items-center gap-2 transition-colors"
+            >
+              <Shield className="w-4 h-4 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold leading-tight">{t('pharmacie.urgent.title')}</p>
+                <p className="text-[10px] text-red-100 leading-tight truncate">
+                  {t('pharmacie.urgent.subtitle')}
+                </p>
+              </div>
+            </button>
+            <button
+              onClick={() => navigate('/health-record')}
+              className="bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 rounded-2xl px-3 py-2.5 text-left inline-flex items-center gap-2 transition-colors"
+            >
+              <Pill className="w-4 h-4 text-white shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-white leading-tight">
+                  {t('pharmacie.record.title')}
+                </p>
+                <p className="text-[10px] text-blue-100 leading-tight truncate">
+                  {t('pharmacie.record.subtitle')}
+                </p>
+              </div>
+            </button>
+          </div>
+        )}
+
         {/* CTA pharmacien partenaire connecté — accès direct au dashboard
             d'upload produits CSV/Excel, commandes, stats. Visible uniquement
             si l'utilisateur est partenaire pharmacie. */}

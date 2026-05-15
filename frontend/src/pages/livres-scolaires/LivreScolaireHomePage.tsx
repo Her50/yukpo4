@@ -192,24 +192,28 @@ const LivreScolaireHomePage: React.FC = () => {
               border-2 émeraude + shadow-md + 3 lignes de texte qui le
               rendaient disproportionné. Maintenant : même structure que
               les autres (min-h 80, icône 10x10, titre + 1 ligne desc). */}
+          {/* ✅ 2026-05-15 : 4 CTAs harmonisés avec design plus attractif :
+              card blanche + bord coloré au hover, icône dans rond coloré
+              dégradé, titre + 1 ligne courte. Le 4e (troc) ne s'affiche que
+              en saison 'troc'. Style identique pour tous → bonne hiérarchie. */}
           {season === 'troc' && (
             <button
               onClick={() => navigate('/vendre')}
-              className="w-full bg-white rounded-2xl p-4 mb-3 shadow-sm border border-gray-200 text-left active:bg-gray-50 min-h-[80px]"
+              className="group w-full bg-white rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md border border-gray-200 hover:border-emerald-300 text-left active:scale-[0.99] transition-all min-h-[80px]"
             >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Repeat className="w-5 h-5 text-emerald-600" />
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Repeat className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-sm text-gray-900">
                     {t('bourse.home.season_troc_title')}
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5 leading-snug">
+                  <div className="text-[11px] text-gray-500 mt-0.5 leading-snug truncate">
                     {t('bourse.home.season_troc_desc')}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-emerald-600 mt-2 flex-shrink-0" />
+                <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
               </div>
             </button>
           )}
@@ -237,59 +241,58 @@ const LivreScolaireHomePage: React.FC = () => {
             </button>
           )}
 
-          {/* 1. École partenaire (PRIORITÉ — sauf en saison creuse où on
-              désaccentue pour ne pas suggérer une rentrée qui n'arrive pas) */}
+          {/* CTA 1 : École partenaire / Programme national */}
           <button
             onClick={() => navigate('/recherche-ecole')}
-            className={`w-full rounded-2xl p-4 mb-3 shadow-sm text-left min-h-[80px] ${
+            className={`group w-full rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md text-left min-h-[80px] transition-all active:scale-[0.99] ${
               season === 'achat'
-                ? 'bg-white border-2 border-amber-300 active:bg-amber-50'
-                : 'bg-white border border-gray-200 active:bg-gray-50'
+                ? 'bg-white border-2 border-amber-300 hover:border-amber-400'
+                : 'bg-white border border-gray-200 hover:border-amber-300'
             }`}
           >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-gradient-to-br from-amber-100 to-amber-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
                 <School className="w-5 h-5 text-amber-700" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm text-gray-900">{t('bourse.home.partner_school_cta')}</div>
-                <div className="text-xs text-gray-500 mt-0.5 leading-snug">{t('bourse.home.partner_school_description')}</div>
+                <div className="text-[11px] text-gray-500 mt-0.5 leading-snug truncate">{t('bourse.home.partner_school_description')}</div>
               </div>
-              <ChevronRight className="w-4 h-4 text-amber-700 mt-2 flex-shrink-0" />
+              <ChevronRight className="w-4 h-4 text-amber-700 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
             </div>
           </button>
 
-          {/* 2. Scan list (FALLBACK) */}
+          {/* CTA 2 : Scan liste papier */}
           <button
             onClick={() => navigate('/scan-programme')}
-            className="w-full bg-white rounded-2xl p-4 mb-3 shadow-sm border border-gray-200 text-left active:bg-gray-50 min-h-[80px]"
+            className="group w-full bg-white rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md border border-gray-200 hover:border-blue-300 text-left active:scale-[0.99] transition-all min-h-[80px]"
           >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                <Camera className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Camera className="w-5 h-5 text-blue-700" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm text-gray-900">{t('bourse.home.scan_cta')}</div>
-                <div className="text-xs text-gray-500 mt-0.5 leading-snug">{t('bourse.home.scan_description')}</div>
+                <div className="text-[11px] text-gray-500 mt-0.5 leading-snug truncate">{t('bourse.home.scan_description')}</div>
               </div>
-              <ChevronRight className="w-4 h-4 text-blue-600 mt-2 flex-shrink-0" />
+              <ChevronRight className="w-4 h-4 text-blue-700 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
             </div>
           </button>
 
-          {/* ✅ 2026-05-15 : 3. Cahiers & Accessoires (page agrégée multi-classes) */}
+          {/* CTA 3 : Cahiers & Accessoires (page agrégée multi-classes) */}
           <button
             onClick={() => navigate('/cahiers-accessoires')}
-            className="w-full bg-white rounded-2xl p-4 mb-3 shadow-sm border border-gray-200 text-left active:bg-gray-50 min-h-[80px]"
+            className="group w-full bg-white rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md border border-gray-200 hover:border-purple-300 text-left active:scale-[0.99] transition-all min-h-[80px]"
           >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center flex-shrink-0">
-                <Pencil className="w-5 h-5 text-purple-600" />
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Pencil className="w-5 h-5 text-purple-700" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm text-gray-900">{t('bourse.home.cahiers_cta')}</div>
-                <div className="text-xs text-gray-500 mt-0.5 leading-snug">{t('bourse.home.cahiers_description')}</div>
+                <div className="text-[11px] text-gray-500 mt-0.5 leading-snug truncate">{t('bourse.home.cahiers_description')}</div>
               </div>
-              <ChevronRight className="w-4 h-4 text-purple-600 mt-2 flex-shrink-0" />
+              <ChevronRight className="w-4 h-4 text-purple-700 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
             </div>
           </button>
 

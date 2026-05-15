@@ -25,6 +25,7 @@ import MyPharmacyOrdersPage from './pages/specialized/MyPharmacyOrdersPage';
 import PharmacieDashboardPage from './pages/partner/PharmacieDashboardPage';
 import PharmacieConsentGate from './pages/specialized/pharmacie/PharmacieConsentGate';
 import MedicationAlertPage from './pages/specialized/pharmacie/MedicationAlertPage';
+import HealthRecordPage from './pages/specialized/pharmacie/HealthRecordPage';
 import OfflineBanner from './components/OfflineBanner';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -85,6 +86,7 @@ function AppPharmacie() {
               <Route path="/dashboard" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/alertes" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/archives" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
+              <Route path="/dashboard/pharmacovigilance" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/commandes" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/produits" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/stats" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
@@ -106,6 +108,8 @@ function AppPharmacie() {
               <Route path="/list" element={<PharmacieLayout><PharmacieListPage /></PharmacieLayout>} />
               {/* Page de progression / résultats d'une demande de disponibilité (RFQ) */}
               <Route path="/alerts/:id" element={<PharmacieLayout><MedicationAlertPage /></PharmacieLayout>} />
+              {/* Carnet de santé numérique du patient */}
+              <Route path="/health-record" element={<PharmacieLayout><HealthRecordPage /></PharmacieLayout>} />
               <Route path="/:id" element={<PharmacieLayout><PharmacieDetailsPage /></PharmacieLayout>} />
 
               {/* Compat anciennes URLs */}
