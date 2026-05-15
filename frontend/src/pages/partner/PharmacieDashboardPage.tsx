@@ -147,8 +147,39 @@ const PharmacieDashboardPage: React.FC = () => {
   };
 
   const handleScanQr = async () => {
-    if (!qrInput.trim()) return;
-    const r = await pharmacyPartner.validateOrderQr(qrInput.trim());
+    const code = qrInput.trim();
+    if (!code) return;
+    // ✅ B2.1 : on tente d'abord la validation "retrait préparation" (UUID hex
+    // 32 chars). Si ça matche, c'est un click & collect. Sinon → fallback sur
+    // l'ancien workflow validation commande (order QR).
+    const looksLikePickupToken = /^[0-9a-f]{32}$/i.test(code);
+    if (looksLikePickupToken) {
+      try {
+        const res = await fetch('/api/pharmacies/me/preparations/qr/validate', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+          },
+          body: JSON.stringify({ qr_code: code }),
+        });
+        if (res.ok) {
+          const j = await res.json();
+          setQrResult({
+            ok: true,
+            message: `Retrait validé : alerte #${j.alert_id} (${j.pharmacy_name || ''})`,
+          });
+          setQrInput('');
+          reload();
+          return;
+        }
+        // Si 404/forbidden → on tombe sur l'ancien workflow ci-dessous
+      } catch {
+        // ignore et bascule sur order QR
+      }
+    }
+    const r = await pharmacyPartner.validateOrderQr(code);
     setQrResult({ ok: r.ok, message: r.message || (r.ok ? `Commande validée : ${r.order_id}` : 'Code invalide') });
     if (r.ok) { setQrInput(''); reload(); }
   };

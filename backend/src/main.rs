@@ -2676,6 +2676,11 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // et tourner en background pendant tout le cycle de vie du serveur.
     yukpomnang_backend::services::yukposhop_distribution_worker::spawn_worker(app_state.clone());
 
+    // ✅ 2026-05-15 Phase B2.2 — worker rappels de prise de médicaments.
+    // Polle medication_intake_reminders toutes les 60 s, envoie push si HH:MM
+    // local matche les times_of_day du patient.
+    yukpomnang_backend::services::intake_reminder_worker::spawn_worker(app_state.clone());
+
     // ✅ OPTIMISÉ Cloud Run 2026-02-14: Lancer toutes les migrations SQLx en arrière-plan pour Cloud Run
     // ✅ CORRIGÉ 2026-04-01: Réutiliser pg_pool (déjà configuré avec PgConnectOptions + attente socket)
     //    au lieu de créer un nouveau pool avec connect_lazy(URL) qui échoue pour les Unix sockets Cloud SQL

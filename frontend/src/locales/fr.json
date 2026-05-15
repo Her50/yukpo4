@@ -297,6 +297,11 @@
       "swapMessage": "Bonjour {{name}}, seriez-vous disponible pour un échange de garde ?",
       "helpMessage": "Bonjour {{name}}, un patient cherche un médicament que je n'ai pas. Pourriez-vous m'aider ?"
     },
+    "prepare": {
+      "cta": "Préparer à l'avance",
+      "waitingPickup": "Préparé · en attente du retrait",
+      "pickedUp": "Retiré par le patient"
+    },
     "orders": {
       "filter": {
         "all": "Toutes",
@@ -518,6 +523,32 @@
       "cta": "Nouveau signalement",
       "anonymousNotice": "Les données patient sont anonymisées (âge + genre uniquement).",
       "listEmpty": "Aucun signalement pour le moment."
+    },
+    "reminders": {
+      "title": "Mes rappels de prise",
+      "subtitle": "Une notification automatique aux heures choisies.",
+      "loginRequired": "Connectez-vous pour gérer vos rappels.",
+      "add": "Ajouter un rappel",
+      "empty": "Aucun rappel configuré. Ajoutez-en un pour ne plus oublier vos prises.",
+      "active": "{{count}} rappel actif",
+      "active_plural": "{{count}} rappels actifs",
+      "ended": "{{count}} terminé",
+      "ended_plural": "{{count}} terminés",
+      "until": "jusqu'au {{date}}",
+      "newTitle": "Nouveau rappel",
+      "medName": "Médicament *",
+      "posology": "Posologie",
+      "presets": "Préréglages rapides",
+      "times": "Heures de prise *",
+      "addTime": "Ajouter une heure",
+      "endAt": "Date de fin",
+      "optional": "optionnel",
+      "create": "Créer le rappel",
+      "created": "Rappel créé",
+      "deleted": "Rappel supprimé",
+      "confirmDelete": "Supprimer ce rappel ?",
+      "errMissing": "Nom et au moins une heure requis.",
+      "disclaimer": "Les rappels Yukpo arrivent à la minute près tant que l'application a été ouverte au moins une fois et que les notifications sont autorisées sur votre appareil."
     }
   }
 }

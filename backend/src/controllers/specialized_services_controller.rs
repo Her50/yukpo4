@@ -7216,19 +7216,25 @@ pub async fn get_medication_alert(
     let gps_lng: f64 = alert_row.try_get("gps_lng").unwrap_or(0.0);
     let radius_km: f32 = alert_row.try_get("radius_km").unwrap_or(5.0);
 
-    // Charge les réponses pharmacie classées par completeness
+    // Charge les réponses pharmacie classées par completeness.
+    // ✅ B2.1 (2026-05-15) : on ajoute prepared_at / pickup_qr_code / picked_up_at
+    // pour que le patient voie le statut "Prêt à retirer" + le QR.
     let responses_rows = sqlx::query(
         r#"
         SELECT
             pr.id, pr.pharmacy_id, pr.found_count, pr.items_status,
             pr.alternatives, pr.responded_at,
+            pr.prepared_at, pr.pickup_qr_code, pr.picked_up_at,
             p.nom, p.ville, p.quartier, p.telephone, p.whatsapp, p.gps,
             split_part(p.gps, ',', 1)::DOUBLE PRECISION AS lat,
             split_part(p.gps, ',', 2)::DOUBLE PRECISION AS lng
         FROM pharmacy_responses pr
         JOIN pharmacies p ON p.id = pr.pharmacy_id
         WHERE pr.alert_id = $1
-        ORDER BY pr.found_count DESC, pr.responded_at ASC
+        ORDER BY
+            (pr.prepared_at IS NOT NULL AND pr.picked_up_at IS NULL) DESC,
+            pr.found_count DESC,
+            pr.responded_at ASC
         LIMIT 30
         "#,
     )
@@ -7258,8 +7264,12 @@ pub async fn get_medication_alert(
             }
             _ => None,
         };
+        let prepared_at: Option<chrono::DateTime<chrono::Utc>> = r.try_get("prepared_at").ok();
+        let picked_up_at: Option<chrono::DateTime<chrono::Utc>> = r.try_get("picked_up_at").ok();
+        let pickup_qr: Option<String> = r.try_get("pickup_qr_code").ok();
         matches.push(json!({
             "pharmacy_id": r.try_get::<i32, _>("pharmacy_id").unwrap_or_default(),
+            "response_id": r.try_get::<i64, _>("id").unwrap_or_default(),
             "name": r.try_get::<String, _>("nom").unwrap_or_default(),
             "ville": r.try_get::<Option<String>, _>("ville").unwrap_or(None),
             "quartier": r.try_get::<Option<String>, _>("quartier").unwrap_or(None),
@@ -7273,6 +7283,10 @@ pub async fn get_medication_alert(
             "responded_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("responded_at")
                 .map(|d| d.to_rfc3339())
                 .unwrap_or_default(),
+            // B2.1 — pickup workflow
+            "prepared_at": prepared_at.map(|d| d.to_rfc3339()),
+            "picked_up_at": picked_up_at.map(|d| d.to_rfc3339()),
+            "pickup_qr_code": if picked_up_at.is_some() { None } else { pickup_qr },
         }));
     }
 
@@ -7486,7 +7500,16 @@ pub async fn get_my_pharmacy_alerts(
                    EXISTS(
                        SELECT 1 FROM pharmacy_responses pr
                        WHERE pr.alert_id = a.id AND pr.pharmacy_id = $3
-                   ) AS already_responded
+                   ) AS already_responded,
+                   (SELECT pr.id FROM pharmacy_responses pr
+                    WHERE pr.alert_id = a.id AND pr.pharmacy_id = $3
+                    LIMIT 1) AS response_id,
+                   (SELECT pr.prepared_at FROM pharmacy_responses pr
+                    WHERE pr.alert_id = a.id AND pr.pharmacy_id = $3
+                    LIMIT 1) AS prepared_at,
+                   (SELECT pr.picked_up_at FROM pharmacy_responses pr
+                    WHERE pr.alert_id = a.id AND pr.pharmacy_id = $3
+                    LIMIT 1) AS picked_up_at
             FROM medication_alerts a
             WHERE a.status = 'open'
               AND a.expires_at > NOW()
@@ -7563,6 +7586,14 @@ pub async fn get_my_pharmacy_alerts(
                     .map(|d| d.to_rfc3339()).unwrap_or_default(),
                 "already_responded": a.try_get::<bool, _>("already_responded").unwrap_or(false),
                 "known_prices": known_prices_json.clone(),
+                // B2.1 — workflow préparation anticipée
+                "response_id": a.try_get::<Option<i64>, _>("response_id").unwrap_or(None),
+                "prepared_at": a.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("prepared_at")
+                    .unwrap_or(None)
+                    .map(|d| d.to_rfc3339()),
+                "picked_up_at": a.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("picked_up_at")
+                    .unwrap_or(None)
+                    .map(|d| d.to_rfc3339()),
             }));
         }
     }
@@ -8965,6 +8996,315 @@ pub async fn admin_get_rupture_radar(
             "radar": radar,
         })),
     ))
+}
+
+// ============================================================================
+// Phase B2.1 — Préparation anticipée (click & collect pharmacie)
+// ============================================================================
+
+/// POST /api/pharmacies/me/responses/{response_id}/mark-prepared
+/// Le pharmacien marque sa réponse comme physiquement préparée → on
+/// génère un QR de retrait unique que le patient va présenter.
+pub async fn mark_response_prepared(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(response_id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    // Vérifie l'appartenance : la pharmacie de la réponse doit appartenir
+    // au pharmacien connecté.
+    let owns = sqlx::query(
+        r#"
+        SELECT pr.id, pr.pickup_qr_code
+        FROM pharmacy_responses pr
+        WHERE pr.id = $1 AND pr.pharmacy_user_id = $2
+        "#,
+    )
+    .bind(response_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture réponse: {}", e)))?;
+
+    let row = owns
+        .ok_or_else(|| AppError::Forbidden("Cette réponse ne vous appartient pas".to_string()))?;
+
+    // Si déjà préparée → on renvoie le QR existant (idempotent)
+    let existing_qr: Option<String> = row.try_get("pickup_qr_code").ok();
+    if let Some(qr) = existing_qr.filter(|s| !s.is_empty()) {
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "pickup_qr_code": qr,
+                "already_prepared": true,
+            })),
+        ));
+    }
+
+    // Génère un token QR unique (UUID v4 → 32 hex chars sans tirets)
+    let token = uuid::Uuid::new_v4().simple().to_string();
+
+    sqlx::query(
+        r#"
+        UPDATE pharmacy_responses
+        SET prepared_at = NOW(),
+            pickup_qr_code = $2
+        WHERE id = $1 AND pharmacy_user_id = $3
+        "#,
+    )
+    .bind(response_id)
+    .bind(&token)
+    .bind(user_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur sauvegarde: {}", e)))?;
+
+    info!(
+        "[mark_response_prepared] response={} user={} qr={}",
+        response_id,
+        user_id,
+        &token[..8]
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "pickup_qr_code": token,
+            "already_prepared": false,
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ValidatePickupRequest {
+    pub qr_code: String,
+}
+
+/// POST /api/pharmacies/me/preparations/qr/validate
+/// Le pharmacien scanne le QR du patient au moment du retrait → on
+/// marque picked_up_at et on invalide le QR. Vérifie que le QR
+/// appartient bien à une réponse de cette pharmacie.
+pub async fn validate_pickup_qr(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<ValidatePickupRequest>,
+) -> AppResult<impl IntoResponse> {
+    let token = payload.qr_code.trim();
+    if token.is_empty() {
+        return Err(AppError::BadRequest("QR vide".to_string()));
+    }
+
+    // Cherche la réponse correspondante (uniquement parmi celles du pharmacien)
+    let row = sqlx::query(
+        r#"
+        SELECT pr.id, pr.alert_id, pr.pharmacy_id, pr.found_count,
+               pr.picked_up_at, p.nom AS pharmacy_name, a.user_id AS patient_user_id
+        FROM pharmacy_responses pr
+        JOIN pharmacies p ON p.id = pr.pharmacy_id
+        JOIN medication_alerts a ON a.id = pr.alert_id
+        WHERE pr.pickup_qr_code = $1
+          AND pr.pharmacy_user_id = $2
+        "#,
+    )
+    .bind(token)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture QR: {}", e)))?;
+
+    let r =
+        row.ok_or_else(|| AppError::NotFound("QR invalide ou ne vous appartient pas".to_string()))?;
+
+    let already: Option<chrono::DateTime<chrono::Utc>> = r.try_get("picked_up_at").ok();
+    if already.is_some() {
+        return Err(AppError::BadRequest(
+            "Ce retrait a déjà été validé".to_string(),
+        ));
+    }
+
+    let response_id: i64 = r.try_get("id").unwrap_or_default();
+    let alert_id: i64 = r.try_get("alert_id").unwrap_or_default();
+    let pharmacy_name: String = r.try_get("pharmacy_name").unwrap_or_default();
+
+    sqlx::query("UPDATE pharmacy_responses SET picked_up_at = NOW() WHERE id = $1")
+        .bind(response_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur sauvegarde: {}", e)))?;
+
+    info!(
+        "[validate_pickup_qr] response={} alert={} pharmacy_user={} OK",
+        response_id, alert_id, user_id
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "response_id": response_id,
+            "alert_id": alert_id,
+            "pharmacy_name": pharmacy_name,
+        })),
+    ))
+}
+
+// ============================================================================
+// Phase B2.2 — Rappels de prise (medication intake reminders)
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct CreateIntakeReminderRequest {
+    pub medication_name: String,
+    #[serde(default)]
+    pub posology: Option<String>,
+    /// Heures de prise au format "HH:MM" (ex: ["08:00", "20:00"])
+    pub times_of_day: Vec<String>,
+    /// Date de fin de cure (ISO 8601 yyyy-mm-dd). NULL = permanent.
+    #[serde(default)]
+    pub end_at: Option<String>,
+    #[serde(default)]
+    pub timezone: Option<String>,
+}
+
+/// POST /api/users/me/intake-reminders
+pub async fn create_intake_reminder(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<CreateIntakeReminderRequest>,
+) -> AppResult<impl IntoResponse> {
+    let name = payload.medication_name.trim();
+    if name.is_empty() {
+        return Err(AppError::BadRequest("Nom médicament requis".to_string()));
+    }
+    if payload.times_of_day.is_empty() {
+        return Err(AppError::BadRequest(
+            "Au moins une heure de prise requise".to_string(),
+        ));
+    }
+
+    // Validation format HH:MM
+    let valid_times: Vec<String> = payload
+        .times_of_day
+        .iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| {
+            let parts: Vec<&str> = s.split(':').collect();
+            parts.len() == 2
+                && parts[0].parse::<u32>().map(|h| h < 24).unwrap_or(false)
+                && parts[1].parse::<u32>().map(|m| m < 60).unwrap_or(false)
+        })
+        .collect();
+    if valid_times.is_empty() {
+        return Err(AppError::BadRequest(
+            "Format heure invalide (attendu HH:MM)".to_string(),
+        ));
+    }
+
+    let end_at = payload
+        .end_at
+        .and_then(|s| chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok());
+    let timezone = payload
+        .timezone
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "Africa/Douala".to_string());
+
+    let row = sqlx::query(
+        r#"
+        INSERT INTO medication_intake_reminders
+            (user_id, medication_name, posology, times_of_day, end_at, timezone)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+        "#,
+    )
+    .bind(user_id)
+    .bind(name)
+    .bind(&payload.posology)
+    .bind(serde_json::to_value(&valid_times).unwrap_or(json!([])))
+    .bind(end_at)
+    .bind(&timezone)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création rappel: {}", e)))?;
+
+    let id: i64 = row.try_get("id").unwrap_or_default();
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "id": id,
+            "times_of_day": valid_times,
+        })),
+    ))
+}
+
+/// GET /api/users/me/intake-reminders
+pub async fn list_intake_reminders(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, medication_name, posology, times_of_day, end_at, timezone,
+               is_active, last_sent_at, created_at
+        FROM medication_intake_reminders
+        WHERE user_id = $1
+        ORDER BY is_active DESC, created_at DESC
+        LIMIT 50
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture rappels: {}", e)))?;
+
+    let reminders: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i64, _>("id").unwrap_or(0),
+                "medication_name": r.try_get::<String, _>("medication_name").unwrap_or_default(),
+                "posology": r.try_get::<Option<String>, _>("posology").unwrap_or(None),
+                "times_of_day": r.try_get::<serde_json::Value, _>("times_of_day").unwrap_or(json!([])),
+                "end_at": r.try_get::<Option<chrono::NaiveDate>, _>("end_at")
+                    .unwrap_or(None)
+                    .map(|d| d.to_string()),
+                "timezone": r.try_get::<String, _>("timezone").unwrap_or_default(),
+                "is_active": r.try_get::<bool, _>("is_active").unwrap_or(false),
+                "last_sent_at": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_sent_at")
+                    .unwrap_or(None)
+                    .map(|d| d.to_rfc3339()),
+                "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_default(),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "reminders": reminders })),
+    ))
+}
+
+/// DELETE /api/users/me/intake-reminders/{id}
+pub async fn delete_intake_reminder(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let res = sqlx::query("DELETE FROM medication_intake_reminders WHERE id = $1 AND user_id = $2")
+        .bind(id)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur suppression: {}", e)))?;
+
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound("Rappel introuvable".to_string()));
+    }
+
+    Ok((StatusCode::OK, Json(json!({ "success": true }))))
 }
 
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie

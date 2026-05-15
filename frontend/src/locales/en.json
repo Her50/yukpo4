@@ -297,6 +297,11 @@
       "swapMessage": "Hi {{name}}, would you be available to swap a duty shift?",
       "helpMessage": "Hi {{name}}, a patient is looking for a drug I don't have. Could you help?"
     },
+    "prepare": {
+      "cta": "Prepare for pickup",
+      "waitingPickup": "Prepared · waiting for pickup",
+      "pickedUp": "Picked up by patient"
+    },
     "orders": {
       "filter": {
         "all": "All",
@@ -513,6 +518,32 @@
       "cta": "New report",
       "anonymousNotice": "Patient data is anonymized (age + gender only).",
       "listEmpty": "No reports yet."
+    },
+    "reminders": {
+      "title": "My intake reminders",
+      "subtitle": "Automatic push notification at chosen times.",
+      "loginRequired": "Sign in to manage your reminders.",
+      "add": "Add a reminder",
+      "empty": "No reminder set. Add one to never miss a dose.",
+      "active": "{{count}} active reminder",
+      "active_plural": "{{count}} active reminders",
+      "ended": "{{count}} ended",
+      "ended_plural": "{{count}} ended",
+      "until": "until {{date}}",
+      "newTitle": "New reminder",
+      "medName": "Medication *",
+      "posology": "Posology",
+      "presets": "Quick presets",
+      "times": "Intake times *",
+      "addTime": "Add a time",
+      "endAt": "End date",
+      "optional": "optional",
+      "create": "Create reminder",
+      "created": "Reminder created",
+      "deleted": "Reminder deleted",
+      "confirmDelete": "Delete this reminder?",
+      "errMissing": "Name and at least one time required.",
+      "disclaimer": "Yukpo reminders fire to the minute as long as the app has been opened at least once and notifications are allowed on your device."
     }
   }
 }

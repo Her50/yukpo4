@@ -8,7 +8,8 @@
 //   - Trie par taux de complétude desc (5/5 > 3/5 > 1/5)
 //   - À expiration, si aucune n'a 100 % → affiche option "élargir le rayon"
 
-import { AlertTriangle, ArrowLeft, Check, Clock, Loader2, MapPin, Phone, Pill, Sparkles, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, Clock, Loader2, MapPin, Package, Phone, Pill, Sparkles, X } from 'lucide-react';
+import { QRCodeSVG as QRCode } from 'qrcode.react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -31,6 +32,7 @@ interface Alternative {
 
 interface MatchPharmacy {
   pharmacy_id: number;
+  response_id?: number;
   name: string;
   ville?: string;
   quartier?: string;
@@ -42,6 +44,10 @@ interface MatchPharmacy {
   alternatives?: Alternative[];
   distance_km?: number;
   responded_at: string;
+  /** B2.1 — workflow click & collect */
+  prepared_at?: string | null;
+  picked_up_at?: string | null;
+  pickup_qr_code?: string | null;
 }
 
 interface FallbackInfo {
@@ -239,6 +245,15 @@ const MedicationAlertPage: React.FC = () => {
               medications={data.matches[0].items_status.map(s => s.name)}
             />
           )}
+
+          {/* Phase B2.1 : cartes "Prêt à retirer". Une pharmacie a marqué
+              les médicaments comme préparés → on affiche le QR à présenter
+              en pharmacie pour le retrait. Pas affichée si déjà picked_up. */}
+          {data.matches
+            .filter(m => m.prepared_at && !m.picked_up_at && m.pickup_qr_code)
+            .map(m => (
+              <PickupReadyCard key={`pickup-${m.pharmacy_id}`} match={m} />
+            ))}
 
           {/* Budget total de l'ordonnance — visible en haut. Les prix des
               médicaments sont harmonisés au Cameroun (régulation MINSANTE)
@@ -466,6 +481,78 @@ const PharmacyMatchCard: React.FC<{ match: MatchPharmacy; highlight?: boolean }>
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+// ============================================================================
+// Phase B2.1 — Carte "Prêt à retirer" affichée quand le pharmacien a marqué
+// les médicaments comme préparés. Le patient présente le QR au comptoir.
+// ============================================================================
+
+const PickupReadyCard: React.FC<{ match: MatchPharmacy }> = ({ match }) => {
+  const [showQr, setShowQr] = useState(true); // ouvert par défaut
+
+  const preparedAgo = useMemo(() => {
+    if (!match.prepared_at) return '';
+    const diff = Date.now() - new Date(match.prepared_at).getTime();
+    const mins = Math.max(1, Math.floor(diff / 60_000));
+    if (mins < 60) return `il y a ${mins} min`;
+    const h = Math.floor(mins / 60);
+    return `il y a ${h} h`;
+  }, [match.prepared_at]);
+
+  return (
+    <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="rounded-full bg-emerald-600 p-2 shrink-0">
+          <Package className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+            Prêt à retirer
+          </p>
+          <p className="font-bold text-emerald-900 text-base mt-0.5 leading-tight">
+            {match.name}
+          </p>
+          <p className="text-xs text-emerald-800/80 mt-0.5">
+            {[match.quartier, match.ville].filter(Boolean).join(', ')}
+            {preparedAgo && ` · préparé ${preparedAgo}`}
+          </p>
+          {match.telephone && (
+            <a
+              href={`tel:${match.telephone}`}
+              className="mt-1.5 inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold"
+            >
+              <Phone className="w-3 h-3" />
+              {match.telephone}
+            </a>
+          )}
+        </div>
+      </div>
+
+      {showQr && match.pickup_qr_code && (
+        <div className="mt-3 bg-white rounded-xl p-4 flex flex-col items-center">
+          <QRCode value={match.pickup_qr_code} size={180} level="M" />
+          <p className="text-[10px] font-mono text-gray-500 mt-2 break-all">
+            {match.pickup_qr_code.slice(0, 8)}…{match.pickup_qr_code.slice(-4)}
+          </p>
+          <p className="text-xs text-gray-700 text-center mt-2 leading-snug">
+            Présentez ce QR au pharmacien pour valider votre retrait.
+            <br />
+            <span className="text-[10px] text-gray-500">
+              ⚠ Code à usage unique — ne le partagez pas.
+            </span>
+          </p>
+        </div>
+      )}
+
+      <button
+        onClick={() => setShowQr(s => !s)}
+        className="mt-2 w-full text-xs font-semibold text-emerald-700 underline"
+      >
+        {showQr ? 'Masquer le QR' : 'Afficher le QR de retrait'}
+      </button>
     </div>
   );
 };

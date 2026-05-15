@@ -27,6 +27,7 @@ import PharmacieConsentGate from './pages/specialized/pharmacie/PharmacieConsent
 import MedicationAlertPage from './pages/specialized/pharmacie/MedicationAlertPage';
 import HealthRecordPage from './pages/specialized/pharmacie/HealthRecordPage';
 import AdminRuptureRadarPage from './pages/specialized/pharmacie/AdminRuptureRadarPage';
+import IntakeRemindersPage from './pages/specialized/pharmacie/IntakeRemindersPage';
 import OfflineBanner from './components/OfflineBanner';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -114,6 +115,8 @@ function AppPharmacie() {
               <Route path="/health-record" element={<PharmacieLayout><HealthRecordPage /></PharmacieLayout>} />
               {/* Phase B1 : page admin Yukpo — radar de rupture nationale */}
               <Route path="/admin/rupture-radar" element={<PharmacieLayout><AdminRuptureRadarPage /></PharmacieLayout>} />
+              {/* Phase B2.2 : rappels de prise de médicaments */}
+              <Route path="/reminders" element={<PharmacieLayout><IntakeRemindersPage /></PharmacieLayout>} />
               <Route path="/:id" element={<PharmacieLayout><PharmacieDetailsPage /></PharmacieLayout>} />
 
               {/* Compat anciennes URLs */}

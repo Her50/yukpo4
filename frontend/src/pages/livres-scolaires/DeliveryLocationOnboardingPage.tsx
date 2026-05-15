@@ -189,22 +189,27 @@ const DeliveryLocationOnboardingPage: React.FC = () => {
             <MapPin className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-xl font-bold text-gray-900 mb-1">
-            {t('bourse.delivery.title', { defaultValue: 'Où vous livrer ?' })}
+            {t('bourse.delivery.title', { defaultValue: 'Où livrer vos livres et fournitures ?' })}
           </h1>
           <p className="text-sm text-gray-600 leading-snug">
             {t('bourse.delivery.subtitle', {
-              defaultValue: 'Indiquez-nous votre lieu une seule fois. Yukpo l\'utilisera pour le troc et la livraison.',
+              defaultValue: 'Cette adresse sera utilisée pour vous livrer vos livres et fournitures, ou pour qu\'un coursier vienne récupérer vos livres à échanger. Indiquez-la une seule fois — Yukpo s\'en souviendra.',
             })}
           </p>
         </div>
 
         {/* Champ lieu autocomplete */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
-          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">
+          <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-1">
             <MapPin className="w-3 h-3 inline-block mr-1 text-amber-600" />
-            {t('bourse.delivery.location_label', { defaultValue: 'Lieu de livraison' })}
+            {t('bourse.delivery.location_label', { defaultValue: 'Adresse de livraison / récupération' })}
             <span className="text-red-500"> *</span>
           </label>
+          <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+            {t('bourse.delivery.location_sublabel', {
+              defaultValue: 'Là où le coursier vous livrera vos livres + fournitures, ou viendra récupérer vos livres à échanger.',
+            })}
+          </p>
           <div className="relative">
             <input
               type="search"

@@ -11,7 +11,7 @@
 // Polling : 10s. Pas de WebSocket pour ce MVP — quand un worker push WhatsApp
 // sera en place, on pourra réduire le polling à un trigger sur réception.
 
-import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Plus, Sparkles, Trash2, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Package, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiGet, apiPost } from '@/services/apiService';
@@ -35,6 +35,10 @@ interface IncomingAlert {
    *  rencontré. Clé : nom normalisé en minuscules. Évite au pharmacien de
    *  ressaisir le prix à chaque nouvelle alerte du même médicament. */
   known_prices?: Record<string, number>;
+  /** B2.1 — workflow préparation anticipée. response_id non-null si déjà répondu. */
+  response_id?: number | null;
+  prepared_at?: string | null;
+  picked_up_at?: string | null;
 }
 
 interface ItemStatusInput {
@@ -429,8 +433,83 @@ const AlertCard: React.FC<{
               {submitError}
             </div>
           )}
+
+          {/* B2.1 — bloc préparation anticipée (visible si déjà répondu et
+              au moins 1 médicament disponible). 3 états :
+                - pas encore préparé → bouton "Préparer à l'avance"
+                - prepared_at sans picked_up_at → badge "QR généré"
+                - picked_up_at → badge "Retiré" */}
+          {alert.already_responded && alert.response_id && availableCount > 0 && (
+            <PrepareSection
+              responseId={alert.response_id}
+              preparedAt={alert.prepared_at}
+              pickedUpAt={alert.picked_up_at}
+              onChanged={onSubmitted}
+            />
+          )}
         </div>
       )}
+    </div>
+  );
+};
+
+// ============================================================================
+// B2.1 — sous-composant : préparation anticipée (click & collect)
+// ============================================================================
+
+const PrepareSection: React.FC<{
+  responseId: number;
+  preparedAt?: string | null;
+  pickedUpAt?: string | null;
+  onChanged: () => void;
+}> = ({ responseId, preparedAt, pickedUpAt, onChanged }) => {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (pickedUpAt) {
+    return (
+      <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">
+        <Check className="w-3 h-3 text-emerald-600" />
+        {t('pharmaPartner.prepare.pickedUp')}
+      </div>
+    );
+  }
+
+  if (preparedAt) {
+    return (
+      <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-900 inline-flex items-center gap-1.5">
+        <Package className="w-3.5 h-3.5" />
+        {t('pharmaPartner.prepare.waitingPickup')}
+      </div>
+    );
+  }
+
+  const handleMarkPrepared = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await apiPost(`/api/pharmacies/me/responses/${responseId}/mark-prepared`, {});
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      onChanged();
+    } catch (e: any) {
+      setErr(e?.message || 'Erreur');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={handleMarkPrepared}
+        disabled={busy}
+        className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Package className="w-3 h-3" />}
+        {t('pharmaPartner.prepare.cta')}
+      </button>
+      {err && <p className="text-xs text-red-600 mt-1">{err}</p>}
     </div>
   );
 };

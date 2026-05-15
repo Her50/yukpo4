@@ -292,6 +292,7 @@ pub mod experiences_etudiants_service; // ✅ NOUVEAU 2025-01-28: Service expér
 pub mod export_service; // ✅ NOUVEAU Phase 2.3: Service de gestion des jobs d'export vidéo
 pub mod fournitures_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service fournitures scolaires
 pub mod generative_video_service; // ✅ NOUVEAU Phase 3.1: Service de génération vidéo IA complète
+pub mod intake_reminder_worker;
 pub mod linkedin_publisher_service; // ✅ 2026-04-03: Publication LinkedIn (posts, images, réponses)
 pub mod longform_content_service; // ✅ 2026-04-03: Contenu long format (scripts YT, articles, newsletters)
 pub mod longform_publisher_service; // ✅ 2026-04-03: Publication WordPress, Mailchimp, Ghost
@@ -347,4 +348,4 @@ pub mod yukpo_ia_metrics_service; // YukpoIA — métriques par route / tenant
 pub mod yukpo_ia_preprocess; // YukpoIA — Whisper + extraction PDF/office avant le prompt
 pub mod yukpo_ia_session_store; // YukpoIA — sessions chat persistées (PostgreSQL)
 pub mod yukpo_openai_outbound; // YukpoIA — client OpenAI partagé, concurrence, retries 429
-pub mod yukposhop_distribution_worker; // ✅ 2026-05-14 Piste 4 Phase B — worker queue distribution sociale
+pub mod yukposhop_distribution_worker; // ✅ 2026-05-14 Piste 4 Phase B — worker queue distribution sociale // ✅ 2026-05-15 Phase B2.2 — worker rappels prise médicament

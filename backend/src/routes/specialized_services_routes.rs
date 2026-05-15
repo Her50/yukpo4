@@ -1192,6 +1192,25 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/admin/pharmacie/rupture-radar",
             get(specialized_services_controller::admin_get_rupture_radar),
         )
+        // ✅ Phase B2.1 (2026-05-15) : préparation anticipée (click & collect)
+        .route(
+            "/api/pharmacies/me/responses/{response_id}/mark-prepared",
+            post(specialized_services_controller::mark_response_prepared),
+        )
+        .route(
+            "/api/pharmacies/me/preparations/qr/validate",
+            post(specialized_services_controller::validate_pickup_qr),
+        )
+        // ✅ Phase B2.2 (2026-05-15) : rappels de prise (intake reminders)
+        .route(
+            "/api/users/me/intake-reminders",
+            post(specialized_services_controller::create_intake_reminder)
+                .get(specialized_services_controller::list_intake_reminders),
+        )
+        .route(
+            "/api/users/me/intake-reminders/{id}",
+            delete(specialized_services_controller::delete_intake_reminder),
+        )
         .route(
             "/api/pharmacies/me/financial-movements",
             get(specialized_services_controller::get_pharmacy_financial_movements),
