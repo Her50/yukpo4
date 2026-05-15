@@ -165,27 +165,29 @@ const LivreScolaireHomePage: React.FC = () => {
               la vente/échange des vieux livres. Pendant 'achat' (août-sept),
               les 3 sources d'ajout de liste sont prioritaires. Pendant
               'creuse', un message d'attente + accès direct au compte. */}
+          {/* ✅ 2026-05-15 : CTA troc épuré pour s'aligner visuellement
+              avec les 2 autres boutons (école partenaire + scan). Avant :
+              border-2 émeraude + shadow-md + 3 lignes de texte qui le
+              rendaient disproportionné. Maintenant : même structure que
+              les autres (min-h 80, icône 10x10, titre + 1 ligne desc). */}
           {season === 'troc' && (
             <button
               onClick={() => navigate('/vendre')}
-              className="w-full bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 mb-4 shadow-md border-2 border-emerald-400 text-left active:from-green-100 min-h-[96px]"
+              className="w-full bg-white rounded-2xl p-4 mb-3 shadow-sm border border-gray-200 text-left active:bg-gray-50 min-h-[80px]"
             >
               <div className="flex items-start gap-3">
-                <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Repeat className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Repeat className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">
-                    {t('bourse.home.season_troc_badge')}
-                  </div>
-                  <div className="font-bold text-base text-emerald-900 leading-tight mt-0.5">
+                  <div className="font-bold text-sm text-gray-900">
                     {t('bourse.home.season_troc_title')}
                   </div>
-                  <div className="text-xs text-emerald-800 mt-1 leading-snug">
+                  <div className="text-xs text-gray-500 mt-0.5 leading-snug">
                     {t('bourse.home.season_troc_desc')}
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-emerald-700 mt-2 flex-shrink-0" />
+                <ChevronRight className="w-4 h-4 text-emerald-600 mt-2 flex-shrink-0" />
               </div>
             </button>
           )}
