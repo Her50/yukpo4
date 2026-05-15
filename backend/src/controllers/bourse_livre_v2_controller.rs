@@ -825,6 +825,10 @@ pub async fn analyze_recto_verso(
     //         est manquant, partiel ou non fiable. Évite que des doublons
     //         passent en cas d'extraction IA imparfaite du code-barres.
     const MAX_COPIES_PAR_ISBN: i64 = 3;
+    // ✅ 2026-05-15 : Message informatif (non bloquant) renvoyé au frontend
+    // quand le user scanne le 2e ou 3e exemplaire du même livre. Permet de
+    // l'alerter qu'il a déjà scanné ce livre, tout en acceptant le scan.
+    let mut soft_duplicate_info: Option<String> = None;
     if !analysis.etat_classification.eq("rejete") {
         // Normalise le titre pour la dédup fallback : minuscules, sans accents,
         // sans ponctuation, espaces simples. "Maths CM1 - Édition 2024" devient
@@ -925,6 +929,15 @@ pub async fn analyze_recto_verso(
                 "[analyze_recto_verso] Doublon déjà scanné {}× via {} (toléré jusqu'à {}) — accepté user_id={}",
                 dup_count, dedup_mode, MAX_COPIES_PAR_ISBN, user_id
             );
+            // ✅ 2026-05-15 : message info pour le frontend — l'user est
+            // informé qu'il a déjà scanné ce livre une (ou deux) fois mais
+            // que le scan actuel est accepté (limite tolérée pour
+            // jumeaux/fratrie). Pas un blocage.
+            let remaining = MAX_COPIES_PAR_ISBN - dup_count;
+            soft_duplicate_info = Some(format!(
+                "ℹ️ Vous avez déjà scanné ce livre {} fois. Yukpo tolère jusqu'à {} exemplaires (jumeaux/fratrie). Il reste {} scan(s) possible(s).",
+                dup_count, MAX_COPIES_PAR_ISBN, remaining
+            ));
         }
     }
 
@@ -1194,6 +1207,11 @@ pub async fn analyze_recto_verso(
             "is_rejected": effective_rejected,
             "rejection_code": rejection_code,
             "rejection_message": rejection_message,
+            // ✅ 2026-05-15 : Message info non bloquant (ex: "Vous avez déjà
+            //    scanné ce livre 2x — il reste 1 scan possible"). Renvoyé
+            //    quand le user scanne le 2e ou 3e exemplaire (toléré pour
+            //    jumeaux/fratrie). Frontend affiche en toast neutre.
+            "info_message": soft_duplicate_info,
             // ✅ Crédit final net pour le parent (= valeur × 0.75 − frais analyse IA).
             //    Source de vérité backend. Le frontend l'affiche directement.
             "credit_net_xaf": if effective_rejected { 0.0 } else {

@@ -28,6 +28,7 @@ import RecapAchatPage from './pages/livres-scolaires/RecapAchatPage';
 import RentreeCenterPage from './pages/livres-scolaires/RentreeCenterPage';
 import LibrairieBulkUploadPage from './pages/livres-scolaires/LibrairieBulkUploadPage';
 import BrowseProgrammeByEtablissementPage from './pages/livres-scolaires/BrowseProgrammeByEtablissementPage';
+import CahiersAccessoiresPage from './pages/livres-scolaires/CahiersAccessoiresPage';
 import VendreLivresPage from './pages/livres-scolaires/VendreLivresPage';
 import MesCommandesPage from './pages/livres-scolaires/MesCommandesPage';
 import { LibrairieDashboardPage, LibrairieCommandeDetailPage } from './pages/livres-scolaires/LibrairiePortalPage';
@@ -116,6 +117,7 @@ function AppBourse() {
               <Route path="/parent-selection" element={<BourseLayout><ParentSelectionPage /></BourseLayout>} />
               <Route path="/scan-programme" element={<BourseLayout><ScanProgrammePage /></BourseLayout>} />
               <Route path="/programme-ecole" element={<BourseLayout><BrowseProgrammeByEtablissementPage /></BourseLayout>} />
+              <Route path="/cahiers-accessoires" element={<BourseLayout><CahiersAccessoiresPage /></BourseLayout>} />
               {/* Routes Bourse du Livre accessibles sans login : auth demandée
                   uniquement au moment de la finalisation (POST commande / vente).
                   Cohérent avec une utilisation périodique de la rentrée scolaire. */}

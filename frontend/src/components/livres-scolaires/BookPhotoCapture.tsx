@@ -312,6 +312,16 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
       };
       setResult(finalResult);
       setStep('result');
+      // ✅ 2026-05-15 : Toast info non bloquant si user a déjà scanné ce livre
+      // 1 ou 2 fois (limite tolérée 3 pour fratrie). Le backend renvoie un
+      // message info via `data.info_message`. Strictly informatif — le scan
+      // est accepté et inclus dans le panier normalement.
+      if (data?.info_message) {
+        toast({
+          title: t('bourse.bookCapture.toast_duplicate_warn_title', { defaultValue: 'Doublon détecté' }),
+          description: String(data.info_message),
+        });
+      }
       // On notifie le parent même si rejeté — le parent décide d'inclure ou non.
       onAnalyzed(finalResult);
     } catch (e: any) {

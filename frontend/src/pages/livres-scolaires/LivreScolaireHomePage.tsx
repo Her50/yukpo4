@@ -1,5 +1,5 @@
 import {
-  Camera, ChevronRight, LogOut, Repeat, School, ShoppingCart, Sparkles, Store, Wallet,
+  Camera, ChevronRight, LogOut, Pencil, Repeat, School, ShoppingCart, Sparkles, Store, Wallet,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -251,6 +251,23 @@ const LivreScolaireHomePage: React.FC = () => {
                 <div className="text-xs text-gray-500 mt-0.5 leading-snug">{t('bourse.home.scan_description')}</div>
               </div>
               <ChevronRight className="w-4 h-4 text-blue-600 mt-2 flex-shrink-0" />
+            </div>
+          </button>
+
+          {/* ✅ 2026-05-15 : 3. Cahiers & Accessoires (page agrégée multi-classes) */}
+          <button
+            onClick={() => navigate('/cahiers-accessoires')}
+            className="w-full bg-white rounded-2xl p-4 mb-3 shadow-sm border border-gray-200 text-left active:bg-gray-50 min-h-[80px]"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center flex-shrink-0">
+                <Pencil className="w-5 h-5 text-purple-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm text-gray-900">{t('bourse.home.cahiers_cta')}</div>
+                <div className="text-xs text-gray-500 mt-0.5 leading-snug">{t('bourse.home.cahiers_description')}</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-purple-600 mt-2 flex-shrink-0" />
             </div>
           </button>
 

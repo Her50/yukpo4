@@ -1267,6 +1267,161 @@ pub async fn enrich_boutique_via_google_places(
         .into_response()
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// Piste 6 — Génération vidéo pub IA produit YukpoShop (Remotion Rust)
+// ════════════════════════════════════════════════════════════════════════
+//
+// Reçoit photos + titre + prix + description + ton + durée.
+// Compose un projet Remotion (déjà en place côté Rust via
+// remotion_renderer_service de l'AppState), rend en MP4 vertical 9:16,
+// upload vers S3/R2, retourne URLs.
+//
+// IMPLEMENTATION v0 : si remotion_renderer dispo dans AppState, on lance
+// le rendu. Sinon (Phase B), retourne success=false avec note explicite.
+
+#[derive(Debug, Deserialize)]
+pub struct YukposhopVideoGenerateRequest {
+    pub source: String,
+    pub external_id: String,
+    pub titre: String,
+    #[serde(default)]
+    pub prix: f64,
+    #[serde(default)]
+    pub devise: String,
+    pub photos_urls: Vec<String>,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default = "default_ton")]
+    pub ton: String,
+    #[serde(default = "default_duree")]
+    pub duree_s: i32,
+    #[serde(default = "default_format")]
+    pub format: String,
+}
+fn default_ton() -> String {
+    "dynamique".into()
+}
+fn default_duree() -> i32 {
+    15
+}
+fn default_format() -> String {
+    "vertical_9_16".into()
+}
+
+#[derive(Debug, Serialize)]
+pub struct YukposhopVideoResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub video_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thumbnail_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_s: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duree_render_s: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+pub async fn generate_yukposhop_video(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> impl IntoResponse {
+    let secret = std::env::var("YUKPOSHOP_BRIDGE_HMAC_KEY").unwrap_or_default();
+    if secret.is_empty() {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"ok": false, "error": "bridge non configuré"})),
+        )
+            .into_response();
+    }
+    if let Err(e) = verify_hmac(&body, &headers, &secret) {
+        warn!("[yukposhop bridge video] HMAC reject: {e}");
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"ok": false, "error": e})),
+        )
+            .into_response();
+    }
+    let req: YukposhopVideoGenerateRequest = match serde_json::from_slice(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"ok": false, "error": format!("invalid json: {e}")})),
+            )
+                .into_response()
+        }
+    };
+    if req.photos_urls.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"ok": false, "error": "photos_urls vide"})),
+        )
+            .into_response();
+    }
+
+    // Vérifie si le service Remotion est branché côté AppState.
+    // remotion_renderer est `Option<Arc<...>>` — si None, on retourne
+    // un "Phase B" propre sans casse.
+    if state.remotion_renderer.is_none() {
+        info!("[yukposhop bridge video] Remotion non branché — retour Phase B stub");
+        return (
+            StatusCode::OK,
+            Json(YukposhopVideoResponse {
+                ok: false,
+                video_url: None,
+                thumbnail_url: None,
+                duration_s: None,
+                duree_render_s: None,
+                error: Some(
+                    "Remotion renderer non configuré côté Rust (Phase B). \
+                 Branchement à venir : composer un projet Remotion avec photos \
+                 + titre + prix + ton, render MP4 9:16, upload S3, retour URLs."
+                        .into(),
+                ),
+            }),
+        )
+            .into_response();
+    }
+
+    // Phase B (à brancher) : appel réel au RemotionRendererService
+    // Le service expose typiquement render_with_template(template_id, props) -> output_url.
+    // Ici on stub avec un placeholder mais le wiring est prêt.
+    //
+    // Exemple de wiring quand Remotion sera prêt :
+    //   let renderer = state.remotion_renderer.as_ref().unwrap();
+    //   let output = renderer.render_template_yukposhop_promo(
+    //       &req.photos_urls, &req.titre, req.prix, &req.devise,
+    //       &req.description, &req.ton, req.duree_s, &req.format
+    //   ).await;
+    //   match output { Ok(o) => return success, Err(e) => return error }
+
+    let t0 = std::time::Instant::now();
+    info!(
+        "[yukposhop bridge video] (stub Phase B) external_id={} photos={} ton={} duree={}s",
+        req.external_id,
+        req.photos_urls.len(),
+        req.ton,
+        req.duree_s
+    );
+    let elapsed = t0.elapsed().as_secs() as i32;
+
+    (
+        StatusCode::OK,
+        Json(YukposhopVideoResponse {
+            ok: false,
+            video_url: None,
+            thumbnail_url: None,
+            duration_s: Some(req.duree_s),
+            duree_render_s: Some(elapsed),
+            error: Some("Phase B — render Remotion à brancher (template + projet)".into()),
+        }),
+    )
+        .into_response()
+}
+
 // ─── Router ─────────────────────────────────────────────────────────────
 
 pub fn integrations_yukposhop_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
@@ -1295,6 +1450,11 @@ pub fn integrations_yukposhop_routes(state: Arc<AppState>) -> Router<Arc<AppStat
         .route(
             "/api/v1/integrations/yukposhop/boutique/enrich",
             post(enrich_boutique_via_google_places),
+        )
+        // Piste 6 — vidéo pub IA Remotion
+        .route(
+            "/api/v1/integrations/yukposhop/video/generate",
+            post(generate_yukposhop_video),
         )
         .with_state(state)
 }

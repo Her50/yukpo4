@@ -23,3 +23,22 @@ try {
 } catch (e: any) {
   showError(`Crash au montage:\n${e?.message}\n\n${e?.stack}`);
 }
+
+// ✅ 2026-05-15 : enregistrement Service Worker pour notifications push
+// persistantes/sonores côté pharmacien (workflow RFQ — 3 relances échelonnées
+// sur 5 min). Le SW est dans /sw.js, partagé entre les apps lite (bourse,
+// pharmacie, restaurant) — il gère push, notificationclick, et le cache PWA.
+if ('serviceWorker' in navigator) {
+  // Attendre le load complet pour ne pas concurrencer le rendu initial sur
+  // les connexions lentes (4G dégradée CM).
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then((reg) => {
+        console.log('[pharmacie] SW enregistré, scope:', reg.scope);
+      })
+      .catch((err) => {
+        console.warn('[pharmacie] SW non enregistré :', err);
+      });
+  });
+}

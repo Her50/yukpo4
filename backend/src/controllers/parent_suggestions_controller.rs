@@ -258,6 +258,158 @@ pub async fn articles_suggested(
     ))
 }
 
+// ============================================================================
+// ✅ 2026-05-15 : Fournitures agrégées multi-classes
+// ============================================================================
+// Endpoint dédié à la nouvelle page CahiersAccessoiresPage.
+// L'utilisateur déclare ses classes + nombre d'enfants par classe ; le backend
+// agrège les cahiers/accessoires en sommant quantite_mediane × nb_enfants et
+// renvoie un breakdown par classe pour transparence.
+
+#[derive(Debug, Deserialize)]
+pub struct ClasseAvecEnfants {
+    pub classe: String,
+    /// Nombre d'enfants dans cette classe (défaut 1 si absent).
+    #[serde(default = "default_nb_enfants")]
+    pub nb_enfants: i32,
+}
+
+fn default_nb_enfants() -> i32 {
+    1
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FournituresAggregeesBody {
+    /// Liste des classes du parent avec nb d'enfants. Au moins une obligatoire.
+    pub classes: Vec<ClasseAvecEnfants>,
+    /// Pays ISO-2. Défaut "CM".
+    #[serde(default)]
+    pub pays: Option<String>,
+}
+
+/// POST /api/v2/parent/fournitures-aggregees
+///
+/// Body : { classes: [{ classe, nb_enfants }], pays }
+///
+/// Pour chaque classe, on fetche `accessoires_populaires_par_classe`, on
+/// dédoublonne par `nom_normalise`, et on somme `quantite_mediane × nb_enfants`.
+/// Le breakdown par classe est conservé pour affichage transparent dans l'UI
+/// (ex: "Cahier 200p Seyès — 17 unités (5 × 6ème, 8 × CE1, 4 × CP)").
+pub async fn fournitures_aggregees(
+    State(state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+    Json(body): Json<FournituresAggregeesBody>,
+) -> AppResult<impl IntoResponse> {
+    if body.classes.is_empty() {
+        return Err(AppError::BadRequest("Au moins une classe requise".into()));
+    }
+    let pays = body.pays.clone().unwrap_or_else(|| "CM".to_string());
+
+    use sqlx::Row;
+    use std::collections::BTreeMap;
+
+    // Structure d'agrégation côté backend (BTreeMap pour ordre stable).
+    #[derive(serde::Serialize, Clone)]
+    struct ItemAgrege {
+        nom: String,
+        nom_normalise: String,
+        gamme_defaut: Option<String>,
+        prix_median: Option<f64>,
+        devise: Option<String>,
+        occurrences_total: i64,
+        /// Quantité totale = somme (quantite_mediane * nb_enfants) sur toutes les classes
+        quantite_totale: i64,
+        /// Breakdown par classe : [{ classe, quantite_par_enfant, nb_enfants, sous_total }]
+        breakdown: Vec<BreakdownClasse>,
+    }
+    #[derive(serde::Serialize, Clone)]
+    struct BreakdownClasse {
+        classe: String,
+        quantite_par_enfant: i32,
+        nb_enfants: i32,
+        sous_total: i32,
+    }
+
+    let mut agg: BTreeMap<String, ItemAgrege> = BTreeMap::new();
+
+    for c in &body.classes {
+        let nb = c.nb_enfants.max(1);
+        let classe_trim = c.classe.trim();
+        if classe_trim.is_empty() {
+            continue;
+        }
+        let rows = sqlx::query(
+            r#"SELECT id, nom, nom_normalise, gamme_defaut,
+                      prix_median::float8 AS prix_median,
+                      devise,
+                      quantite_mediane,
+                      occurrences
+               FROM accessoires_populaires_par_classe
+               WHERE pays = $1
+                 AND classe = $2
+               ORDER BY occurrences DESC, nom"#,
+        )
+        .bind(&pays)
+        .bind(classe_trim)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default();
+
+        for r in &rows {
+            let nom: String = r.try_get("nom").unwrap_or_default();
+            let nom_norm: String = r
+                .try_get::<Option<String>, _>("nom_normalise")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| nom.to_lowercase());
+            let qte_med: i32 =
+                r.try_get::<Option<i32>, _>("quantite_mediane").ok().flatten().unwrap_or(1);
+            let occ: i32 = r.try_get("occurrences").unwrap_or(0);
+            let sous_total = qte_med * nb;
+
+            let entry = agg.entry(nom_norm.clone()).or_insert_with(|| ItemAgrege {
+                nom: nom.clone(),
+                nom_normalise: nom_norm.clone(),
+                gamme_defaut: r.try_get::<Option<String>, _>("gamme_defaut").ok().flatten(),
+                prix_median: r.try_get::<Option<f64>, _>("prix_median").ok().flatten(),
+                devise: r.try_get::<Option<String>, _>("devise").ok().flatten(),
+                occurrences_total: 0,
+                quantite_totale: 0,
+                breakdown: Vec::new(),
+            });
+            entry.occurrences_total += occ as i64;
+            entry.quantite_totale += sous_total as i64;
+            entry.breakdown.push(BreakdownClasse {
+                classe: classe_trim.to_string(),
+                quantite_par_enfant: qte_med,
+                nb_enfants: nb,
+                sous_total,
+            });
+        }
+    }
+
+    // Tri final par occurrences cumulées décroissantes (les plus fréquents en haut)
+    let mut items: Vec<ItemAgrege> = agg.into_values().collect();
+    items.sort_by(|a, b| {
+        b.occurrences_total.cmp(&a.occurrences_total).then_with(|| a.nom.cmp(&b.nom))
+    });
+
+    let total_articles = items.len();
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "items": items,
+            "count": total_articles,
+            "classes_input": body.classes.iter().map(|c| json!({
+                "classe": c.classe,
+                "nb_enfants": c.nb_enfants
+            })).collect::<Vec<_>>(),
+            "pays": pays,
+        })),
+    ))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ArticlesSearchQuery {
     pub q: String,

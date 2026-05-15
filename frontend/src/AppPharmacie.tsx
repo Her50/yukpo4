@@ -25,6 +25,7 @@ import MyPharmacyOrdersPage from './pages/specialized/MyPharmacyOrdersPage';
 import PharmacieDashboardPage from './pages/partner/PharmacieDashboardPage';
 import PharmacieConsentGate from './pages/specialized/pharmacie/PharmacieConsentGate';
 import MedicationAlertPage from './pages/specialized/pharmacie/MedicationAlertPage';
+import OfflineBanner from './components/OfflineBanner';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null };
@@ -63,6 +64,10 @@ function AppPharmacie() {
     <ErrorBoundary>
       <ToasterProvider>
         <AuthProvider>
+          {/* Bandeau global hors-ligne / connexion lente, visible sur toutes
+              les routes pour ne pas surprendre l'utilisateur en cas de coupure
+              4G en plein scan ordonnance ou soumission de réponse. */}
+          <OfflineBanner />
           <Router>
             {/* ⚠️ Consentement utilisateur obligatoire avant utilisation
                 des fonctions IA (posologie, interactions, alternatives) —
