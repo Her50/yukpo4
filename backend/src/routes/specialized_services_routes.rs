@@ -150,6 +150,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/search-by-medications",
             post(pharmacy_product_controller::search_by_medications),
         )
+        // ✅ Phase C3 (2026-05-15) : substitution générique (PUBLIC)
+        .route(
+            "/api/medications/substitutes",
+            post(specialized_services_controller::find_medication_substitutes),
+        )
         // Endpoints IA pharmacie — PUBLICS pour permettre à un utilisateur
         // non authentifié d'utiliser la PWA (recherche médicament, scan
         // ordonnance/boîte). Le rate-limit middleware s'applique à tout le

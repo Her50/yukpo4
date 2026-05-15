@@ -10185,6 +10185,181 @@ fn surplus_rows_to_json(rows: &[sqlx::postgres::PgRow]) -> Vec<serde_json::Value
         .collect()
 }
 
+// ============================================================================
+// Phase C3 — Substitution générique intelligente
+// ============================================================================
+//
+// Quand un médicament demandé est indisponible, on cherche les équivalents
+// génériques (mêmes DCI) via la table dci_equivalents. La pharmacie peut
+// alors proposer une alternative au patient au lieu d'un "désolé,
+// indisponible".
+//
+// Fonctionne aussi côté patient : sur la page d'alerte, un bouton
+// "Trouver des équivalents génériques" liste les marques alternatives,
+// que l'utilisateur peut ajouter à une nouvelle alerte élargie.
+
+#[derive(Debug, Deserialize)]
+pub struct FindSubstitutesRequest {
+    /// Liste de noms de médicaments (peuvent contenir le dosage, on nettoie)
+    pub names: Vec<String>,
+}
+
+/// Normalise un nom de médicament pour matching : lowercase, retire dosages,
+/// retire suffixes "mg/ml/comprimé/sirop/cp" courants.
+fn normalize_med_name(raw: &str) -> String {
+    let lower = raw.trim().to_lowercase();
+    // Retire les patterns numériques de dosage (500mg, 250 mg, 2.5 mg/ml, etc.)
+    let mut cleaned = String::with_capacity(lower.len());
+    let mut chars = lower.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c.is_ascii_digit() {
+            // skip digits jusqu'à mot suivant
+            while let Some(&n) = chars.peek() {
+                if n.is_ascii_digit()
+                    || n == '.'
+                    || n == ','
+                    || n == '/'
+                    || n == '%'
+                    || n == ' '
+                    || n == 'm' && {
+                        let mut iter = chars.clone();
+                        iter.next();
+                        matches!(iter.next(), Some('g') | Some('l'))
+                    }
+                {
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+        } else {
+            cleaned.push(c);
+        }
+    }
+    // Retire suffixes courants
+    for suffix in [
+        " comprime",
+        " comprimé",
+        " comprimés",
+        " cp",
+        " sirop",
+        " gélule",
+        " gélules",
+        " sachet",
+        " sachets",
+        " ampoule",
+        " ampoules",
+        " flacon",
+        " injection",
+        " inj",
+        " susp",
+        " suspension",
+    ] {
+        if let Some(idx) = cleaned.rfind(suffix) {
+            cleaned.truncate(idx);
+        }
+    }
+    cleaned.trim().to_string()
+}
+
+/// POST /api/medications/substitutes — pour chaque nom demandé, retourne
+/// les équivalents génériques connus (autres marques avec même DCI).
+///
+/// PUBLIC (pas d'auth) : la liste DCI est publique et utile au patient
+/// avant connexion (recherche médicament).
+pub async fn find_medication_substitutes(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<FindSubstitutesRequest>,
+) -> AppResult<impl IntoResponse> {
+    if payload.names.is_empty() {
+        return Err(AppError::BadRequest(
+            "names ne peut pas être vide".to_string(),
+        ));
+    }
+    if payload.names.len() > 20 {
+        return Err(AppError::BadRequest(
+            "Maximum 20 médicaments à la fois".to_string(),
+        ));
+    }
+
+    let mut results = serde_json::Map::new();
+
+    for raw_name in &payload.names {
+        let normalized = normalize_med_name(raw_name);
+        if normalized.is_empty() {
+            results.insert(raw_name.clone(), json!({ "dci": null, "alternatives": [] }));
+            continue;
+        }
+
+        // Trouve le DCI correspondant à la marque (matching exact ou ILIKE)
+        let dci: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT dci
+            FROM dci_equivalents
+            WHERE lower(brand_name) = $1
+               OR lower(brand_name) ILIKE $2
+               OR lower(dci) = $1
+            ORDER BY
+                CASE WHEN lower(brand_name) = $1 THEN 0
+                     WHEN lower(dci) = $1 THEN 1
+                     ELSE 2 END
+            LIMIT 1
+            "#,
+        )
+        .bind(&normalized)
+        .bind(format!("%{}%", normalized))
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        let alternatives = if let Some(ref d) = dci {
+            sqlx::query(
+                r#"
+                SELECT brand_name, dosage_form, notes
+                FROM dci_equivalents
+                WHERE lower(dci) = lower($1)
+                  AND lower(brand_name) != $2
+                ORDER BY brand_name ASC
+                LIMIT 15
+                "#,
+            )
+            .bind(d)
+            .bind(&normalized)
+            .fetch_all(&state.pg)
+            .await
+            .unwrap_or_default()
+            .iter()
+            .map(|r| {
+                json!({
+                    "brand": r.try_get::<String, _>("brand_name").unwrap_or_default(),
+                    "dosage_form": r.try_get::<Option<String>, _>("dosage_form").unwrap_or(None),
+                    "notes": r.try_get::<Option<String>, _>("notes").unwrap_or(None),
+                })
+            })
+            .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        };
+
+        results.insert(
+            raw_name.clone(),
+            json!({
+                "dci": dci,
+                "alternatives": alternatives,
+            }),
+        );
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "results": results,
+        })),
+    ))
+}
+
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie
 ///
 /// Conformité éthique/réglementaire : trace serveur pour prouver que
