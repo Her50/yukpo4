@@ -166,10 +166,22 @@ const PharmacieDashboardPage: React.FC = () => {
         });
         if (res.ok) {
           const j = await res.json();
-          setQrResult({
-            ok: true,
-            message: `Retrait validé : alerte #${j.alert_id} (${j.pharmacy_name || ''})`,
-          });
+          // ✅ B3 : reconnaissance patient fidèle — on enrichit le message
+          // avec le tier et le nombre de retraits précédents quand dispo.
+          let msg = `Retrait validé : alerte #${j.alert_id}`;
+          const ch = j.customer_history;
+          if (ch && ch.pickup_count >= 0) {
+            const next = ch.pickup_count + 1; // +1 = celui qu'on vient de valider
+            const tierBadges: Record<string, string> = {
+              new: '⭐ Nouveau patient',
+              occasional: '👋 Patient occasionnel',
+              regular: '🟢 Patient régulier',
+              loyal: '💚 Patient fidèle',
+            };
+            const badge = tierBadges[ch.tier] || '';
+            msg += ` · ${badge} (${next}e retrait chez vous)`;
+          }
+          setQrResult({ ok: true, message: msg });
           setQrInput('');
           reload();
           return;

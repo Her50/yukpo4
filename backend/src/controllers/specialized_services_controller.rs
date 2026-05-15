@@ -9125,7 +9125,9 @@ pub async fn validate_pickup_qr(
 
     let response_id: i64 = r.try_get("id").unwrap_or_default();
     let alert_id: i64 = r.try_get("alert_id").unwrap_or_default();
+    let pharmacy_id: i32 = r.try_get("pharmacy_id").unwrap_or_default();
     let pharmacy_name: String = r.try_get("pharmacy_name").unwrap_or_default();
+    let patient_user_id: Option<i32> = r.try_get("patient_user_id").ok();
 
     sqlx::query("UPDATE pharmacy_responses SET picked_up_at = NOW() WHERE id = $1")
         .bind(response_id)
@@ -9138,6 +9140,50 @@ pub async fn validate_pickup_qr(
         response_id, alert_id, user_id
     );
 
+    // ✅ B3 (2026-05-15) — Reconnaissance patient fidèle. Compte les retraits
+    // précédents de ce patient dans cette pharmacie (hors le retrait qu'on vient
+    // de valider, qui sera donc le N-ième → on incrémente +1 côté UI).
+    let customer_history = if let Some(pid) = patient_user_id {
+        sqlx::query(
+            r#"
+            SELECT
+                COUNT(*)::BIGINT AS pickup_count,
+                MIN(pr.picked_up_at) AS first_visit,
+                MAX(pr.picked_up_at) AS last_visit
+            FROM pharmacy_responses pr
+            JOIN medication_alerts a ON a.id = pr.alert_id
+            WHERE pr.pharmacy_id = $1
+              AND a.user_id = $2
+              AND pr.picked_up_at IS NOT NULL
+            "#,
+        )
+        .bind(pharmacy_id)
+        .bind(pid)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten()
+        .map(|h| {
+            let cnt: i64 = h.try_get("pickup_count").unwrap_or(0);
+            let first: Option<chrono::DateTime<chrono::Utc>> = h.try_get("first_visit").ok();
+            let last: Option<chrono::DateTime<chrono::Utc>> = h.try_get("last_visit").ok();
+            json!({
+                "pickup_count": cnt,
+                "first_visit": first.map(|d| d.to_rfc3339()),
+                "last_visit": last.map(|d| d.to_rfc3339()),
+                // Catégorie marketing utile pour l'UI pharmacien
+                "tier": match cnt {
+                    0 => "new",
+                    1..=4 => "occasional",
+                    5..=14 => "regular",
+                    _ => "loyal",
+                },
+            })
+        })
+    } else {
+        None
+    };
+
     Ok((
         StatusCode::OK,
         Json(json!({
@@ -9145,6 +9191,7 @@ pub async fn validate_pickup_qr(
             "response_id": response_id,
             "alert_id": alert_id,
             "pharmacy_name": pharmacy_name,
+            "customer_history": customer_history,
         })),
     ))
 }
