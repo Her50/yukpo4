@@ -213,18 +213,25 @@ interface DeliveryInfo {
 
 function DeliveryModal({
   defaultPhone,
+  defaultAddress,
+  defaultGps,
   onConfirm,
   onClose,
 }: {
   defaultPhone?: string;
+  /** ✅ 2026-05-16 — Pré-remplit l'adresse si l'utilisateur a déjà fait
+   *  l'onboarding livraison (DeliveryLocationOnboardingPage).
+   *  L'utilisateur peut quand même modifier avant de valider. */
+  defaultAddress?: string;
+  defaultGps?: { lat: number; lon: number } | null;
   onConfirm: (info: DeliveryInfo) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [adresse, setAdresse] = useState('');
+  const [adresse, setAdresse] = useState(defaultAddress ?? '');
   const [telephone, setTelephone] = useState(defaultPhone ?? '');
   const [note, setNote] = useState('');
-  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(defaultGps ?? null);
   const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Autocomplete adresse via Nominatim (OSM, gratuit, CORS-friendly).
@@ -538,6 +545,38 @@ const RecapAchatPage: React.FC = () => {
   const [showOccasionModal, setShowOccasionModal] = useState(false);
   const [submittingOrder, setSubmittingOrder] = useState(false);
 
+  /* ─── Infos de livraison persistées (DeliveryLocationOnboardingPage) ───
+   *  ✅ 2026-05-16 — Si l'utilisateur a déjà rempli son adresse + GPS lors de
+   *  l'onboarding, on les pré-remplit dans la DeliveryModal pour éviter de
+   *  redemander à chaque commande. L'user peut toujours modifier ponctuellement. */
+  const [savedDelivery, setSavedDelivery] = useState<{
+    address?: string;
+    gps?: { lat: number; lon: number } | null;
+    phone?: string;
+  }>({});
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiGet('/api/users/me/delivery-info');
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        if (!data?.success) return;
+        const gps =
+          typeof data.delivery_location_lat === 'number' &&
+          typeof data.delivery_location_lng === 'number'
+            ? { lat: data.delivery_location_lat, lon: data.delivery_location_lng }
+            : null;
+        setSavedDelivery({
+          address: data.delivery_location_text || undefined,
+          gps,
+          phone: data.whatsapp_number_primary || undefined,
+        });
+      } catch {
+        // silent — onboarding pas encore fait, comportement par défaut
+      }
+    })();
+  }, []);
+
   /* ─── Crédit Bourse prévisionnel issu du troc ───
    *  À chaque changement du total commande, on appelle match-all-pending
    *  pour calculer combien de XAF de crédit le parent peut appliquer
@@ -833,11 +872,21 @@ const RecapAchatPage: React.FC = () => {
       )}
       {showDelivery && (
         <DeliveryModal
-          // Pré-remplissage du WhatsApp : on privilégie user.phone (issu du
-          // JWT / fetch /api/user/me), puis le cache local rempli à la
-          // création du compte (yukpo_user_phone). L'utilisateur peut
-          // toujours éditer si besoin.
-          defaultPhone={user?.phone || (typeof localStorage !== 'undefined' ? localStorage.getItem('yukpo_user_phone') ?? '' : '')}
+          // Pré-remplissage du WhatsApp : on privilégie l'onboarding livraison
+          // (savedDelivery.phone, le numéro qu'on a confirmé pour les notifs),
+          // puis user.phone du JWT, puis le cache local (yukpo_user_phone).
+          // L'utilisateur peut toujours éditer si besoin.
+          defaultPhone={
+            savedDelivery.phone ||
+            user?.phone ||
+            (typeof localStorage !== 'undefined'
+              ? localStorage.getItem('yukpo_user_phone') ?? ''
+              : '')
+          }
+          // ✅ 2026-05-16 — Adresse et GPS pré-remplis depuis l'onboarding.
+          // Évite à l'user de tout retaper s'il livre toujours au même endroit.
+          defaultAddress={savedDelivery.address}
+          defaultGps={savedDelivery.gps}
           onClose={() => setShowDelivery(false)}
           onConfirm={async info => {
             // Construit le payload pour POST /api/librairie-network/commandes
@@ -1521,7 +1570,11 @@ const RecapAchatPage: React.FC = () => {
                   ? t('bourse.recap.sending_order')
                   : blocked
                     ? t('bourse.rentree.troc_pending_cta')
-                    : t('bourse.recap.precise_delivery')}
+                    : savedDelivery.address
+                      ? t('bourse.recap.validate_order', {
+                          defaultValue: 'Valider la commande',
+                        })
+                      : t('bourse.recap.precise_delivery')}
                 <ChevronRight className="w-4 h-4 ml-auto" />
               </button>
             );

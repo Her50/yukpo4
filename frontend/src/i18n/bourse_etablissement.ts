@@ -101,8 +101,8 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
       home: {
         title: 'Bourse du Livre',
         subtitle: 'Quatre façons de préparer la rentrée :',
-        scan_cta: 'Photographier ma liste',
-        scan_description: 'Yukpo extrait tout.',
+        scan_cta: 'Photographier ma liste scolaire',
+        scan_description: 'Yukpo extrait toute la liste automatiquement.',
         cahiers_cta: 'Cahiers & Accessoires',
         cahiers_description: 'Agrégés par classe.',
         or: 'ou',
