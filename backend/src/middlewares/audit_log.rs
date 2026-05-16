@@ -39,9 +39,6 @@ pub fn init_pool(pool: PgPool) {
 
 /// Détermine si la requête doit être auditée (filtrage par path + méthode).
 fn should_audit(method: &Method, path: &str) -> bool {
-    if matches!(method, &Method::GET | &Method::HEAD | &Method::OPTIONS) {
-        return false;
-    }
     // Skip noise : healthchecks, métriques, statiques
     if path.starts_with("/health")
         || path.starts_with("/metrics")
@@ -49,6 +46,15 @@ fn should_audit(method: &Method, path: &str) -> bool {
         || path == "/favicon.ico"
         || path == "/"
     {
+        return false;
+    }
+    // ✅ 2026-05-16 — Tracer TOUS les upgrades WebSocket (sont en GET mais
+    // sensibles : ouverture d'un canal persistant authentifié).
+    if path.starts_with("/ws/") {
+        return true;
+    }
+    // Pour les autres routes : skip les GET (trop de bruit), audit POST/PUT/PATCH/DELETE
+    if matches!(method, &Method::GET | &Method::HEAD | &Method::OPTIONS) {
         return false;
     }
     // Whitelist explicite des paths sensibles à auditer
@@ -63,6 +69,7 @@ fn should_audit(method: &Method, path: &str) -> bool {
         "/api/parrainage",
         "/api/auth/register",
         "/api/auth/oauth",
+        "/api/auth/logout",
         "/api/users/", // /api/users/:id PATCH/DELETE
         "/api/kyc",
         "/api/debug",

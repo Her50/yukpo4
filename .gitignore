@@ -81,3 +81,40 @@ mobile/android/app/google-services.json
 # Local Netlify folder
 .netlify
 .env.media-sync
+
+# ✅ 2026-05-16 — Artefacts session hardening Bourse du Livre
+# Fichiers d'environnement (peuvent contenir secrets ou noms de secrets)
+env_plain.txt
+env_secrets.txt
+.env
+.env.local
+.env.production
+.env.development
+
+# Build artifacts (régénérables)
+frontend/dist-bourse/
+frontend/dist-lite/
+frontend/dist-pharmacie/
+frontend/dist-restaurant/
+deploy-lite/
+deploy-lite.zip
+*.log
+backend/cargo_check.log
+backend/fly-deploy*.log
+infra/aws/*.log
+
+# Fichiers temporaires Office (lock files)
+~$*
+~WRL*.tmp
+*.tmp
+
+# Caches Python
+scripts/__pycache__/
+**/__pycache__/
+
+# Configs déploiement one-shot (contiennent IDs/URLs spécifiques)
+00792.json
+cloud-run-00792.yaml
+bucket-lifecycle.json
+cleanup-policy.json
+deploy-lite-*.zip

@@ -1,5 +1,6 @@
 // @ts-check
 import { WS_BASE_URL } from '../config/api.config';
+import { withWsToken } from '../config/websocket';
 
 let ws: WebSocket | null = null;
 let listeners: ((data: string) => void)[] = [];
@@ -10,10 +11,12 @@ let listeners: ((data: string) => void)[] = [];
 export function initAccessWebSocket() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
 
-  // ✅ CORRIGÉ: Utilise la configuration centralisée
-  const wsUrl = `${WS_BASE_URL}/ws/access`;
+  // ✅ 2026-05-16 — withWsToken ajoute ?token=<jwt> (requis par le backend
+  // depuis le hardening WS — voir backend/src/websocket/ws_auth.rs).
+  const wsUrl = withWsToken(`${WS_BASE_URL}/ws/access`);
+  if (!wsUrl) return;
 
-  console.log('📡 Connexion WebSocket Access à:', wsUrl);
+  console.log('📡 Connexion WebSocket Access à:', wsUrl.replace(/token=[^&]+/, 'token=***'));
 
   ws = new WebSocket(wsUrl);
 

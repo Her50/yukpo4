@@ -159,14 +159,24 @@ pub async fn webrtc_signaling_handler(
     }
 }
 
-/// Gère une connexion WebSocket WebRTC
+/// Gère une connexion WebSocket WebRTC.
+///
+/// ⚠️ 2026-05-16 — L'authentification est désormais faite AU PRÉ-UPGRADE par
+/// `webrtc_signaling_handler` (via `ws_auth::authenticate_ws`). Le mécanisme
+/// in-band ci-dessous (premier message du client = signaling_msg.from = "user_id")
+/// est conservé pour compatibilité avec le frontend actuel, mais devient
+/// redondant. TODO cleanup : passer le `WsAuth` au handler et supprimer le
+/// stockage in-band de l'user_id pour éviter le spoofing (le premier message
+/// peut encore prétendre être un autre user — l'auth pré-upgrade limite le
+/// blast radius car le token est obligatoire, mais ne couvre pas le mismatch
+/// entre claims.sub et signaling_msg.from).
 async fn handle_webrtc_socket(socket: WebSocket, manager: Arc<WebRTCSignalingManager>) {
     let (mut sender, mut receiver) = socket.split();
 
     // Canal pour envoyer des messages au client
     let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
 
-    // Variable pour stocker l'user_id une fois authentifié
+    // Variable pour stocker l'user_id une fois authentifié (in-band, legacy)
     let user_id = Arc::new(RwLock::new(None::<String>));
     let user_id_clone = user_id.clone();
 
