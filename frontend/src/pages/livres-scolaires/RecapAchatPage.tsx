@@ -167,6 +167,52 @@ function ItemCard({
     if (isGammeable && base > 0) return Math.round(base * RATIOS[item.gamme || 'standard']);
     return base;
   })();
+
+  /**
+   * ✅ 2026-05-16 — Affichage prix transparent selon le choix actif.
+   * Pour les livres (occasion / échange), un seul prix fixe ne reflète pas
+   * la réalité : la valeur dépend de l'état du livre. On affiche donc :
+   *   - Neuf       : prix officiel (montant fixe)
+   *   - Occasion   : intervalle min-max selon état acceptable (45%) à bon (70%)
+   *   - Échange    : intervalle crédit que l'user reçoit en donnant un livre
+   *                  (= prix × ratio_etat × 0.70, marge app 30%)
+   * Référence ratios : backend/src/models/livre_scolaire.rs ligne 494-499.
+   */
+  const RATIO_OCC_MIN = 0.45; // état "acceptable"
+  const RATIO_OCC_MAX = 0.70; // état "bon"
+  const RATIO_CREDIT = 0.70; // part user (l'app prend 30%)
+  const priceDisplay: { text: string; subtext?: string } = (() => {
+    if (isLivre) {
+      const base = item.prixNeuf ?? 0;
+      if (base <= 0) return { text: '—' };
+      if (item.choix === 'occasion' && item.troc_intent) {
+        // Échange : crédit reçu (intervalle)
+        const min = Math.round(base * RATIO_OCC_MIN * RATIO_CREDIT);
+        const max = Math.round(base * RATIO_OCC_MAX * RATIO_CREDIT);
+        return {
+          text: `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} F`,
+          subtext: t('bourse.recap.price_credit_hint', {
+            defaultValue: 'crédit selon état',
+          }),
+        };
+      }
+      if (item.choix === 'occasion') {
+        // Achat occasion : intervalle prix d'achat selon état
+        const min = Math.round(base * RATIO_OCC_MIN);
+        const max = Math.round(base * RATIO_OCC_MAX);
+        return {
+          text: `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} F`,
+          subtext: t('bourse.recap.price_used_hint', {
+            defaultValue: 'selon état',
+          }),
+        };
+      }
+      // Neuf : montant fixe (cas par défaut)
+      return { text: `${base.toLocaleString('fr-FR')} F` };
+    }
+    // Fournitures : prix unique (gamme déjà appliquée via prixEff)
+    return { text: prixEff > 0 ? `${prixEff.toLocaleString('fr-FR')} F` : '—' };
+  })();
   return (
     <div className="px-2 py-1 border-b border-gray-100 last:border-b-0 bg-white text-[12px]">
       <div className="flex items-center gap-1.5">
@@ -195,16 +241,23 @@ function ItemCard({
             aria-label={t('bourse.recap.increase')}>+</button>
         </div>
 
-        {/* Prix unitaire — toujours affiché ; "—" si inconnu pour que la
-            colonne reste visible et que l'utilisateur sache qu'on ne l'a pas */}
-        <span
-          className={`text-right text-[12px] font-bold tabular-nums shrink-0 min-w-[50px] ${
-            prixEff > 0 ? 'text-amber-700' : 'text-gray-300'
-          }`}
-          title={prixEff > 0 ? undefined : t('bourse.recap.price_unavailable')}
-        >
-          {prixEff > 0 ? `${prixEff.toLocaleString('fr-FR')} F` : '—'}
-        </span>
+        {/* Prix unitaire — affichage adapté au choix Neuf/Occasion/Échange.
+            ✅ 2026-05-16 : intervalle pour occasion/échange, prix fixe pour neuf. */}
+        <div className="flex flex-col items-end shrink-0 min-w-[78px] leading-tight">
+          <span
+            className={`text-right text-[11px] font-bold tabular-nums whitespace-nowrap ${
+              priceDisplay.text === '—' ? 'text-gray-300' : 'text-amber-700'
+            }`}
+            title={priceDisplay.text === '—' ? t('bourse.recap.price_unavailable') : undefined}
+          >
+            {priceDisplay.text}
+          </span>
+          {priceDisplay.subtext && (
+            <span className="text-[8px] text-gray-500 italic leading-none mt-0.5">
+              {priceDisplay.subtext}
+            </span>
+          )}
+        </div>
 
         {/* Supprimer */}
         <button onClick={onRemove}
