@@ -5,6 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="color-scheme" content="light only" />
     <meta name="theme-color" content="#d97706" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <script>
+      // ✅ 2026-05-16 — Kill-switch INLINE (avant tout bundle).
+      // Tourne en sync au tout début du parse HTML, AVANT le main-bourse.tsx.
+      // Si la version a changé : unregister SW + clear caches + reload AVANT
+      // que la moindre ligne du bundle React ne s'exécute. Garantit qu'un
+      // bundle obsolète ne corrompe jamais le state localStorage.
+      (function() {
+        var V = 'v7-2026-05-16-15h';
+        try {
+          var last = localStorage.getItem('bourse_app_version');
+          if (last === V) return;
+          console.log('[Kill-switch] Migration ' + last + ' -> ' + V);
+          // Bloque le chargement de tout module en synchrone : remplace le
+          // contenu de la page par un loader le temps de la purge.
+          document.documentElement.innerHTML = '<body style="background:#fff;font-family:sans-serif;padding:20px;color:#333"><p>Mise a jour en cours...</p></body>';
+          var done = function() {
+            localStorage.setItem('bourse_app_version', V);
+            location.reload();
+          };
+          var todo = 2;
+          var tick = function() { if (--todo <= 0) done(); };
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(rs) {
+              return Promise.all(rs.map(function(r) { return r.unregister(); }));
+            }).catch(function(){}).finally(tick);
+          } else { tick(); }
+          if ('caches' in window) {
+            caches.keys().then(function(ks) {
+              return Promise.all(ks.map(function(k) { return caches.delete(k); }));
+            }).catch(function(){}).finally(tick);
+          } else { tick(); }
+          // Safety : si une promesse traine, on force le reload sous 3s.
+          setTimeout(done, 3000);
+          // Bloque l'execution du module pendant la purge.
+          throw new Error('PURGE_IN_PROGRESS');
+        } catch (e) {
+          if (e && e.message === 'PURGE_IN_PROGRESS') throw e;
+          console.warn('[Kill-switch] erreur silencieuse', e);
+        }
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Bourse Livres" />
