@@ -82,25 +82,54 @@ function ChoixBadge({ item, onUpdate }: { item: PanierItem; onUpdate: (id: strin
   );
 }
 
-/* ─── Gamme switcher pour accessoires ─── */
+/* ─── Gamme switcher pour accessoires ───
+ * ✅ 2026-05-16 — Refonte UX : afficher Standard et Premium côte à côte AVEC
+ * leur prix calculé, pour que l'user voie immédiatement la différence et
+ * comprenne que c'est un choix. Avant : 3 pilules subtiles, beaucoup
+ * d'utilisateurs ne réalisaient pas qu'on pouvait basculer.
+ * On retire la gamme "Entrée" qui n'est plus pertinente (les vrais bas
+ * de gamme ne sont pas dans le référentiel didactique).
+ */
 type Gamme = 'entree' | 'standard' | 'premium';
 const GAMME_LABELS: Record<Gamme, string> = { entree: 'Entrée', standard: 'Standard', premium: 'Premium' };
+const GAMME_RATIOS: Record<Gamme, number> = { entree: 0.6, standard: 1.0, premium: 1.5 };
 
 function GammeSwitcher({ item, onUpdate }: { item: PanierItem; onUpdate: (id: string, g: Gamme) => void }) {
   const current: Gamme = item.gamme ?? 'standard';
+  const base = item.prixNeuf ?? 0;
+  const fmt = (g: Gamme) => Math.round(base * GAMME_RATIOS[g]).toLocaleString('fr-FR');
   return (
-    <div className="flex rounded-full bg-gray-100 p-0.5">
-      {(['entree', 'standard', 'premium'] as Gamme[]).map(g => (
-        <button
-          key={g}
-          onClick={() => onUpdate(item.id, g)}
-          className={`px-2.5 py-0.5 text-[11px] font-semibold rounded-full transition-colors ${
-            current === g ? 'bg-white text-amber-700 shadow-sm' : 'text-gray-500'
-          }`}
-        >
-          {GAMME_LABELS[g]}
-        </button>
-      ))}
+    <div className="inline-flex gap-1.5 mt-0.5">
+      {(['standard', 'premium'] as Gamme[]).map((g) => {
+        const isActive = current === g;
+        const isPremium = g === 'premium';
+        return (
+          <button
+            key={g}
+            type="button"
+            onClick={() => onUpdate(item.id, g)}
+            className={`flex flex-col items-center px-2 py-1 rounded-md border-[1.5px] transition-all min-w-[56px] ${
+              isActive
+                ? isPremium
+                  ? 'bg-gradient-to-br from-amber-500 to-yellow-500 border-amber-600 text-white shadow'
+                  : 'bg-emerald-500 border-emerald-600 text-white shadow'
+                : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'
+            }`}
+            aria-pressed={isActive}
+          >
+            <span className="text-[9px] font-bold uppercase tracking-wide leading-none">
+              {isPremium ? '✨ Haut gamme' : 'Standard'}
+            </span>
+            {base > 0 && (
+              <span className={`text-[10px] font-bold tabular-nums mt-0.5 ${
+                isActive ? '' : isPremium ? 'text-amber-700' : 'text-emerald-700'
+              }`}>
+                {fmt(g)} F
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
