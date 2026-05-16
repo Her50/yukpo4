@@ -27,6 +27,14 @@ pub struct PlaceResult {
     pub description: String,
     pub place_id: Option<String>,
     pub types: Option<Vec<String>>,
+    /// ✅ 2026-05-16 — Coordonnées GPS quand disponibles directement dans
+    /// la réponse autocomplete (cas Photon/OSM). Pour Google, on doit faire
+    /// un 2e appel à /api/places/google-business-details. Permet au frontend
+    /// d'éviter le 2e round-trip dans le cas fallback OSM.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lat: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lng: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -152,11 +160,29 @@ async fn photon_autocomplete(
         let osm_type = p.get("osm_value").and_then(|v| v.as_str()).unwrap_or("place").to_string();
         let osm_id = p.get("osm_id").and_then(|v| v.as_i64()).map(|i| i.to_string());
 
+        // ✅ 2026-05-16 — Extraction des coords GPS depuis Photon GeoJSON.
+        // geometry.coordinates est [lng, lat] (convention GeoJSON, attention
+        // à l'ordre).
+        let (lat, lng) = f
+            .get("geometry")
+            .and_then(|g| g.get("coordinates"))
+            .and_then(|c| c.as_array())
+            .filter(|arr| arr.len() >= 2)
+            .and_then(|arr| {
+                let lng = arr[0].as_f64()?;
+                let lat = arr[1].as_f64()?;
+                Some((lat, lng))
+            })
+            .map(|(la, ln)| (Some(la), Some(ln)))
+            .unwrap_or((None, None));
+
         descriptions.push(label.clone());
         enriched.push(PlaceResult {
             description: label,
             place_id: osm_id,
             types: Some(vec![osm_type]),
+            lat,
+            lng,
         });
     }
 
@@ -209,6 +235,8 @@ pub async fn autocomplete_places(
                 description: desc.clone(),
                 place_id: None,
                 types: Some(vec!["locality".to_string(), "political".to_string()]),
+                lat: None,
+                lng: None,
             })
             .collect();
 
@@ -395,6 +423,10 @@ pub async fn autocomplete_places(
                                 description,
                                 place_id,
                                 types,
+                                // Google ne renvoie pas lat/lng dans autocomplete ;
+                                // le frontend doit fetch /api/places/google-business-details
+                                lat: None,
+                                lng: None,
                             })
                         })
                         .take(20) // Limiter à 20 résultats

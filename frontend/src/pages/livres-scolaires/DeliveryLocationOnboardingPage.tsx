@@ -90,7 +90,13 @@ const DeliveryLocationOnboardingPage: React.FC = () => {
     })();
   }, []);
 
-  // Recherche autocomplete Photon (rues, POI, quartiers, villes)
+  // ✅ 2026-05-16 — Bascule de Photon direct vers /api/places/autocomplete
+  // (Google Places côté backend si clé configurée, fallback Photon sinon).
+  // Bien plus précis : rues, écoles, POI, pas juste les quartiers.
+  // Suggestion enrichie d'un place_id Google pour récupérer lat/lng au pick.
+  type GooglePrediction = { label: string; place_id?: string | null };
+  // On stocke maintenant aussi le place_id pour le fetch lat/lng au pick.
+  // L'état predictions garde son shape côté UI mais on étend localement.
   useEffect(() => {
     const q = locationQuery.trim();
     if (q.length < 3) {
@@ -101,22 +107,34 @@ const DeliveryLocationOnboardingPage: React.FC = () => {
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        const url = `${PHOTON_URL}/?q=${encodeURIComponent(q)}&lang=fr&limit=10`;
-        const r = await fetch(url);
+        const params = new URLSearchParams();
+        params.set('query', q);
+        if (locationCoords) {
+          params.set('lat', String(locationCoords.lat));
+          params.set('lng', String(locationCoords.lng));
+          params.set('radius', '50000');
+        }
+        const r = await apiGet(`/api/places/autocomplete?${params}`);
         if (!r.ok) {
-          setPredictions([]);
+          if (!cancelled) setPredictions([]);
           return;
         }
-        const data = await r.json();
+        const data = await r.json().catch(() => ({}));
         if (cancelled) return;
-        const feats: PhotonFeature[] = Array.isArray(data?.features) ? data.features : [];
-        const items: Suggestion[] = feats
-          .filter(f => f?.geometry?.coordinates?.length === 2)
-          .map(f => ({
-            label: formatPhotonLabel(f),
-            lng: f.geometry.coordinates[0],
-            lat: f.geometry.coordinates[1],
-          }));
+        const results = (data?.results || []) as Array<{
+          description: string;
+          place_id?: string | null;
+          lat?: number | null;
+          lng?: number | null;
+        }>;
+        // On stocke description + place_id + lat/lng (si Photon en a) ;
+        // si pas de coords (Google), on fetchera au pick via place-details.
+        const items: Suggestion[] = results.map((r) => ({
+          label: r.description,
+          lat: typeof r.lat === 'number' ? r.lat : 0,
+          lng: typeof r.lng === 'number' ? r.lng : 0,
+          ...({ place_id: r.place_id ?? null } as object),
+        }));
         setPredictions(items);
       } catch {
         if (!cancelled) setPredictions([]);
@@ -128,13 +146,35 @@ const DeliveryLocationOnboardingPage: React.FC = () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [locationQuery]);
+  }, [locationQuery, locationCoords]);
 
-  const pickPrediction = (p: Suggestion) => {
+  const pickPrediction = async (p: Suggestion) => {
     setLocationQuery(p.label);
-    setLocationCoords({ lat: p.lat, lng: p.lng });
     setPredictions([]);
     setShowPredictions(false);
+    // Si on a un place_id Google, on récupère les vraies coords ; sinon
+    // on conserve les coords déjà présentes (fallback Photon avec lat/lng=0
+    // → l'user devra rectifier via le map picker s'il y en a un).
+    const placeId = (p as unknown as { place_id?: string | null }).place_id;
+    if (placeId) {
+      try {
+        const r = await apiGet(
+          `/api/places/google-business-details?place_id=${encodeURIComponent(placeId)}`,
+        );
+        const d = await r.json().catch(() => ({}));
+        const loc = d?.data?.location;
+        if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+          setLocationCoords({ lat: loc.lat, lng: loc.lng });
+          return;
+        }
+      } catch {
+        // silent
+      }
+    }
+    // Fallback : si la prediction avait quand même des lat/lng > 0 (cas Photon)
+    if (p.lat !== 0 && p.lng !== 0) {
+      setLocationCoords({ lat: p.lat, lng: p.lng });
+    }
   };
 
   const canSave = locationQuery.trim().length >= 3 && !saving;

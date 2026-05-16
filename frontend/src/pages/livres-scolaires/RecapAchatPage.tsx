@@ -264,8 +264,19 @@ function DeliveryModal({
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(defaultGps ?? null);
   const [showMapPicker, setShowMapPicker] = useState(false);
 
-  // Autocomplete adresse via Nominatim (OSM, gratuit, CORS-friendly).
-  type Suggestion = { display_name: string; lat: string; lon: string };
+  // ✅ 2026-05-16 — Autocomplete via /api/places/autocomplete (Google Places
+  // côté backend, fallback Photon si pas de clé OU si Google échoue/bloqué).
+  // Bien plus précis que Nominatim OSM : rues, écoles, points d'intérêt,
+  // et pas juste les quartiers. Le backend a déjà la clé serveur Google +
+  // restrictions de quota, ET un fallback Photon automatique si quota dépassé
+  // ou compte GCP suspendu (le frontend voit la même struct dans les 2 cas).
+  type Suggestion = {
+    description: string;
+    place_id?: string | null;
+    // Présents en mode fallback Photon (évite le 2e fetch).
+    lat?: number | null;
+    lng?: number | null;
+  };
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -282,20 +293,50 @@ function DeliveryModal({
     debounceRef.current = window.setTimeout(async () => {
       setSearching(true);
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=cm&q=${encodeURIComponent(val)}`;
-        const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+        const params = new URLSearchParams();
+        params.set('query', val);
+        // Biais vers la position connue de l'user (sinon Douala par défaut)
+        if (coords) {
+          params.set('lat', String(coords.lat));
+          params.set('lng', String(coords.lon));
+          params.set('radius', '50000');
+        }
+        const r = await apiGet(`/api/places/autocomplete?${params}`);
         const d = await r.json();
-        setSuggestions(Array.isArray(d) ? d : []);
+        const items = (d?.results || []) as Suggestion[];
+        setSuggestions(items);
       } catch { setSuggestions([]); }
       finally { setSearching(false); }
     }, 350);
   };
 
-  const pickSuggestion = (s: Suggestion) => {
-    setAdresse(s.display_name);
-    setCoords({ lat: parseFloat(s.lat), lon: parseFloat(s.lon) });
+  /** Au pick :
+   *   1. Si la suggestion a déjà lat/lng (fallback Photon) → utiliser direct
+   *   2. Sinon si place_id Google → 2e fetch /api/places/google-business-details
+   *   3. Sinon → adresse texte sans coords, l'user peut rectifier via map picker */
+  const pickSuggestion = async (s: Suggestion) => {
+    setAdresse(s.description);
     setShowSuggestions(false);
     setSuggestions([]);
+    // Cas Photon : coords déjà dans la suggestion
+    if (typeof s.lat === 'number' && typeof s.lng === 'number') {
+      setCoords({ lat: s.lat, lon: s.lng });
+      return;
+    }
+    // Cas Google : 2e fetch via place_id
+    if (!s.place_id) return;
+    try {
+      const r = await apiGet(
+        `/api/places/google-business-details?place_id=${encodeURIComponent(s.place_id)}`,
+      );
+      const d = await r.json().catch(() => ({}));
+      const loc = d?.data?.location;
+      if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+        setCoords({ lat: loc.lat, lon: loc.lng });
+      }
+    } catch {
+      // silent — l'user peut rectifier via map picker
+    }
   };
 
   // Validation WhatsApp : 8 chiffres min (numéros internationaux 8-15 chiffres)
@@ -342,7 +383,7 @@ function DeliveryModal({
                   className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 border-b border-gray-100 last:border-b-0 flex items-start gap-2"
                 >
                   <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                  <span className="leading-tight">{s.display_name}</span>
+                  <span className="leading-tight">{s.description}</span>
                 </button>
               ))}
             </div>
