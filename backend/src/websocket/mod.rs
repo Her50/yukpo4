@@ -6,6 +6,7 @@ pub mod status_manager;
 pub mod upload_status_ws; // ✅ NOUVEAU 2025-01-27 : WebSocket pour statut upload
 pub mod webrtc_signaling;
 pub mod websocket_handler; // ✅ NOUVEAU: WebSocket pour mises à jour temps réel Flash Sales
+pub mod ws_auth; // ✅ 2026-05-16 : Auth JWT pour tous les handlers WebSocket
 
 pub use chat_websocket::{create_chat_websocket_router, ChatWebSocketManager, ChatWsMessage};
 pub use delivery_chat::{

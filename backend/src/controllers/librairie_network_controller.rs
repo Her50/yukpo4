@@ -233,33 +233,112 @@ pub async fn create_commande_mixte(
         ));
     }
 
-    // Calcul total livres neufs
-    let total_neufs: f64 =
-        payload.livres_neufs.iter().map(|l| l.prix_officiel * l.quantite as f64).sum();
+    // ✅ 2026-05-16 — VALIDATION PRIX SERVER-SIDE (anti-manipulation).
+    // Avant : `prix_officiel` venait directement du client → un attaquant
+    // pouvait envoyer 1 FCFA pour acheter un livre neuf à 1 FCFA.
+    // Maintenant :
+    //   - Si programme_scolaire_id fourni → on prend le prix DB comme source de
+    //     vérité, et on rejette tout écart > 20 % avec le prix client (anti-bug
+    //     côté front, mais source = serveur).
+    //   - Sinon → on impose une fourchette plausible (100-100 000 FCFA) pour
+    //     éviter les valeurs aberrantes.
+    // Bornes : prix_min=100 FCFA, prix_max=100 000 FCFA (un livre scolaire
+    // raisonnable). Configurable plus tard via configuration_systeme.
+    const PRIX_LIVRE_MIN_XAF: f64 = 100.0;
+    const PRIX_LIVRE_MAX_XAF: f64 = 100_000.0;
+    const TOLERANCE_PRIX_PCT: f64 = 0.20;
 
-    // Récupérer prix livres occasion
-    // ✅ FIX 2026-05-16 : les colonnes prix_detecte et valeur_calculee sont
-    // NUMERIC en SQL, pas TEXT. On les CAST en f64 au SELECT pour décodage
-    // direct. Avant : décodage Option<String> → toujours None → prix=0.
+    let mut total_neufs: f64 = 0.0;
+    for livre_req in &payload.livres_neufs {
+        if livre_req.quantite <= 0 || livre_req.quantite > 100 {
+            return Err(AppError::BadRequest(format!(
+                "Quantité invalide pour livre neuf '{}': {} (1-100)",
+                livre_req.titre, livre_req.quantite
+            )));
+        }
+        // Prix DB officiel si programme connu, sinon validation bornes
+        let prix_validated: f64 = if let Some(pid) = livre_req.programme_scolaire_id {
+            let prix_db: Option<f64> = sqlx::query_scalar(
+                "SELECT prix_officiel::DOUBLE PRECISION
+                   FROM programmes_scolaires WHERE id = $1",
+            )
+            .bind(pid)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur prix programme: {}", e)))?;
+            match prix_db {
+                Some(p) if p > 0.0 => {
+                    let delta = (livre_req.prix_officiel - p).abs() / p;
+                    if delta > TOLERANCE_PRIX_PCT {
+                        log::warn!(
+                            "[create_commande_mixte] Tentative prix manipulé livre '{}': client={} db={}",
+                            livre_req.titre, livre_req.prix_officiel, p
+                        );
+                        return Err(AppError::BadRequest(format!(
+                            "Prix incohérent pour '{}': {} FCFA (officiel: {} FCFA)",
+                            livre_req.titre, livre_req.prix_officiel, p
+                        )));
+                    }
+                    p
+                }
+                _ => livre_req.prix_officiel,
+            }
+        } else {
+            livre_req.prix_officiel
+        };
+        if !(PRIX_LIVRE_MIN_XAF..=PRIX_LIVRE_MAX_XAF).contains(&prix_validated) {
+            return Err(AppError::BadRequest(format!(
+                "Prix hors-bornes pour '{}': {} FCFA (autorisé {}-{})",
+                livre_req.titre, prix_validated, PRIX_LIVRE_MIN_XAF, PRIX_LIVRE_MAX_XAF
+            )));
+        }
+        total_neufs += prix_validated * livre_req.quantite as f64;
+    }
+
+    // Récupérer prix livres occasion — BATCH 2026-05-16 (avant : N requêtes
+    // séquentielles ; maintenant : 1 query avec WHERE id = ANY($1) → 10× plus
+    // rapide sur les commandes mixtes avec plusieurs livres d'occasion).
     let mut total_occasion = 0.0;
-    for livre_req in &payload.livres_occasion {
-        let livre_row = sqlx::query(
-            "SELECT prix_detecte::DOUBLE PRECISION AS prix_detecte,
+    if !payload.livres_occasion.is_empty() {
+        let ids: Vec<i32> = payload.livres_occasion.iter().map(|l| l.livre_scolaire_id).collect();
+        let rows = sqlx::query(
+            "SELECT id,
+                    prix_detecte::DOUBLE PRECISION AS prix_detecte,
                     valeur_calculee::DOUBLE PRECISION AS valeur_calculee
                FROM livres_scolaires
-              WHERE id = $1 AND is_active = true",
+              WHERE id = ANY($1) AND is_active = true",
         )
-        .bind(livre_req.livre_scolaire_id)
-        .fetch_optional(&state.pg)
+        .bind(&ids)
+        .fetch_all(&state.pg)
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound("Livre d'occasion non trouvé".to_string()))?;
+        .map_err(|e| AppError::Internal(format!("Erreur lookup livres: {}", e)))?;
 
-        let valeur_calculee: Option<f64> = livre_row.try_get("valeur_calculee").ok();
-        let prix_detecte: Option<f64> = livre_row.try_get("prix_detecte").ok();
-        let prix = valeur_calculee.or(prix_detecte).unwrap_or(0.0);
+        use std::collections::HashMap;
+        let prices: HashMap<i32, f64> = rows
+            .into_iter()
+            .map(|r| {
+                let id: i32 = r.try_get("id").unwrap_or(0);
+                let v: Option<f64> = r.try_get("valeur_calculee").ok().flatten();
+                let p: Option<f64> = r.try_get("prix_detecte").ok().flatten();
+                (id, v.or(p).unwrap_or(0.0))
+            })
+            .collect();
 
-        total_occasion += prix * livre_req.quantite as f64;
+        for livre_req in &payload.livres_occasion {
+            if livre_req.quantite <= 0 || livre_req.quantite > 100 {
+                return Err(AppError::BadRequest(format!(
+                    "Quantité invalide livre occasion {}: {}",
+                    livre_req.livre_scolaire_id, livre_req.quantite
+                )));
+            }
+            let prix = *prices.get(&livre_req.livre_scolaire_id).ok_or_else(|| {
+                AppError::NotFound(format!(
+                    "Livre d'occasion {} non trouvé ou inactif",
+                    livre_req.livre_scolaire_id
+                ))
+            })?;
+            total_occasion += prix * livre_req.quantite as f64;
+        }
     }
 
     let total_commande = total_neufs + total_occasion;

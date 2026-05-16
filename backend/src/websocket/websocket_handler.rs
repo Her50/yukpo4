@@ -1,8 +1,9 @@
 use crate::state::AppState;
+use crate::websocket::ws_auth;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        Path, State,
+        OriginalUri, Path, State,
     },
     response::IntoResponse,
     routing::get,
@@ -44,20 +45,31 @@ pub fn create_websocket_router() -> Router<Arc<AppState>> {
 }
 
 // Handlers adaptés pour AppState
+// ✅ 2026-05-16 — Auth JWT obligatoire (?token=<jwt>) + match user_id du path.
+// Avant : N'importe qui pouvait `/ws/status/42` et envoyer des "status_request"
+// au nom du user 42.
 async fn websocket_status_handler_adapted(
     ws: WebSocketUpgrade,
     Path(user_id): Path<i32>,
-    State(_app_state): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_status_websocket(socket, user_id))
+    State(app_state): State<Arc<AppState>>,
+    OriginalUri(uri): OriginalUri,
+) -> axum::response::Response {
+    match ws_auth::authenticate_ws_and_match_user(&app_state, &uri, user_id).await {
+        Ok(_auth) => ws.on_upgrade(move |socket| handle_status_websocket(socket, user_id)),
+        Err(status) => ws_auth::reject_upgrade(status, "Auth WS échouée (status)"),
+    }
 }
 
 async fn websocket_notifications_handler_adapted(
     ws: WebSocketUpgrade,
     Path(user_id): Path<i32>,
-    State(_app_state): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_notifications_websocket(socket, user_id))
+    State(app_state): State<Arc<AppState>>,
+    OriginalUri(uri): OriginalUri,
+) -> axum::response::Response {
+    match ws_auth::authenticate_ws_and_match_user(&app_state, &uri, user_id).await {
+        Ok(_auth) => ws.on_upgrade(move |socket| handle_notifications_websocket(socket, user_id)),
+        Err(status) => ws_auth::reject_upgrade(status, "Auth WS échouée (notifications)"),
+    }
 }
 
 async fn handle_status_websocket(socket: WebSocket, user_id: i32) {

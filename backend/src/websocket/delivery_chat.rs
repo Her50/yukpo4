@@ -244,11 +244,13 @@ pub fn create_delivery_chat_websocket_router() -> Router<Arc<AppState>> {
     )
 }
 
-/// Handler WebSocket pour le chat de livraison
+/// Handler WebSocket pour le chat de livraison.
+/// ✅ 2026-05-16 — Auth JWT obligatoire (?token=<jwt>) + match user_id du path.
 async fn delivery_chat_websocket_handler(
     ws: WebSocketUpgrade,
     Path((delivery_id, user_id)): Path<(String, i32)>,
     State(state): State<Arc<AppState>>,
+    axum::extract::OriginalUri(uri): axum::extract::OriginalUri,
 ) -> impl IntoResponse {
     let delivery_uuid = match Uuid::parse_str(&delivery_id) {
         Ok(uuid) => uuid,
@@ -261,6 +263,13 @@ async fn delivery_chat_websocket_handler(
                 .into_response();
         }
     };
+
+    // Auth JWT obligatoire (mode strict si WS_REQUIRE_AUTH=true)
+    if let Err(status) =
+        crate::websocket::ws_auth::authenticate_ws_and_match_user(&state, &uri, user_id).await
+    {
+        return crate::websocket::ws_auth::reject_upgrade(status, "Auth delivery-chat WS échouée");
+    }
 
     ws.on_upgrade(move |socket| {
         handle_delivery_chat_websocket(socket, delivery_uuid, user_id, state)

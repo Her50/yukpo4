@@ -386,6 +386,23 @@ pub async fn try_credit_referral_bonus(
         });
     }
 
+    // 2bis. ✅ 2026-05-16 — ANTI-FRAUDE : vérifie multi-compte, burst, IP commune,
+    // phone non vérifié. Si signaux détectés, on enregistre dans audit_logs et on
+    // NoOp le crédit (pas d'erreur métier — le filleul reçoit sa commande mais le
+    // parrain n'est pas crédité ; review humaine via audit_logs).
+    let report =
+        crate::services::referral_antifraud::check_eligibility(pool, parrain_id, filleul_id)
+            .await?;
+    if !report.eligible {
+        log::warn!(
+            "[referral] crédit BLOQUÉ par anti-fraude pour parrain={} filleul={}: {:?}",
+            parrain_id,
+            filleul_id,
+            report.signals
+        );
+        return Ok(ConversionOutcome::NoOp);
+    }
+
     // 3. Crédit atomique parrain
     let mut tx = pool.begin().await?;
 

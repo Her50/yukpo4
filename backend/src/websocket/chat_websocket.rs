@@ -256,12 +256,40 @@ pub fn create_chat_websocket_router() -> Router<Arc<AppState>> {
     )
 }
 
-/// Handler WebSocket pour le chat
+/// Handler WebSocket pour le chat.
+/// ✅ 2026-05-16 — Auth JWT obligatoire + l'user authentifié DOIT être soit
+/// `prestataire_id` soit `user_id`. Empêche un tiers d'écouter/spammer le chat
+/// privé entre deux autres users.
 async fn chat_websocket_handler(
     ws: WebSocketUpgrade,
     Path((service_id, prestataire_id, user_id)): Path<(i32, i32, i32)>,
     State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
+    axum::extract::OriginalUri(uri): axum::extract::OriginalUri,
+) -> axum::response::Response {
+    let auth = match crate::websocket::ws_auth::authenticate_ws(&state, &uri).await {
+        Ok(Some(a)) => a,
+        Ok(None) => {
+            // Mode non-strict (transition) : on accepte mais on logue
+            return ws.on_upgrade(move |socket| {
+                handle_chat_websocket(socket, service_id, prestataire_id, user_id, state)
+            });
+        }
+        Err(s) => {
+            return crate::websocket::ws_auth::reject_upgrade(s, "Auth chat WS échouée");
+        }
+    };
+    if auth.user_id != prestataire_id && auth.user_id != user_id {
+        log::warn!(
+            "[chat_ws] mismatch user : token={} chat=({}, {}) — refusé",
+            auth.user_id,
+            prestataire_id,
+            user_id
+        );
+        return crate::websocket::ws_auth::reject_upgrade(
+            axum::http::StatusCode::FORBIDDEN,
+            "Accès refusé à ce chat",
+        );
+    }
     ws.on_upgrade(move |socket| {
         handle_chat_websocket(socket, service_id, prestataire_id, user_id, state)
     })

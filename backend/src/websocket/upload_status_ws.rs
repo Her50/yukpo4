@@ -33,13 +33,21 @@ pub fn add_upload_status_websocket_routes(router: Router<Arc<AppState>>) -> Rout
     )
 }
 
-/// Handler WebSocket pour le statut d'upload
+/// Handler WebSocket pour le statut d'upload.
+/// ✅ 2026-05-16 — Auth JWT obligatoire. L'`upload_id` est un UUID opaque (non
+/// énumérable en pratique) mais on impose quand même un token pour éviter
+/// qu'un attaquant qui devine un upload_id puisse écouter le statut.
 async fn upload_status_websocket_handler(
     ws: WebSocketUpgrade,
     Path(upload_id): Path<String>,
     State(app_state): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_upload_status_websocket(socket, upload_id, app_state))
+    axum::extract::OriginalUri(uri): axum::extract::OriginalUri,
+) -> axum::response::Response {
+    match crate::websocket::ws_auth::authenticate_ws(&app_state, &uri).await {
+        Ok(_) => ws
+            .on_upgrade(move |socket| handle_upload_status_websocket(socket, upload_id, app_state)),
+        Err(status) => crate::websocket::ws_auth::reject_upgrade(status, "Auth upload WS échouée"),
+    }
 }
 
 async fn handle_upload_status_websocket(

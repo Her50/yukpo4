@@ -189,6 +189,7 @@ pub mod real_estate_ai_service; // ✅ Service IA immobilier (estimation prix, r
 pub mod real_estate_permissions_service; // ✅ 2026-01-27: Service permissions immobilier (propriétaire/équipe)
 pub mod rechercher_besoin;
 pub mod redis_scaling_service; // ✅ NOUVEAU: Service de gestion Redis Memorystore automatisé GCP avec scaling
+pub mod referral_antifraud; // ✅ 2026-05-16 : Anti-fraude parrainage (multi-compte, burst, same-IP)
 pub mod referral_service; // ✅ 2026-05-15 : Parrainage Yukpo (codes, attach parrain, stats)
 pub mod remotion_renderer_service;
 pub mod scalability_service; // ✅ NOUVEAU 2025-12-XX: Service centralisé de scalabilité pour millions d'interactions

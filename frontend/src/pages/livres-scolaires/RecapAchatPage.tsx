@@ -258,6 +258,7 @@ function DeliveryModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [adresse, setAdresse] = useState(defaultAddress ?? '');
   const [telephone, setTelephone] = useState(defaultPhone ?? '');
   const [note, setNote] = useState('');
@@ -333,6 +334,62 @@ function DeliveryModal({
     }, 350);
   };
 
+  /** ✅ 2026-05-16 — Capture position courante au clic.
+   *  Demande géoloc haute précision (utilise le GPS du téléphone si dispo),
+   *  puis POST /api/geocoding/reverse pour récupérer l'adresse texte
+   *  correspondante (Google reverse côté backend, fallback Mapbox/offline). */
+  const [capturingPosition, setCapturingPosition] = useState(false);
+  const captureCurrentPosition = async () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: t('bourse.recap.gps_unsupported', {
+          defaultValue: 'Géolocalisation non supportée par ce navigateur',
+        }),
+        variant: 'destructive',
+      });
+      return;
+    }
+    setCapturingPosition(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        });
+      });
+      const { latitude, longitude } = pos.coords;
+      setCoords({ lat: latitude, lon: longitude });
+      // Reverse geocoding via backend
+      const r = await apiPost('/api/geocoding/reverse', { latitude, longitude });
+      const d = await r.json().catch(() => ({}));
+      const formatted =
+        d?.formatted_address || d?.address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+      setAdresse(formatted);
+      toast({
+        title: t('bourse.recap.gps_captured', { defaultValue: 'Position captée' }),
+        description: formatted,
+      });
+    } catch (err: any) {
+      const code = err?.code;
+      const msg =
+        code === 1
+          ? t('bourse.recap.gps_denied', {
+              defaultValue: 'Permission refusée. Autorisez la géolocalisation dans votre navigateur.',
+            })
+          : code === 3
+            ? t('bourse.recap.gps_timeout', {
+                defaultValue: 'Temps écoulé. Réessayez à l\'extérieur ou près d\'une fenêtre.',
+              })
+            : t('bourse.recap.gps_error', {
+                defaultValue: 'Impossible de capter votre position. Réessayez.',
+              });
+      toast({ title: msg, variant: 'destructive' });
+    } finally {
+      setCapturingPosition(false);
+    }
+  };
+
   /** Au pick :
    *   1. Si la suggestion a déjà lat/lng (fallback Photon) → utiliser direct
    *   2. Sinon si place_id Google → 2e fetch /api/places/google-business-details
@@ -377,11 +434,31 @@ function DeliveryModal({
           <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
 
-        {/* Adresse de livraison — autocomplete (Nominatim OSM, CORS-friendly) */}
+        {/* Adresse de livraison — autocomplete via backend /api/places */}
         <div className="mb-4 relative">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-            {t('bourse.recap.delivery_address_required')} <span className="text-red-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              {t('bourse.recap.delivery_address_required')} <span className="text-red-500">*</span>
+            </label>
+            {/* ✅ 2026-05-16 — Bouton "Capter ma position courante".
+                Demande géoloc haute précision + reverse geocoding via backend. */}
+            <button
+              type="button"
+              onClick={captureCurrentPosition}
+              disabled={capturingPosition}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800 disabled:opacity-50"
+              title={t('bourse.recap.gps_button_hint', {
+                defaultValue: 'Utiliser ma position GPS actuelle',
+              })}
+            >
+              {capturingPosition ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <MapPin className="w-3.5 h-3.5" />
+              )}
+              {t('bourse.recap.gps_button', { defaultValue: 'Ma position' })}
+            </button>
+          </div>
           <div className="relative">
             <input
               value={adresse}
