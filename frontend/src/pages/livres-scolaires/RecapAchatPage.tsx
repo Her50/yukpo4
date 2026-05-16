@@ -575,6 +575,26 @@ const RecapAchatPage: React.FC = () => {
   const [showOccasionModal, setShowOccasionModal] = useState(false);
   const [submittingOrder, setSubmittingOrder] = useState(false);
 
+  /* ─── ✅ 2026-05-16 — Top-tab Livres scolaires / Fournitures ───
+   *  Permet à l'user de basculer entre les 2 grandes catégories de son
+   *  brouillon de commande. Filtre les items affichés ; le bouton
+   *  "Valider la commande" en bas valide TOUT le panier (mix) en 1
+   *  appel à POST /api/librairie-network/commandes. */
+  const LIVRE_TYPES = new Set(['livre', 'workbook', 'livret', 'manuel', 'textbook', 'book']);
+  const isLivreItem = (it: PanierItem) => LIVRE_TYPES.has(String(it.type ?? '').toLowerCase());
+  const [topTab, setTopTab] = useState<'livres' | 'fournitures'>('livres');
+  const countLivres = panier.filter(isLivreItem).length;
+  const countFournitures = panier.filter((p) => !isLivreItem(p)).length;
+  // Auto-basculer vers l'onglet qui a du contenu si l'autre est vide.
+  useEffect(() => {
+    if (topTab === 'livres' && countLivres === 0 && countFournitures > 0) {
+      setTopTab('fournitures');
+    } else if (topTab === 'fournitures' && countFournitures === 0 && countLivres > 0) {
+      setTopTab('livres');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countLivres, countFournitures]);
+
   /* ─── Infos de livraison persistées (DeliveryLocationOnboardingPage) ───
    *  ✅ 2026-05-16 — Si l'utilisateur a déjà rempli son adresse + GPS lors de
    *  l'onboarding, on les pré-remplit dans la DeliveryModal pour éviter de
@@ -694,7 +714,13 @@ const RecapAchatPage: React.FC = () => {
   };
   // Ordre figé : Manuels d'abord (la pièce maîtresse de la rentrée),
   // puis cahiers, fournitures, et enfin un éventuel "Autres".
-  const types: TypeItem[] = ['livre', 'cahier', 'fourniture', 'autre'];
+  // ✅ 2026-05-16 — Filtre selon topTab :
+  //   - 'livres'      : uniquement manuels/workbooks/livrets (type='livre')
+  //   - 'fournitures' : cahiers + fournitures + autres
+  const types: TypeItem[] =
+    topTab === 'livres'
+      ? ['livre']
+      : ['cahier', 'fourniture', 'autre'];
   // Tri intra-section : on stabilise par titre alphabétique pour qu'un même
   // panier soit affiché identiquement quel que soit l'ordre d'ajout (scan,
   // suggestions, école partenaire).
@@ -1096,6 +1122,86 @@ const RecapAchatPage: React.FC = () => {
       </div>
 
       <div className="px-4 pt-4 pb-48 max-w-2xl mx-auto">
+        {/* ✅ 2026-05-16 — Top-tab Livres scolaires / Fournitures.
+            Permet de séparer visuellement les 2 grandes catégories du
+            brouillon. Tout est validé en 1 seule commande à la fin. */}
+        {(countLivres > 0 || countFournitures > 0) && (
+          <div className="mb-4 flex gap-2 bg-white rounded-2xl border border-gray-200 p-1 shadow-sm">
+            <button
+              onClick={() => setTopTab('livres')}
+              className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                topTab === 'livres'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              📚 {t('bourse.recap.tab_livres', { defaultValue: 'Livres scolaires' })}
+              {countLivres > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  topTab === 'livres' ? 'bg-white text-amber-700' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {countLivres}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setTopTab('fournitures')}
+              className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                topTab === 'fournitures'
+                  ? 'bg-purple-500 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              ✏️ {t('bourse.recap.tab_fournitures', { defaultValue: 'Fournitures' })}
+              {countFournitures > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  topTab === 'fournitures' ? 'bg-white text-purple-700' : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {countFournitures}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* CTA depuis l'onglet vide → bouton clair pour ajouter du contenu */}
+        {topTab === 'livres' && countLivres === 0 && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+            <p className="text-sm text-amber-900 font-semibold mb-2">
+              {t('bourse.recap.empty_livres_title', { defaultValue: 'Aucun livre dans le brouillon' })}
+            </p>
+            <p className="text-xs text-amber-700 mb-3">
+              {t('bourse.recap.empty_livres_hint', {
+                defaultValue: 'Scannez votre liste, choisissez un établissement partenaire ou le programme national.',
+              })}
+            </p>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-lg"
+            >
+              {t('bourse.recap.go_pick_books', { defaultValue: 'Ajouter des livres' })}
+            </button>
+          </div>
+        )}
+        {topTab === 'fournitures' && countFournitures === 0 && (
+          <div className="mb-4 bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
+            <p className="text-sm text-purple-900 font-semibold mb-2">
+              {t('bourse.recap.empty_fourni_title', { defaultValue: 'Aucune fourniture dans le brouillon' })}
+            </p>
+            <p className="text-xs text-purple-700 mb-3">
+              {t('bourse.recap.empty_fourni_hint', {
+                defaultValue: 'Ajoutez cahiers, accessoires et fournitures depuis la page dédiée.',
+              })}
+            </p>
+            <button
+              onClick={() => navigate('/cahiers-accessoires')}
+              className="bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold px-4 py-2 rounded-lg"
+            >
+              {t('bourse.recap.go_cahiers', { defaultValue: 'Ajouter des fournitures' })}
+            </button>
+          </div>
+        )}
+
         {/* ✅ 2026-05-10 : bannière "livres à photographier" — la commande
             reste sur "attente" tant que les livres en échange n'ont pas
             tous une photo recto/verso enregistrée. Clic → /rentree?capture-troc=1
@@ -1333,31 +1439,49 @@ const RecapAchatPage: React.FC = () => {
           });
         })()}
 
-        {/* ✅ 2026-05-16 — Ajouter un manuel scolaire MANQUANT.
-            Champ autocomplete figé sur la classe de l'enfant en cours
-            (visible uniquement en vue 'classe' où activeEnfant existe).
-            Le filtre `classe={activeEnfant.classe}` limite les résultats
-            aux manuels associés à cette classe (programme national +
-            établissements partenaires). */}
+        {/* ✅ 2026-05-16 — Ajouter manuel/fourniture MANQUANT, figé sur la
+            classe de l'enfant en cours. Selon topTab :
+              - 'livres'      : autocomplete manuels (cat='livres')
+              - 'fournitures' : autocomplete cahiers/fournitures (cat='fournitures')
+            Visible uniquement en vue 'classe' où activeEnfant existe. */}
         {viewMode === 'classe' && activeEnfant && (
-          <div className="rounded-2xl border border-amber-200 bg-white mb-3 overflow-hidden">
-            <div className="px-3 py-2 bg-amber-50 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              <span className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
-                {t('bourse.recap.add_manual_title', {
-                  defaultValue: 'Ajouter un manuel manquant',
-                })}
+          <div className={`rounded-2xl border bg-white mb-3 overflow-hidden ${
+            topTab === 'livres' ? 'border-amber-200' : 'border-purple-200'
+          }`}>
+            <div className={`px-3 py-2 flex items-center gap-2 ${
+              topTab === 'livres' ? 'bg-amber-50' : 'bg-purple-50'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                topTab === 'livres' ? 'bg-amber-500' : 'bg-purple-500'
+              }`} />
+              <span className={`text-[11px] font-bold uppercase tracking-wide ${
+                topTab === 'livres' ? 'text-amber-800' : 'text-purple-800'
+              }`}>
+                {topTab === 'livres'
+                  ? t('bourse.recap.add_manual_title', { defaultValue: 'Ajouter un manuel manquant' })
+                  : t('bourse.recap.add_fourni_title', { defaultValue: 'Ajouter une fourniture manquante' })}
               </span>
-              <span className="text-[10px] text-amber-700 ml-auto truncate">
+              <span className={`text-[10px] ml-auto truncate ${
+                topTab === 'livres' ? 'text-amber-700' : 'text-purple-700'
+              }`}>
                 {activeEnfant.classe}
               </span>
             </div>
             <ManualAddInline
-              cat="livres"
+              cat={topTab === 'livres' ? 'livres' : 'fournitures'}
               pays={(activeEnfant.pays ?? 'CM') as any}
               classe={activeEnfant.classe}
               niveau={activeEnfant.niveau}
               onPick={(it: ManualAddItem) => {
+                const typeItem: TypeItem =
+                  topTab === 'livres'
+                    ? 'livre'
+                    : (() => {
+                        const ta = String(it.type_article ?? '').toLowerCase();
+                        if (ta === 'cahier') return 'cahier';
+                        if (ta === 'fourniture' || ta === 'accessoire') return 'fourniture';
+                        return 'autre';
+                      })();
                 addItems([
                   {
                     enfantId: activeEnfant.id,
@@ -1365,7 +1489,7 @@ const RecapAchatPage: React.FC = () => {
                     auteur: it.auteur ?? undefined,
                     matiere: it.matiere ?? undefined,
                     editeur: it.editeur ?? undefined,
-                    type: 'livre',
+                    type: typeItem,
                     prixNeuf: it.prix_officiel ?? undefined,
                     choix: 'neuf',
                     quantite: it.quantite_defaut ?? 1,
