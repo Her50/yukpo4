@@ -42,9 +42,15 @@ export interface ManualAddInlineProps {
   cat: ManualAddCat;
   pays: PaysCode;
   onPick: (item: ManualAddItem) => void;
+  /** ✅ 2026-05-16 — Si défini, la recherche est figée sur cette classe.
+   *  Utilisé dans le Récap où l'utilisateur ajoute un manuel pour une classe
+   *  d'enfant déjà sélectionnée — on évite les résultats hors classe. */
+  classe?: string | null;
+  /** Niveau pour back-end (passé tel quel si besoin). */
+  niveau?: string | null;
 }
 
-const ManualAddInline: React.FC<ManualAddInlineProps> = ({ cat, pays, onPick }) => {
+const ManualAddInline: React.FC<ManualAddInlineProps> = ({ cat, pays, onPick, classe, niveau }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -68,6 +74,10 @@ const ManualAddInline: React.FC<ManualAddInlineProps> = ({ cat, pays, onPick }) 
         params.set('q', q);
         params.set('type_groupe', groupeForSearch);
         params.set('pays', pays);
+        // ✅ 2026-05-16 — Si classe spécifiée, on fige la recherche dessus.
+        // Le backend (articles-search) accepte ?classe=... pour filtrer.
+        if (classe && classe.trim()) params.set('classe', classe.trim());
+        if (niveau && niveau.trim()) params.set('niveau', niveau.trim());
         const res = await apiGet(`/api/v2/parent/articles-search?${params}`);
         const data = await res.json().catch(() => ({}));
         if (cancelled) return;
@@ -82,7 +92,7 @@ const ManualAddInline: React.FC<ManualAddInlineProps> = ({ cat, pays, onPick }) 
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, query, groupeForSearch, pays]);
+  }, [open, query, groupeForSearch, pays, classe, niveau]);
 
   if (!open) {
     return (

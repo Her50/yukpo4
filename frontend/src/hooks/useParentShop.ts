@@ -178,6 +178,12 @@ export function useParentShop() {
     setPanier(prev => prev.map(p => (p.id === id ? { ...p, troc_intent: false } : p)));
   }, []);
 
+  /** ✅ 2026-05-16 — Toggle direct de l'intention troc (utilisé par le
+   *  sélecteur 3-état Neuf/Occasion/Échange dans le récap). */
+  const setTrocIntent = useCallback((id: string, intent: boolean) => {
+    setPanier(prev => prev.map(p => (p.id === id ? { ...p, troc_intent: intent } : p)));
+  }, []);
+
   const updateQuantite = useCallback((id: string, quantite: number) => {
     setPanier(prev => prev.map(p => (p.id === id ? { ...p, quantite: Math.max(0, quantite) } : p)));
   }, []);
@@ -222,6 +228,7 @@ export function useParentShop() {
     updateChoix,
     updateTrocMatch,
     clearTrocIntent,
+    setTrocIntent,
     updateQuantite,
     updateGamme,
     isInPanier,

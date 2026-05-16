@@ -433,6 +433,14 @@ pub struct ArticlesSearchQuery {
     pub type_groupe: Option<String>,
     #[serde(default)]
     pub pays: Option<String>,
+    /// ✅ 2026-05-16 — Si défini, fige la recherche sur cette classe (ex
+    /// "6ème", "Tle C"). Utilisé dans /recap pour limiter l'autocomplete
+    /// au manuel scolaire de la classe de l'enfant en cours.
+    #[serde(default)]
+    pub classe: Option<String>,
+    /// Niveau (ex "secondaire", "primaire") — filtre supplémentaire optionnel.
+    #[serde(default)]
+    pub niveau: Option<String>,
     #[serde(default = "default_search_limit")]
     pub limit: i64,
 }
@@ -476,6 +484,25 @@ pub async fn articles_search(
     // donc on s'appuie sur `unaccent` si l'extension est dispo, sinon ILIKE direct).
     let pattern = format!("%{}%", needle.to_lowercase());
 
+    // ✅ 2026-05-16 — Filtre optionnel par classe/niveau pour figer la
+    // recherche depuis le Recap (où la classe de l'enfant est connue).
+    let classe_filter = q.classe.as_deref().and_then(|c| {
+        let t = c.trim();
+        if t.is_empty() {
+            None
+        } else {
+            Some(t.to_string())
+        }
+    });
+    let niveau_filter = q.niveau.as_deref().and_then(|n| {
+        let t = n.trim();
+        if t.is_empty() {
+            None
+        } else {
+            Some(t.to_string())
+        }
+    });
+
     use sqlx::Row;
     let rows = sqlx::query(
         r#"
@@ -492,6 +519,8 @@ pub async fn articles_search(
                OR lower(COALESCE(matiere,'')) LIKE $3
                OR lower(COALESCE(auteur_livre,'')) LIKE $3
                OR lower(COALESCE(editeur_livre,'')) LIKE $3)
+          AND ($5::text IS NULL OR lower(COALESCE(classe,'')) = lower($5))
+          AND ($6::text IS NULL OR lower(COALESCE(niveau,'')) = lower($6))
         ORDER BY lower(titre_livre), COALESCE(matiere,''), type_article
         LIMIT $4
         "#,
@@ -500,6 +529,8 @@ pub async fn articles_search(
     .bind(&pays)
     .bind(&pattern)
     .bind(q.limit)
+    .bind(&classe_filter)
+    .bind(&niveau_filter)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Database(format!("articles_search: {}", e)))?;
@@ -532,6 +563,8 @@ pub async fn articles_search(
             FROM accessoires_populaires_par_classe
             WHERE pays = $1
               AND lower(nom) LIKE $2
+              AND ($4::text IS NULL OR lower(COALESCE(classe,'')) = lower($4))
+              AND ($5::text IS NULL OR lower(COALESCE(niveau,'')) = lower($5))
             ORDER BY occurrences DESC, nom ASC
             LIMIT $3
             "#,
@@ -539,6 +572,8 @@ pub async fn articles_search(
         .bind(&pays)
         .bind(&pattern)
         .bind(q.limit)
+        .bind(&classe_filter)
+        .bind(&niveau_filter)
         .fetch_all(&state.pg)
         .await
         .ok()

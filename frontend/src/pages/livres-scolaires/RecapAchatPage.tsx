@@ -15,6 +15,10 @@ import { apiGet, apiPost } from '../../services/apiService';
 // Picker GPS minimaliste (Google Maps + Places) — chargé à la demande pour
 // ne pas alourdir le bundle initial.
 const DeliveryMapPicker = lazy(() => import('../../components/livres-scolaires/DeliveryMapPicker'));
+// ✅ 2026-05-16 — Autocomplete d'ajout manuel d'un manuel scolaire,
+// figé sur la classe en cours (cf prop `classe`).
+import ManualAddInline from '../../components/livres-scolaires/ManualAddInline';
+import type { ManualAddItem } from '../../components/livres-scolaires/ManualAddInline';
 
 const TYPE_LABELS: Record<TypeItem, string> = {
   livre: 'Livres',
@@ -108,12 +112,16 @@ function ItemCard({
   onUpdateChoix,
   onUpdateQuantite,
   onUpdateGamme,
+  onSetTrocIntent,
 }: {
   item: PanierItem;
   onRemove: () => void;
   onUpdateChoix: (id: string, choix: Choix) => void;
   onUpdateQuantite: (id: string, q: number) => void;
   onUpdateGamme: (id: string, g: Gamme) => void;
+  /** ✅ 2026-05-16 — Permet le toggle 3-état Neuf/Occasion/Échange.
+   *  Échange = occasion + troc_intent=true. */
+  onSetTrocIntent?: (id: string, intent: boolean) => void;
   onDuplicate?: (newQ: number) => void;
 }) {
   const { t } = useTranslation();
@@ -177,21 +185,43 @@ function ItemCard({
         </button>
       </div>
 
-      {/* Toggle Neuf/Occasion (livres) ou Gamme (fournitures) sous-ligne — réduit */}
+      {/* Toggle Neuf/Occasion/Échange (livres) ou Gamme (fournitures) sous-ligne.
+          ✅ 2026-05-16 — Le toggle livres passe à 3 états :
+            - Neuf      : choix='neuf', troc_intent=false
+            - Occasion  : choix='occasion', troc_intent=false (achat d'occasion sans donner de livre)
+            - Échange   : choix='occasion', troc_intent=true (l'utilisateur va proposer un livre en troc)
+          La distinction Occasion vs Échange permet d'orienter l'user vers
+          /rentree pour la capture photo (cf bouton "troc pending"). */}
       {(isLivre || (isGammeable && item.prixNeuf && item.prixNeuf > 0)) && (
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {isLivre && (
             <div className="inline-flex bg-gray-100 rounded p-[1px] gap-[1px] items-center">
               <button
-                onClick={() => onUpdateChoix(item.id, 'neuf')}
+                onClick={() => {
+                  onUpdateChoix(item.id, 'neuf');
+                  onSetTrocIntent?.(item.id, false);
+                }}
                 className={`px-1.5 py-px rounded text-[9px] font-bold transition-colors ${
                   item.choix === 'neuf' ? 'bg-emerald-500 text-white' : 'text-gray-500'
                 }`}>{t('bourse.recap.new')}</button>
               <button
-                onClick={() => onUpdateChoix(item.id, 'occasion')}
+                onClick={() => {
+                  onUpdateChoix(item.id, 'occasion');
+                  onSetTrocIntent?.(item.id, false);
+                }}
                 className={`px-1.5 py-px rounded text-[9px] font-bold transition-colors ${
-                  item.choix === 'occasion' ? 'bg-orange-500 text-white' : 'text-gray-500'
+                  item.choix === 'occasion' && !item.troc_intent ? 'bg-orange-500 text-white' : 'text-gray-500'
                 }`}>{t('bourse.recap.used')}</button>
+              <button
+                onClick={() => {
+                  onUpdateChoix(item.id, 'occasion');
+                  onSetTrocIntent?.(item.id, true);
+                }}
+                className={`px-1.5 py-px rounded text-[9px] font-bold transition-colors ${
+                  item.choix === 'occasion' && item.troc_intent ? 'bg-amber-500 text-white' : 'text-gray-500'
+                }`}
+                title={t('bourse.recap.exchange_hint', { defaultValue: 'Je propose un livre en échange' })}
+              >{t('bourse.recap.exchange', { defaultValue: 'Échange' })}</button>
             </div>
           )}
           {isGammeable && item.prixNeuf && item.prixNeuf > 0 && (
@@ -533,7 +563,7 @@ const RecapAchatPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { enfants, panier, removeItem, updateChoix, updateQuantite, updateGamme, getItemsForEnfant, countByEnfant, clearPanierForEnfant, clearPanier } = useParentShop();
+  const { enfants, panier, removeItem, updateChoix, updateQuantite, updateGamme, getItemsForEnfant, countByEnfant, clearPanierForEnfant, clearPanier, addItems, setTrocIntent } = useParentShop();
 
   const [activeEnfantId, setActiveEnfantId] = useState(
     enfants.find(e => countByEnfant(e.id) > 0)?.id || enfants[0]?.id || ''
@@ -1294,6 +1324,7 @@ const RecapAchatPage: React.FC = () => {
                       onUpdateChoix={updateChoix}
                       onUpdateQuantite={updateQuantite}
                       onUpdateGamme={updateGamme}
+                      onSetTrocIntent={setTrocIntent}
                     />
                   ))}
                 </div>
@@ -1301,6 +1332,57 @@ const RecapAchatPage: React.FC = () => {
             );
           });
         })()}
+
+        {/* ✅ 2026-05-16 — Ajouter un manuel scolaire MANQUANT.
+            Champ autocomplete figé sur la classe de l'enfant en cours
+            (visible uniquement en vue 'classe' où activeEnfant existe).
+            Le filtre `classe={activeEnfant.classe}` limite les résultats
+            aux manuels associés à cette classe (programme national +
+            établissements partenaires). */}
+        {viewMode === 'classe' && activeEnfant && (
+          <div className="rounded-2xl border border-amber-200 bg-white mb-3 overflow-hidden">
+            <div className="px-3 py-2 bg-amber-50 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
+                {t('bourse.recap.add_manual_title', {
+                  defaultValue: 'Ajouter un manuel manquant',
+                })}
+              </span>
+              <span className="text-[10px] text-amber-700 ml-auto truncate">
+                {activeEnfant.classe}
+              </span>
+            </div>
+            <ManualAddInline
+              cat="livres"
+              pays={(activeEnfant.pays ?? 'CM') as any}
+              classe={activeEnfant.classe}
+              niveau={activeEnfant.niveau}
+              onPick={(it: ManualAddItem) => {
+                addItems([
+                  {
+                    enfantId: activeEnfant.id,
+                    titre: it.titre,
+                    auteur: it.auteur ?? undefined,
+                    matiere: it.matiere ?? undefined,
+                    editeur: it.editeur ?? undefined,
+                    type: 'livre',
+                    prixNeuf: it.prix_officiel ?? undefined,
+                    choix: 'neuf',
+                    quantite: it.quantite_defaut ?? 1,
+                  },
+                ]);
+                toast({
+                  title: t('bourse.recap.toast_added', { defaultValue: 'Ajouté au panier' }),
+                  description: t('bourse.recap.toast_added_hint', {
+                    defaultValue:
+                      '"{{titre}}" — ajustez quantité et état (Neuf / Occasion / Échange) sur la carte.',
+                    titre: it.titre,
+                  }),
+                });
+              }}
+            />
+          </div>
+        )}
 
         {/* ✅ Synthèse par catégories de livraison — 4 catégories distinctes
             pour que le parent voie clairement ce qu'il achète et comment :
