@@ -56,7 +56,15 @@ export const makeLiteConfig = (cfg: LiteAppConfig) => {
 
   return defineConfig({
     plugins: [react(), buildPlugin()],
-    resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
+    resolve: {
+      alias: { '@': path.resolve(__dirname, 'src') },
+      // ✅ 2026-05-16 — dedupe React/react-dom : empêche que des dépendances
+      // transitives (lucide-react, sonner, etc.) bundlent leur propre copie.
+      // Sans cela, le manualChunks remontait React dans ui-vendor ET dans
+      // react-vendor → crash "Cannot set properties of undefined (Children)"
+      // quand ui-vendor s'exécutait avant que sa copie React soit initialisée.
+      dedupe: ['react', 'react-dom'],
+    },
     build: {
       outDir: cfg.outDir,
       sourcemap: false,
@@ -68,13 +76,31 @@ export const makeLiteConfig = (cfg: LiteAppConfig) => {
       rollupOptions: {
         input: path.resolve(__dirname, cfg.entryHtml),
         output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['lucide-react', 'react-hot-toast', 'sonner'],
-            'i18n-vendor': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
-            'http-vendor': ['axios'],
-            // date-fns retiré : utilisé seulement par composants delivery non
-            // inclus dans pharmacie → chunk vide. Laissé au bundle qui l'importe.
+          // ✅ Mode fonction : on garantit que react/react-dom/scheduler sont
+          // TOUJOURS dans react-vendor, peu importe qui les importe. La forme
+          // objet `{'react-vendor': ['react']}` ne suit pas les imports
+          // transitifs, donc Vite duplique React dans les chunks qui en ont
+          // besoin (lucide-react notamment). Forme fonction = pas de doublon.
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return;
+            if (
+              /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)
+            ) {
+              return 'react-vendor';
+            }
+            if (
+              /[\\/]node_modules[\\/](lucide-react|react-hot-toast|sonner)[\\/]/.test(id)
+            ) {
+              return 'ui-vendor';
+            }
+            if (
+              /[\\/]node_modules[\\/](i18next|react-i18next|i18next-browser-languagedetector|i18next-http-backend)[\\/]/.test(id)
+            ) {
+              return 'i18n-vendor';
+            }
+            if (/[\\/]node_modules[\\/]axios[\\/]/.test(id)) {
+              return 'http-vendor';
+            }
           },
         },
       },
