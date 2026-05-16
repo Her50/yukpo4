@@ -16,17 +16,18 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   BookOpen,
+  ChevronRight,
   Loader2,
   PackageCheck,
   RefreshCw,
   ShoppingBag,
+  Sparkles,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import ReferralCard from '../../components/referral/ReferralCard'; // ✅ 2026-05-15
+import { Link, useNavigate } from 'react-router-dom';
 import WalletPayoutSection from '../../components/wallet/WalletPayoutSection'; // ✅ 2026-05-15 PR #3
 import { apiGet } from '../../services/apiService';
 
@@ -250,6 +251,38 @@ const ParentDashboardPage: React.FC = () => {
             </button>
           </div>
         )}
+
+        {/* ✅ 2026-05-16 — CTA Parrainage TRÈS visible en haut du dashboard.
+            Avant : card noyée tout en bas. Maintenant : bouton premium en
+            position 1 pour pousser à partager dès l'arrivée sur la page. */}
+        <Link
+          to="/parrainage"
+          className="group block mb-4 sm:mb-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-500 p-[2px] shadow-lg hover:shadow-xl transition-shadow"
+          aria-label={t('bourse.dashboard.referral_cta_aria', {
+            defaultValue: 'Ouvrir la page de parrainage',
+          })}
+        >
+          <div className="bg-white rounded-2xl px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="shrink-0 bg-gradient-to-br from-indigo-500 to-amber-500 p-2 sm:p-2.5 rounded-xl shadow-md">
+                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-sm sm:text-base text-gray-900 leading-tight">
+                  {t('bourse.dashboard.referral_cta_title', {
+                    defaultValue: 'Parrainez et gagnez 500 FCFA',
+                  })}
+                </p>
+                <p className="text-[11px] sm:text-xs text-gray-600 leading-snug mt-0.5">
+                  {t('bourse.dashboard.referral_cta_sub', {
+                    defaultValue: 'Partagez votre lien. Bonus à la 1ère commande filleul ≥ 10 000 FCFA.',
+                  })}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-indigo-600 shrink-0 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </Link>
 
         {/* Wallet (hero) */}
         <section
@@ -478,11 +511,6 @@ const ParentDashboardPage: React.FC = () => {
             </ul>
           )}
         </section>
-
-        {/* ✅ 2026-05-15 — Parrainage : viralité organique. Carte affichée à
-            tous les parents connectés, pas seulement ceux qui ont déjà
-            converti — premier message marketing dès l'inscription. */}
-        <ReferralCard />
 
         {/* ✅ 2026-05-15 PR #3 — Retrait cash. S'auto-masque si solde wallet
             sous le seuil minimum ET aucun historique de demandes. */}

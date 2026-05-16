@@ -32,7 +32,6 @@ const ReferralCard: React.FC = () => {
   const { t } = useTranslation();
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
   const load = useCallback(async () => {
@@ -56,17 +55,6 @@ const ReferralCard: React.FC = () => {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const copyCode = async () => {
-    if (!data) return;
-    try {
-      await navigator.clipboard.writeText(data.code);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    } catch {
-      toast.error(t('referral.copy_error', { defaultValue: 'Copie impossible' }));
-    }
-  };
 
   const copyLink = async () => {
     if (!data) return;
@@ -137,67 +125,58 @@ const ReferralCard: React.FC = () => {
         </div>
       </div>
 
-      {/* Code + actions */}
+      {/* ✅ 2026-05-16 — Suppression de l'affichage du code en gros. Le code
+          est déjà intégré dans le share_url, l'utilisateur n'a pas besoin de
+          le voir séparément : il partage le LIEN, l'app fait le reste.
+          Garde : lien à partager + QR code (pour scan in-person). */}
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
         <div className="flex-1 min-w-0">
           <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mb-1">
-            {t('referral.your_code', { defaultValue: 'Votre code' })}
+            {t('referral.share_link', { defaultValue: 'Votre lien à partager' })}
           </p>
           <div className="flex items-center gap-2">
-            <span className="font-mono font-bold text-xl sm:text-2xl text-indigo-700 tracking-widest bg-white border border-indigo-300 rounded-lg px-3 py-1.5">
-              {data.code}
-            </span>
+            <input
+              readOnly
+              value={data.share_url}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              className="flex-1 min-w-0 text-[11px] sm:text-xs font-mono bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700"
+            />
             <button
-              onClick={copyCode}
+              onClick={copyLink}
               className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
-              aria-label={t('referral.copy_code', { defaultValue: 'Copier le code' })}
-              title={t('referral.copy_code', { defaultValue: 'Copier le code' })}
+              aria-label={t('referral.copy_link', { defaultValue: 'Copier le lien' })}
+              title={t('referral.copy_link', { defaultValue: 'Copier le lien' })}
             >
-              {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedLink ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </button>
+            <button
+              onClick={share}
+              className="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+              aria-label={t('referral.share', { defaultValue: 'Partager' })}
+              title={t('referral.share', { defaultValue: 'Partager' })}
+            >
+              <Share2 className="w-4 h-4" />
             </button>
           </div>
-          <div className="mt-3">
-            <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mb-1">
-              {t('referral.share_link', { defaultValue: 'Lien à partager' })}
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={data.share_url}
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-                className="flex-1 min-w-0 text-[11px] sm:text-xs font-mono bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-gray-700"
-              />
-              <button
-                onClick={copyLink}
-                className="p-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-                aria-label={t('referral.copy_link', { defaultValue: 'Copier le lien' })}
-                title={t('referral.copy_link', { defaultValue: 'Copier le lien' })}
-              >
-                {copiedLink ? (
-                  <Check className="w-4 h-4 text-green-600" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </button>
-              <button
-                onClick={share}
-                className="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                aria-label={t('referral.share', { defaultValue: 'Partager' })}
-                title={t('referral.share', { defaultValue: 'Partager' })}
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          <p className="text-[10px] text-gray-500 mt-1.5 italic">
+            {t('referral.share_hint', {
+              defaultValue:
+                'Cliquez Partager pour envoyer via WhatsApp, SMS, ou copier le lien.',
+            })}
+          </p>
         </div>
 
-        {/* QR */}
+        {/* QR pour scan en face-à-face (in-person sharing) */}
         <div className="flex flex-col items-center justify-center shrink-0">
           <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
             <QRCodeSVG value={data.share_url} size={88} level="M" />
           </div>
           <p className="text-[9px] text-gray-500 mt-1">
-            {t('referral.scan_hint', { defaultValue: 'Scan pour partager' })}
+            {t('referral.scan_hint', { defaultValue: 'Scanner sur place' })}
           </p>
         </div>
       </div>

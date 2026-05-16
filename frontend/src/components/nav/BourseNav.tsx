@@ -21,7 +21,7 @@ const BourseNav: React.FC = () => {
     { to: '/', label: t('bourse.nav.home'), icon: Home, exact: true },
     { to: '/recap', label: t('bourse.nav.recap'), icon: ListChecks },
     { to: '/mes-livres', label: t('bourse.nav.my_books', { defaultValue: 'Mes livres' }), icon: BookOpen },
-    { to: '/tableau-de-bord', label: t('bourse.nav.dashboard', { defaultValue: 'Bilan' }), icon: LayoutDashboard },
+    { to: '/tableau-de-bord', label: t('bourse.nav.dashboard', { defaultValue: 'Dashboard' }), icon: LayoutDashboard },
     { to: '/mes-commandes', label: t('bourse.nav.tracking'), icon: Truck },
   ];
   return (
