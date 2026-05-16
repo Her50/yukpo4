@@ -125,23 +125,46 @@ export function useParentShop() {
   }, [enfants, panier]);
 
   /**
-   * ✅ FIX 2026-05-16 — Race condition entre addItems/addEnfant et navigate.
+   * ✅ FIX 2026-05-16 v2 — Race condition entre addItems/addEnfant et navigate.
    * Le useEffect ci-dessus est asynchrone : il ne tourne qu'APRÈS le commit
    * DOM du render qui suit setState. Si un composant fait `addItems(...)` puis
    * `navigate('/recap')` immédiatement, RecapAchatPage se monte et lit
    * localStorage AVANT que le useEffect ait eu le temps d'écrire dedans.
-   * Résultat : Recap voit un panier vide.
    *
-   * Solution : utility synchrone qui écrit dans localStorage avec l'état
-   * `next` calculé EN MÊME TEMPS que le setState. Appelée depuis addItems,
-   * addEnfant, toggleItem, removeItem (toutes les mutations susceptibles
-   * d'être suivies d'une navigation immédiate).
+   * Solution v1 (foireuse) : passer (enfants, panier) via closure useCallback
+   * → restait stale si l'user faisait addEnfant() puis addItems() dans le
+   * même render. Le panier référençait un enfantId pas encore dans enfants.
+   *
+   * Solution v2 : on relit l'état actuel depuis localStorage avant de merger.
+   * Chaque mutation passe `null` pour la moitié non touchée → on récupère
+   * la valeur la plus fraîche disponible (la sienne ou celle écrite par une
+   * mutation antérieure dans le même tick). Bulletproof.
    */
-  const syncToStorage = (nextEnfants: Enfant[], nextPanier: PanierItem[]) => {
+  const syncToStorage = (
+    nextEnfants: Enfant[] | null,
+    nextPanier: PanierItem[] | null,
+  ) => {
     try {
+      let current: { enfants: Enfant[]; panier: PanierItem[] } = {
+        enfants: [],
+        panier: [],
+      };
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          current = {
+            enfants: parsed.enfants ?? [],
+            panier: parsed.panier ?? [],
+          };
+        }
+      } catch { /* fallback aux defaults vides */ }
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ enfants: nextEnfants, panier: nextPanier }),
+        JSON.stringify({
+          enfants: nextEnfants ?? current.enfants,
+          panier: nextPanier ?? current.panier,
+        }),
       );
     } catch {
       /* quota / private mode — useEffect prendra le relais */
@@ -152,20 +175,31 @@ export function useParentShop() {
     const e: Enfant = { ...data, id: genId() };
     setEnfants(prev => {
       const next = [...prev, e];
-      syncToStorage(next, panier);
+      syncToStorage(next, null);
       return next;
     });
     return e;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panier]);
+  }, []);
 
   const updateEnfant = useCallback((id: string, data: Partial<Omit<Enfant, 'id'>>) => {
-    setEnfants(prev => prev.map(e => (e.id === id ? { ...e, ...data } : e)));
+    setEnfants(prev => {
+      const next = prev.map(e => (e.id === id ? { ...e, ...data } : e));
+      syncToStorage(next, null);
+      return next;
+    });
   }, []);
 
   const removeEnfant = useCallback((id: string) => {
-    setEnfants(prev => prev.filter(e => e.id !== id));
-    setPanier(prev => prev.filter(p => p.enfantId !== id));
+    setEnfants(prev => {
+      const next = prev.filter(e => e.id !== id);
+      syncToStorage(next, null);
+      return next;
+    });
+    setPanier(prev => {
+      const next = prev.filter(p => p.enfantId !== id);
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   const toggleItem = useCallback((item: Omit<PanierItem, 'id'>) => {
@@ -175,11 +209,10 @@ export function useParentShop() {
         idx !== -1
           ? prev.filter((_, i) => i !== idx)
           : [...prev, { ...item, id: genId() }];
-      syncToStorage(enfants, next);
+      syncToStorage(null, next);
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enfants]);
+  }, []);
 
   const addItems = useCallback((items: Omit<PanierItem, 'id'>[]) => {
     setPanier(prev => {
@@ -188,16 +221,19 @@ export function useParentShop() {
         const exists = next.some(p => p.enfantId === item.enfantId && p.titre === item.titre);
         if (!exists) next.push({ ...item, id: genId() });
       }
-      // ✅ FIX 2026-05-16 : sync immédiat dans localStorage pour éviter race
-      // condition addItems → navigate (cf commentaire syncToStorage plus haut).
-      syncToStorage(enfants, next);
+      // ✅ FIX 2026-05-16 v2 : sync immédiat (merge depuis localStorage actuel
+      // pour éviter d'écraser des enfants/panier ajoutés en parallèle).
+      syncToStorage(null, next);
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enfants]);
+  }, []);
 
   const removeItem = useCallback((id: string) => {
-    setPanier(prev => prev.filter(p => p.id !== id));
+    setPanier(prev => {
+      const next = prev.filter(p => p.id !== id);
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   const updateChoix = useCallback((id: string, choix: Choix) => {

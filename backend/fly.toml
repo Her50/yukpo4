@@ -29,18 +29,36 @@ primary_region = "cdg"
   GPU_ENABLED = "false"
   ENABLE_AI_OPTIMIZATIONS = "true"
 
-  # Pool DB — calibré pour scale dynamique 1→25 VM sur Fly Postgres.
-  # Avec 25 VM × 60 = 1500 connexions max. Si Fly PG single-node sature à ~95,
-  # mettre Cloudflare Hyperdrive devant (cf scripts/setup-hyperdrive.sh) :
-  # Hyperdrive multiplexe les conn backend → DB et tient des milliers de
-  # clients sur une centaine de conn DB réelles.
-  DB_POOL_SIZE = "60"
+  # ✅ 2026-05-16 — Pool DB recalibré objectif 10 000 transactions simultanées.
+  #
+  # Avant : 60 conn × 25 VM = 1500 conn max → satureait Fly PG (~95 conn lib)
+  # AVANT même que l'autoscaler stabilise. Pool dimensionné pour le pire cas
+  # alors que la médiane utilisait ~5 conn par VM.
+  #
+  # Maintenant : 20 conn × 50 VM = 1000 conn max théorique. Avec
+  # Cloudflare Hyperdrive (cf. scripts/setup-hyperdrive.sh), seules ~80 conn
+  # backend → DB sont effectivement maintenues côté Postgres. Hyperdrive
+  # multiplexe le reste. **Activer Hyperdrive avant pic campagne.**
+  #
+  # Si Hyperdrive indisponible : utiliser PgBouncer côté Fly Postgres ou
+  # baisser DB_POOL_SIZE à 12 (12×50 = 600, à la limite haute).
+  DB_POOL_SIZE = "20"
   DB_POOL_MIN_SIZE = "5"
   DB_ACQUIRE_TIMEOUT_SECS = "8"
-  # ✅ Statement timeout par-requête (évite qu'une requête bloque tout le pool)
-  DB_STATEMENT_TIMEOUT_MS = "30000"
-  DB_LOCK_TIMEOUT_MS = "8000"
-  DB_IDLE_IN_TX_TIMEOUT_MS = "15000"
+  # ✅ 2026-05-16 — Statement timeout réduit 30s → 8s : une requête qui prend
+  # >8 s a un problème (index manquant, lock contention) et bloque le pool.
+  # Mieux vaut la couper et logger qu'attendre passivement. Les endpoints
+  # qui doivent vraiment > 8 s (export, OCR LLM long) doivent override
+  # localement via `SET LOCAL statement_timeout = '60s'` dans leur transaction.
+  DB_STATEMENT_TIMEOUT_MS = "8000"
+  DB_LOCK_TIMEOUT_MS = "5000"
+  DB_IDLE_IN_TX_TIMEOUT_MS = "10000"
+
+  # ✅ 2026-05-16 — Read replica pour scale-out lecture (catalogues, recherches).
+  # Si défini, les SELECTs analytics/search sont routés ici, libérant le primary
+  # pour les writes (wallet, commandes). Sinon (vide), tout passe sur primary.
+  # DATABASE_URL_RO = "postgres://reader@..."
+  DATABASE_URL_RO = ""
 
   # Sécurité / billing Yukpo
   YUKPO_IA_TOKEN_MULTIPLIER = "20"
@@ -63,28 +81,35 @@ primary_region = "cdg"
 [http_service]
   internal_port = 8080
   force_https = true
-  # ✅ Patch 2026-05-16 — Autoscaling dynamique calibré campagne 10k users :
-  #   - 1 seule VM en idle (≈$10-15/mois) — économie maximum hors campagne
-  #   - auto_stop_machines = "stop" → kill des VM idle après idle_timeout
-  #   - auto_start_machines = true → spawn nouvelles VM quand soft_limit atteint
-  #   - VM 2 GB pour cold-start réduit (~15-25 s vs 60 s en 1 GB) et headroom
-  #     mémoire pour Rust/sqlx + cache
-  # Capacité finale : 25 VM × 500 hard = 12 500 conn HTTP simultanées
-  # Coût pic campagne (~2 h × 25 VM 2 GB) ≈ $5-10 ; idle reste à $10-15/mois
+  # ✅ Patch 2026-05-16 v2 — Autoscaling dynamique calibré 10 000 tx simultanées.
+  #
+  # Capacité cible : 10 000 transactions HTTP concurrentes en pic campagne.
+  # Profil : 50 VM × 300 soft_limit = 15 000 conn (marge 50 %).
+  #
+  #   - min_machines_running = 3 → toujours 3 VM warm pour absorber un burst
+  #     sans cold-start (cold-start Rust ≈ 25-30 s sur 2 GB)
+  #   - max_machines_running = 50 → cap explicite. Au-delà, contacter Fly
+  #     (defaults > 25 nécessitent autorisation, fait via support 2026-04)
+  #   - auto_stop_machines = "stop" → kill VM idle après idle_timeout, économise
+  #     en heures creuses
+  #   - VM 2 GB → suffisant si DB_POOL_SIZE=20 (≈ 30 MB) + Tokio + cache local.
+  #     Si on monte à 8 GB ce serait du gaspillage pour ce profil de charge.
+  #
+  # Coût pic 10K tx (~2 h × 50 VM 2 GB shared) ≈ $20-30 ; idle 3 VM ≈ $30-45/mois.
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 1
-  # Plafond explicite : 25 = défaut Fly (extensible sur demande à 100+)
-  max_machines_running = 25
+  min_machines_running = 3
+  max_machines_running = 50
 
-  # ✅ Concurrence orientée connexions — soft déclenche scale-up bien avant
-  # saturation hard. Marge de 50 % pour permettre le boot d'une nouvelle VM
-  # avant qu'on refuse des connexions (proxy 503).
-  # 25 × 250 soft = 6 250 conn → début du scale ; 25 × 500 hard = 12 500 max
+  # ✅ 2026-05-16 — Concurrence rehausse : soft 300 / hard 600 par VM.
+  # Soft déclenche le scale-up à 50 % de la capacité hard → laisse le temps
+  # à une nouvelle VM (cold-start ≈ 25 s) de devenir prête avant qu'on refuse
+  # des connexions au niveau proxy.
+  # 50 × 300 soft = 15 000 conn → scaling complet ; 50 × 600 hard = 30 000 max
   [http_service.concurrency]
     type = "connections"
-    soft_limit = 250
-    hard_limit = 500
+    soft_limit = 300
+    hard_limit = 600
 
   [http_service.http_options]
     response_timeout = 120         # 2 min — marge pour appels LLM lourds

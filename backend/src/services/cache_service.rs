@@ -1,12 +1,43 @@
 // ✅ Phase 10 - Service de cache générique centralisé pour Redis
 // Ce service fournit une API simple et réutilisable pour le cache Redis
 
+use once_cell::sync::Lazy;
 use redis::AsyncCommands;
 use serde::{de::DeserializeOwned, Serialize};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 
 use crate::core::types::AppError;
 use crate::core::types::AppResult;
+
+// ============================================================================
+// ✅ 2026-05-16 — Métriques cache hit/miss (Prometheus-friendly).
+// ============================================================================
+static CACHE_HITS: AtomicU64 = AtomicU64::new(0);
+static CACHE_MISSES: AtomicU64 = AtomicU64::new(0);
+static CACHE_REDIS_ERRORS: AtomicU64 = AtomicU64::new(0);
+
+/// Snapshot atomique des compteurs pour exposition via /metrics.
+/// (hits, misses, redis_errors)
+pub fn cache_metrics_snapshot() -> (u64, u64, u64) {
+    (
+        CACHE_HITS.load(Ordering::Relaxed),
+        CACHE_MISSES.load(Ordering::Relaxed),
+        CACHE_REDIS_ERRORS.load(Ordering::Relaxed),
+    )
+}
+
+// ============================================================================
+// ✅ 2026-05-16 — Single-flight : déduplique les appels compute() concurrents
+// sur la même clé. Évite le "thundering herd" : si 1000 users demandent la
+// même clé absente du cache, on n'exécute compute() qu'UNE seule fois et les
+// 999 autres attendent le résultat partagé.
+// ============================================================================
+type FlightSlot = Arc<tokio::sync::Notify>;
+static FLIGHTS: Lazy<Mutex<HashMap<String, FlightSlot>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Service de cache générique utilisant Redis
 pub struct CacheService {
@@ -49,18 +80,21 @@ impl CacheService {
                 match serde_json::from_str::<T>(&payload) {
                     Ok(value) => {
                         log::debug!("[CacheService] Cache hit pour: {}", key);
+                        CACHE_HITS.fetch_add(1, Ordering::Relaxed);
                         Ok(Some(value))
                     }
                     Err(err) => {
                         log::warn!("[CacheService] Erreur parsing cache {}: {:?}", key, err);
                         // Supprimer la clé invalide (avec retry)
                         let _ = redis_helper::del_with_retry(client, key).await;
+                        CACHE_MISSES.fetch_add(1, Ordering::Relaxed);
                         Ok(None)
                     }
                 }
             }
             Ok(None) => {
                 log::debug!("[CacheService] Cache miss pour: {}", key);
+                CACHE_MISSES.fetch_add(1, Ordering::Relaxed);
                 Ok(None)
             }
             Err(e) => {
@@ -69,6 +103,7 @@ impl CacheService {
                     key,
                     e
                 );
+                CACHE_REDIS_ERRORS.fetch_add(1, Ordering::Relaxed);
                 Ok(None)
             }
         }
@@ -223,25 +258,19 @@ impl CacheService {
     }
 
     /// Récupère ou calcule et met en cache une valeur
-    /// Si la valeur n'est pas en cache, appelle `compute` pour la calculer
+    /// Si la valeur n'est pas en cache, appelle `compute` pour la calculer.
+    ///
+    /// ✅ 2026-05-16 — Single-flight intégré : si N requêtes arrivent
+    /// simultanément sur la même clé manquante, on n'exécute compute() qu'une
+    /// seule fois. Les autres attendent puis lisent depuis le cache.
+    /// Évite le thundering herd (cache stampede) sous fort trafic.
     pub async fn get_or_compute<F, Fut, T>(&self, key: &str, compute: F) -> AppResult<T>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = AppResult<T>>,
         T: Serialize + DeserializeOwned,
     {
-        // Essayer de récupérer depuis le cache
-        if let Some(cached) = self.get::<T>(key).await? {
-            return Ok(cached);
-        }
-
-        // Calculer la valeur
-        let value = compute().await?;
-
-        // Mettre en cache
-        self.set(key, &value).await?;
-
-        Ok(value)
+        self.get_or_compute_with_ttl(key, self.default_ttl, compute).await
     }
 
     /// Récupère ou calcule et met en cache une valeur avec TTL personnalisé
@@ -256,18 +285,46 @@ impl CacheService {
         Fut: std::future::Future<Output = AppResult<T>>,
         T: Serialize + DeserializeOwned,
     {
-        // Essayer de récupérer depuis le cache
+        // 1. Cache lookup
         if let Some(cached) = self.get::<T>(key).await? {
             return Ok(cached);
         }
 
-        // Calculer la valeur
-        let value = compute().await?;
+        // 2. Single-flight : éviter le thundering herd.
+        let flight_slot = {
+            let mut guard = FLIGHTS.lock().await;
+            if let Some(existing) = guard.get(key).cloned() {
+                // Un autre task calcule déjà → on attend qu'il termine.
+                drop(guard);
+                existing.notified().await;
+                // Au réveil, le cache devrait être chaud.
+                if let Some(cached) = self.get::<T>(key).await? {
+                    return Ok(cached);
+                }
+                // Si pas en cache (erreur du leader, Redis down), on calcule
+                // soi-même en fallback. Le second tour réenregistre une flight.
+                None
+            } else {
+                let slot = Arc::new(tokio::sync::Notify::new());
+                guard.insert(key.to_string(), slot.clone());
+                Some(slot)
+            }
+        };
 
-        // Mettre en cache avec TTL personnalisé
-        self.set_with_ttl(key, &value, ttl).await?;
+        // 3. Calcul (leader OU fallback follower)
+        let result = compute().await;
 
-        Ok(value)
+        // 4. Cache write (si succès) + libération des followers
+        if let Ok(v) = &result {
+            let _ = self.set_with_ttl(key, v, ttl).await;
+        }
+        if let Some(slot) = flight_slot {
+            // Retire la flight et notifie tous les waiters
+            FLIGHTS.lock().await.remove(key);
+            slot.notify_waiters();
+        }
+
+        result
     }
 
     /// Construit une clé de cache avec un préfixe

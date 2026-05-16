@@ -11,6 +11,7 @@ pub mod hide_headers;
 pub mod ia_rate_limit; // ✅ NOUVEAU 2025-01-27: Rate limiting strict pour appels IA
 pub mod jwt;
 pub mod monitoring;
+pub mod ocr_rate_limit; // ✅ 2026-05-16: Rate limit OCR/LLM coûteux (programme scolaire)
 pub mod rate_limit;
 pub mod request_size_limit;
 pub mod service_interaction;

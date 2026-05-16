@@ -488,15 +488,36 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
             })
             .after_connect(|conn, _meta| {
                 Box::pin(async move {
-                    // ✅ 2026-04-10: statement_timeout 30s — tue les requêtes lentes qui saturent le pool
-                    // Les workers background (delivery, gpu) faisaient des requêtes >2s sans limite
-                    let _ = sqlx::query("SET statement_timeout = '30s'").execute(&mut *conn).await;
-                    // lock_timeout court pour éviter les blocages en cascade sur les locks
-                    let _ = sqlx::query("SET lock_timeout = '10s'").execute(&mut *conn).await;
-                    // idle_in_transaction réduit pour libérer les connexions plus vite
-                    let _ = sqlx::query("SET idle_in_transaction_session_timeout = '30s'")
+                    // ✅ 2026-05-16 — Timeouts par-conn lus depuis env (cf. fly.toml).
+                    // Avant : hardcodé '30s' qui ignorait DB_STATEMENT_TIMEOUT_MS. Le pool
+                    // secondaire (ligne ~767) lisait l'env mais ce pool primary
+                    // restait bloqué sur 30 s — incohérence dangereuse en cas de
+                    // requête lente (le pool primary tient 1 conn 30 s pendant
+                    // qu'on essaie d'éviter ça côté secondaire).
+                    let stmt_ms = std::env::var("DB_STATEMENT_TIMEOUT_MS")
+                        .ok()
+                        .and_then(|s| s.parse::<u64>().ok())
+                        .unwrap_or(8_000);
+                    let lock_ms = std::env::var("DB_LOCK_TIMEOUT_MS")
+                        .ok()
+                        .and_then(|s| s.parse::<u64>().ok())
+                        .unwrap_or(5_000);
+                    let idle_tx_ms = std::env::var("DB_IDLE_IN_TX_TIMEOUT_MS")
+                        .ok()
+                        .and_then(|s| s.parse::<u64>().ok())
+                        .unwrap_or(10_000);
+                    let _ = sqlx::query(&format!("SET statement_timeout = '{}'", stmt_ms))
                         .execute(&mut *conn)
                         .await;
+                    let _ = sqlx::query(&format!("SET lock_timeout = '{}'", lock_ms))
+                        .execute(&mut *conn)
+                        .await;
+                    let _ = sqlx::query(&format!(
+                        "SET idle_in_transaction_session_timeout = '{}'",
+                        idle_tx_ms
+                    ))
+                    .execute(&mut *conn)
+                    .await;
                     Ok(())
                 })
             });

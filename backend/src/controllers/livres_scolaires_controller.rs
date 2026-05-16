@@ -67,6 +67,7 @@ pub async fn search_livres_scolaires(
         offset: params.offset,
         mode_listing: params.mode_listing,
         etat_classification: params.etat_classification,
+        cursor_id: params.cursor_id,
     };
 
     let service = Service::new(Arc::new(state.pg.clone()));
@@ -91,6 +92,10 @@ pub struct SearchLivresQuery {
     pub offset: Option<i64>,
     pub mode_listing: Option<String>,
     pub etat_classification: Option<String>,
+    /// ✅ 2026-05-16 — cursor-based pagination : `cursor_id` = id du dernier
+    /// livre retourné dans la page précédente. Si fourni (+ pas de GPS),
+    /// utilise un index range scan au lieu d'OFFSET pour les pages profondes.
+    pub cursor_id: Option<i32>,
 }
 
 /// GET /api/livres-scolaires/:id

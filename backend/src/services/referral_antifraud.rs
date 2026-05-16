@@ -20,6 +20,12 @@
 //     sauf manipulation)
 //   - filleul a moins de N minutes d'âge à la conversion (trop rapide)
 //
+// ✅ 2026-05-16 — Signaux v2 (durcissement objectif 10k tx) :
+//   - same_signup_subnet : IP /24 partagé (anti VPN/datacenter pool partagé)
+//   - same_user_agent    : User-Agent identique (anti bot scripté)
+//   - parrain_signup_burst : > N comptes signupés depuis la même IP en 24h
+//     (anti farming massif)
+//
 // Configurable via env vars (cf. constantes ci-dessous).
 
 use sqlx::PgPool;
@@ -64,6 +70,15 @@ fn min_filleul_age_minutes() -> i64 {
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(15)
+}
+
+/// Plafond signups distincts par IP (audit_logs `/api/auth/register`) sur 24h.
+/// Au-delà, suspicion de farming massif (un même appareil/proxy crée N comptes).
+fn max_signups_per_ip_24h() -> i64 {
+    std::env::var("REFERRAL_MAX_SIGNUPS_PER_IP_24H")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(5)
 }
 
 /// Évalue l'éligibilité d'un couple parrain/filleul à recevoir le bonus.
@@ -135,32 +150,87 @@ pub async fn check_eligibility(
         signals.push("parrain_burst_conversions_24h");
     }
 
-    // 5. Même IP au signup ? (si on a tracé referral_clicks ou audit_logs)
-    // Best-effort : on regarde audit_logs.actor_ip pour la requête de signup
-    // du parrain et du filleul. Si la colonne ou les données manquent, skip.
-    let same_ip: Option<bool> = sqlx::query_scalar(
-        r#"SELECT COALESCE(
-              (
-                SELECT MAX(p.actor_ip) = MAX(f.actor_ip)
-                  FROM audit_logs p
-                  JOIN audit_logs f ON p.actor_ip = f.actor_ip
-                                   AND p.actor_ip IS NOT NULL
-                 WHERE p.path = '/api/auth/register'
-                   AND p.actor_id = $1
-                   AND f.path = '/api/auth/register'
-                   AND f.actor_id = $2
-              ),
-              FALSE
-           )"#,
+    // 5. Cross-check IP + User-Agent + subnet /24 au signup.
+    //
+    // On joint audit_logs.path='/api/auth/register' pour parrain et filleul.
+    // ✅ 2026-05-16 — Ajout :
+    //   - same_signup_ip (exact match) — VPN dédié, même appareil
+    //   - same_signup_subnet (mêmes 3 premiers octets IPv4) — VPN pool / NAT
+    //     opérateur partagé. Faux positif possible (foyer = même /24) mais
+    //     combiné avec d'autres signaux → score augmente.
+    //   - same_user_agent — bot scripté qui n'aléatorise pas son UA.
+    //
+    // Best-effort : si audit_logs est vide pour l'un des deux users, skip.
+    type SignupFingerprint = (Option<String>, Option<String>);
+    let parrain_fp: Option<SignupFingerprint> = sqlx::query_as(
+        r#"SELECT actor_ip::text,
+                  metadata->>'user_agent'
+             FROM audit_logs
+            WHERE actor_id = $1 AND path = '/api/auth/register'
+            ORDER BY id DESC LIMIT 1"#,
     )
     .bind(parrain_id)
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten();
+    let filleul_fp: Option<SignupFingerprint> = sqlx::query_as(
+        r#"SELECT actor_ip::text,
+                  metadata->>'user_agent'
+             FROM audit_logs
+            WHERE actor_id = $1 AND path = '/api/auth/register'
+            ORDER BY id DESC LIMIT 1"#,
+    )
     .bind(filleul_id)
     .fetch_optional(pool)
     .await
     .ok()
     .flatten();
-    if matches!(same_ip, Some(true)) {
-        signals.push("same_signup_ip");
+    if let (Some((p_ip, p_ua)), Some((f_ip, f_ua))) = (parrain_fp.as_ref(), filleul_fp.as_ref()) {
+        match (p_ip.as_deref(), f_ip.as_deref()) {
+            (Some(pi), Some(fi)) if !pi.is_empty() && !fi.is_empty() => {
+                if pi == fi {
+                    signals.push("same_signup_ip");
+                } else {
+                    // Match /24 (IPv4) ou /48 (IPv6) — heuristique simple
+                    let p_prefix = ip_prefix(pi);
+                    let f_prefix = ip_prefix(fi);
+                    if !p_prefix.is_empty() && p_prefix == f_prefix {
+                        signals.push("same_signup_subnet");
+                    }
+                }
+            }
+            _ => {}
+        }
+        if let (Some(pu), Some(fu)) = (p_ua.as_deref(), f_ua.as_deref()) {
+            if !pu.is_empty() && pu == fu {
+                signals.push("same_user_agent");
+            }
+        }
+    }
+
+    // 6. ✅ 2026-05-16 — Burst signups depuis la même IP que le filleul (24h).
+    //    Si > N comptes ont signupé depuis la même IP que le filleul dans les
+    //    dernières 24h, on suspecte du farming massif (un acteur derrière un
+    //    seul appareil/proxy qui multiplie les comptes).
+    if let Some((Some(f_ip_raw), _)) = filleul_fp.as_ref().map(|(ip, ua)| (ip.clone(), ua.clone()))
+    {
+        if !f_ip_raw.is_empty() {
+            let count: i64 = sqlx::query_scalar(
+                r#"SELECT COUNT(DISTINCT actor_id)::BIGINT
+                     FROM audit_logs
+                    WHERE path = '/api/auth/register'
+                      AND actor_ip::text = $1
+                      AND created_at > NOW() - INTERVAL '24 hours'"#,
+            )
+            .bind(&f_ip_raw)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+            if count > max_signups_per_ip_24h() {
+                signals.push("signup_ip_burst_24h");
+            }
+        }
     }
 
     if signals.is_empty() {
@@ -173,5 +243,24 @@ pub async fn check_eligibility(
             signals
         );
         Ok(FraudReport::block(signals))
+    }
+}
+
+/// Renvoie le préfixe réseau d'une IP pour matcher des comptes co-localisés.
+/// IPv4 → premiers 3 octets (/24). IPv6 → 4 premiers groupes hex (/64).
+/// Retourne `""` si parsing impossible.
+fn ip_prefix(ip: &str) -> String {
+    let trimmed = ip.trim();
+    if trimmed.contains(':') {
+        // IPv6 : tronque au /64 (4 premiers groupes)
+        trimmed.split(':').take(4).collect::<Vec<_>>().join(":")
+    } else {
+        // IPv4 : tronque au /24
+        let parts: Vec<&str> = trimmed.split('.').collect();
+        if parts.len() == 4 {
+            parts[..3].join(".")
+        } else {
+            String::new()
+        }
     }
 }

@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Path, Query, State},
+    http::HeaderMap,
     response::IntoResponse,
     Extension, Json,
 };
@@ -59,15 +60,33 @@ pub struct RequestPayoutInput {
 
 pub async fn request_payout(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(input): Json<RequestPayoutInput>,
 ) -> AppResult<impl IntoResponse> {
+    // ✅ 2026-05-16 — Idempotency-Key (RFC 7240 / Stripe pattern). Si le client
+    // fournit cette clé, un retry (double-clic, timeout réseau) sera dédoublé
+    // par le ledger wallet (UNIQUE INDEX partiel sur dedup_key). Sans clé, on
+    // accepte mais on log : le client devrait toujours en fournir une.
+    let idempotency_key = headers
+        .get("idempotency-key")
+        .or_else(|| headers.get("Idempotency-Key"))
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    if idempotency_key.is_none() {
+        log::warn!(
+            "[payout] user={} a soumis une demande sans Idempotency-Key. Recommandé pour éviter double-débit en cas de retry.",
+            user_id
+        );
+    }
     let id = wallet_payout_service::request_payout(
         &state.pg,
         user_id,
         input.amount_xaf,
         &input.operator,
         &input.phone_e164,
+        idempotency_key.as_deref(),
     )
     .await
     .map_err(map_payout_err)?;

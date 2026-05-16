@@ -14,6 +14,7 @@ use crate::controllers::etablissement_team_controller;
 use crate::controllers::livres_scolaires_controller;
 use crate::controllers::parent_suggestions_controller;
 use crate::middlewares::jwt::jwt_auth;
+use crate::middlewares::ocr_rate_limit::ocr_rate_limit;
 use crate::state::AppState;
 
 pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
@@ -132,7 +133,14 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 // pour rester pragmatique : >1 fichier volumineux → API rate-limit).
                 // La validation magic-bytes + taille par fichier (5/15 MB) est faite
                 // dans le contrôleur via image_upload_validator.
-                .layer(axum::extract::DefaultBodyLimit::max(25_000_000)),
+                .layer(axum::extract::DefaultBodyLimit::max(25_000_000))
+                // ✅ 2026-05-16 — Rate-limit strict OCR/LLM (3/h, 10/jour par user OU IP)
+                // Évite DoS financier sur GPT-4o (~30 XAF / scan brut, sans plafond
+                // un attaquant peut épuiser le budget en quelques minutes).
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    ocr_rate_limit,
+                )),
         )
         // Polling statut d'un job de scan (retourné en 202 par /submit)
         .route(

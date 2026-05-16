@@ -178,6 +178,14 @@ pub struct SearchLivresScolairesRequest {
     // ✅ V2
     pub mode_listing: Option<String>, // 'troc', 'vente', 'don'
     pub etat_classification: Option<String>, // 'bon', 'acceptable'
+    /// ✅ 2026-05-16 — Pagination cursor-based pour scale 10K TPS.
+    /// Sans recherche GPS : cursor = id du dernier livre de la page précédente.
+    /// Si fourni, on remplace OFFSET (qui scanne N lignes même pour la page
+    /// 50+) par `WHERE id < $cursor ORDER BY id DESC LIMIT $limit`.
+    /// Le client lit `next_cursor` dans la réponse et le repasse à la page
+    /// suivante. Recommandé pour les pages > 5 (OFFSET reste pratique pour
+    /// page 1-5).
+    pub cursor_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

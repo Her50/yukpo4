@@ -95,6 +95,7 @@ pub async fn request_payout(
     amount_xaf: i32,
     operator: &str,
     phone_e164: &str,
+    idempotency_key: Option<&str>,
 ) -> Result<i64, PayoutError> {
     if amount_xaf <= 0 {
         return Err(PayoutError::AmountNotPositive);
@@ -110,9 +111,38 @@ pub async fn request_payout(
         return Err(PayoutError::InvalidPhone);
     }
 
+    // ✅ 2026-05-16 — Idempotence : si user_id + idempotency_key existe déjà,
+    // on retourne l'id de la demande existante sans en créer une seconde.
+    // Cf. UNIQUE INDEX `uniq_wallet_payout_requests_idem`.
+    if let Some(key) = idempotency_key {
+        let existing: Option<i64> = sqlx::query_scalar(
+            r#"SELECT id FROM wallet_payout_requests
+                WHERE user_id = $1 AND idempotency_key = $2
+                LIMIT 1"#,
+        )
+        .bind(user_id)
+        .bind(key)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten();
+        if let Some(id) = existing {
+            log::info!(
+                "[payout] idempotent replay user={} key={} → id existant {}",
+                user_id,
+                key,
+                id
+            );
+            return Ok(id);
+        }
+    }
+
     let mut tx = pool.begin().await?;
 
-    // Vérification + débit atomique (consume_credit_tx échoue si solde < amount)
+    // Vérification + débit atomique (consume_credit_tx échoue si solde < amount).
+    // dedup_key associée au payout : si le wallet ledger est déjà débité pour
+    // cette clé, on ne re-débite pas (et on n'échoue pas avec InsufficientBalance).
+    let dedup_key = idempotency_key.map(|k| format!("payout:idem:{}:{}", user_id, k));
     consume_credit_tx(
         &mut tx,
         user_id,
@@ -120,6 +150,7 @@ pub async fn request_payout(
         CreditSource::PayoutReserved,
         CreditMovementContext {
             note: Some(format!("Réservation payout {} {}", amount_xaf, operator)),
+            dedup_key: dedup_key.clone(),
             ..Default::default()
         },
     )
@@ -139,14 +170,15 @@ pub async fn request_payout(
 
     let id: i64 = sqlx::query_scalar(
         r#"INSERT INTO wallet_payout_requests
-              (user_id, amount_xaf, operator, phone_e164, status)
-           VALUES ($1, $2, $3, $4, 'pending')
+              (user_id, amount_xaf, operator, phone_e164, status, idempotency_key)
+           VALUES ($1, $2, $3, $4, 'pending', $5)
            RETURNING id"#,
     )
     .bind(user_id)
     .bind(amount_xaf)
     .bind(operator)
     .bind(phone_e164.trim())
+    .bind(idempotency_key)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -277,7 +309,8 @@ pub async fn reject(pool: &PgPool, id: i64, reason: &str) -> Result<(), PayoutEr
     .execute(&mut *tx)
     .await?;
 
-    // Refund : on recrédite le user
+    // Refund : on recrédite le user. ✅ 2026-05-16 — dedup_key garantit qu'un
+    // double-rejet (concurrent admin clicks) ne re-crédite pas 2× le wallet.
     apply_credit_tx(
         &mut tx,
         user_id,
@@ -285,6 +318,7 @@ pub async fn reject(pool: &PgPool, id: i64, reason: &str) -> Result<(), PayoutEr
         CreditSource::PayoutRefunded,
         CreditMovementContext {
             note: Some(format!("Refund payout #{} (rejected) : {}", id, reason)),
+            dedup_key: Some(format!("payout:{}:refund", id)),
             ..Default::default()
         },
     )

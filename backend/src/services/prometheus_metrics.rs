@@ -123,5 +123,33 @@ pub fn render_metrics() -> String {
     let metric_families = prometheus::gather();
     let mut buffer = Vec::new();
     encoder.encode(&metric_families, &mut buffer).unwrap();
-    String::from_utf8(buffer).unwrap()
+    let mut out = String::from_utf8(buffer).unwrap_or_default();
+
+    // ✅ 2026-05-16 — Append des compteurs cache_service.rs (Bourse + global).
+    // Non enregistrés dans le registry Prometheus historique pour éviter de
+    // mélanger des AtomicU64 process-local avec des IntCounter. On les expose
+    // au format texte directement.
+    let (hits, misses, errors) = crate::services::cache_service::cache_metrics_snapshot();
+    out.push_str("# HELP yukpo_cache_hits_total Cache hits (CacheService).\n");
+    out.push_str("# TYPE yukpo_cache_hits_total counter\n");
+    out.push_str(&format!("yukpo_cache_hits_total {}\n", hits));
+    out.push_str("# HELP yukpo_cache_misses_total Cache misses (CacheService).\n");
+    out.push_str("# TYPE yukpo_cache_misses_total counter\n");
+    out.push_str(&format!("yukpo_cache_misses_total {}\n", misses));
+    out.push_str("# HELP yukpo_cache_redis_errors_total Erreurs Redis (CacheService).\n");
+    out.push_str("# TYPE yukpo_cache_redis_errors_total counter\n");
+    out.push_str(&format!("yukpo_cache_redis_errors_total {}\n", errors));
+
+    // Hit-rate (calcul instantané) — utile pour alertes Grafana.
+    let total = hits.saturating_add(misses) as f64;
+    let hit_ratio = if total > 0.0 {
+        hits as f64 / total
+    } else {
+        0.0
+    };
+    out.push_str("# HELP yukpo_cache_hit_ratio Ratio hits / (hits + misses).\n");
+    out.push_str("# TYPE yukpo_cache_hit_ratio gauge\n");
+    out.push_str(&format!("yukpo_cache_hit_ratio {:.4}\n", hit_ratio));
+
+    out
 }

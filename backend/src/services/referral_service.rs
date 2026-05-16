@@ -416,6 +416,9 @@ pub async fn try_credit_referral_bonus(
                 "Bonus parrainage : filleul user {} a passé sa première commande de {} XAF",
                 filleul_id, order_total_xaf
             )),
+            // ✅ 2026-05-16 — Idempotence : un seul bonus par paire (parrain, filleul).
+            // Si le cron de conversion repasse, ON CONFLICT évite le double-crédit.
+            dedup_key: Some(format!("referral:par={}:fil={}", parrain_id, filleul_id)),
             ..Default::default()
         },
     )

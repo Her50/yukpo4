@@ -94,20 +94,26 @@ END $$;
 -- ----------------------------------------------------------------------------
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'livres_scolaires') THEN
-        -- Recherche par classe + filtre actif
+    -- livres_scolaires : la colonne réelle est `classe_actuelle` (pas classe_id).
+    -- Un index `idx_livres_classe_actuelle` existe déjà — pas la peine de
+    -- dupliquer. On garde le bloc défensif pour éviter une régression si la
+    -- colonne `classe_id` est ajoutée plus tard.
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'livres_scolaires' AND column_name = 'classe_id') THEN
         CREATE INDEX IF NOT EXISTS livres_scolaires_classe_active_idx
             ON livres_scolaires (classe_id) WHERE deleted_at IS NULL;
     END IF;
 
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'programmes_scolaires') THEN
-        -- Listing programmes par classe (très fréquent côté parent)
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'programmes_scolaires' AND column_name = 'classe_id') THEN
         CREATE INDEX IF NOT EXISTS programmes_scolaires_classe_idx
             ON programmes_scolaires (classe_id);
     END IF;
 
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'commandes_mixtes') THEN
-        -- Lookup commandes par utilisateur (dashboard parent)
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'commandes_mixtes' AND column_name = 'user_id')
+    AND EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'commandes_mixtes' AND column_name = 'created_at') THEN
         CREATE INDEX IF NOT EXISTS commandes_mixtes_user_created_idx
             ON commandes_mixtes (user_id, created_at DESC);
     END IF;

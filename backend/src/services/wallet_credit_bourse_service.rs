@@ -67,6 +67,17 @@ pub struct CreditMovementContext {
     pub troc_id: Option<i32>,
     pub purchase_id: Option<i32>,
     pub note: Option<String>,
+    /// ✅ 2026-05-16 — Clé d'idempotence applicative.
+    /// Si fournie + UNIQUE en base : un retry (double-clic, webhook rejoué,
+    /// reprise après crash) renvoie ON CONFLICT au lieu de double-écrire le
+    /// ledger. Le wallet reste cohérent.
+    /// Format recommandé : `<feature>:<entity_id>[:<sub>]`
+    ///   - "payout:42"                      → débit pour la demande payout #42
+    ///   - "payout:42:refund"               → recrédit si rejet
+    ///   - "referral:par=1:fil=5"           → bonus parrain
+    ///   - "order:123:credit_used"          → utilisation crédit au checkout
+    ///   - "admin:adj=2026-05-16:user=10"   → ajustement admin idempotent
+    pub dedup_key: Option<String>,
 }
 
 /// Crédite le wallet bourse d'un user. Atomique. Renvoie le nouveau solde.
@@ -104,6 +115,43 @@ pub async fn apply_credit_tx(
         return Ok(bal);
     }
 
+    // ✅ 2026-05-16 — Si dedup_key fournie, on protège via INSERT ... ON CONFLICT.
+    // L'ordre est important : on insère D'ABORD le ledger (qui peut échouer sur
+    // conflit) puis seulement après on update le wallet. Sinon, en cas de retry,
+    // on créditerait deux fois le wallet avant que l'INSERT échoue.
+    if let Some(key) = ctx.dedup_key.as_deref() {
+        let inserted: Option<i64> = sqlx::query_scalar(
+            r#"
+            INSERT INTO wallet_credit_bourse_ledger
+                (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, dedup_key, balance_after)
+            VALUES ($1, $2, 'credit', $3, $4, $5, $6, $7, $8, $9, NULL)
+            ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING
+            RETURNING id
+            "#,
+        )
+        .bind(user_id)
+        .bind(amount)
+        .bind(source.as_str())
+        .bind(ctx.livre_id)
+        .bind(ctx.chaine_id)
+        .bind(ctx.troc_id)
+        .bind(ctx.purchase_id)
+        .bind(ctx.note.as_deref())
+        .bind(key)
+        .fetch_optional(&mut **tx)
+        .await?;
+        if inserted.is_none() {
+            // Conflit → opération déjà appliquée. On retourne le solde courant
+            // sans toucher au wallet (idempotence).
+            let bal: Decimal =
+                sqlx::query_scalar("SELECT wallet_credit_bourse FROM users WHERE id = $1")
+                    .bind(user_id)
+                    .fetch_one(&mut **tx)
+                    .await?;
+            return Ok(bal);
+        }
+    }
+
     let new_balance: Decimal = sqlx::query_scalar(
         r#"
         UPDATE users
@@ -118,24 +166,37 @@ pub async fn apply_credit_tx(
     .fetch_one(&mut **tx)
     .await?;
 
-    sqlx::query(
-        r#"
-        INSERT INTO wallet_credit_bourse_ledger
-            (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, balance_after)
-        VALUES ($1, $2, 'credit', $3, $4, $5, $6, $7, $8, $9)
-        "#,
-    )
-    .bind(user_id)
-    .bind(amount)
-    .bind(source.as_str())
-    .bind(ctx.livre_id)
-    .bind(ctx.chaine_id)
-    .bind(ctx.troc_id)
-    .bind(ctx.purchase_id)
-    .bind(ctx.note.as_deref())
-    .bind(new_balance)
-    .execute(&mut **tx)
-    .await?;
+    if ctx.dedup_key.is_some() {
+        // Mise à jour du balance_after sur la ligne déjà insérée plus haut
+        sqlx::query(
+            r#"UPDATE wallet_credit_bourse_ledger
+                  SET balance_after = $2
+                WHERE dedup_key = $1 AND balance_after IS NULL"#,
+        )
+        .bind(ctx.dedup_key.as_deref())
+        .bind(new_balance)
+        .execute(&mut **tx)
+        .await?;
+    } else {
+        sqlx::query(
+            r#"
+            INSERT INTO wallet_credit_bourse_ledger
+                (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, balance_after)
+            VALUES ($1, $2, 'credit', $3, $4, $5, $6, $7, $8, $9)
+            "#,
+        )
+        .bind(user_id)
+        .bind(amount)
+        .bind(source.as_str())
+        .bind(ctx.livre_id)
+        .bind(ctx.chaine_id)
+        .bind(ctx.troc_id)
+        .bind(ctx.purchase_id)
+        .bind(ctx.note.as_deref())
+        .bind(new_balance)
+        .execute(&mut **tx)
+        .await?;
+    }
 
     Ok(new_balance)
 }
@@ -170,6 +231,27 @@ pub async fn consume_credit_tx(
         return Ok(bal);
     }
 
+    // ✅ 2026-05-16 — Idempotence : si dedup_key déjà présente dans le ledger,
+    // l'opération a déjà été appliquée. On retourne le solde sans débiter ni
+    // lever d'erreur InsufficientBalance (qui surviendrait sinon car le 1er
+    // appel a déjà consommé les fonds).
+    if let Some(key) = ctx.dedup_key.as_deref() {
+        let already: Option<i64> = sqlx::query_scalar(
+            "SELECT id FROM wallet_credit_bourse_ledger WHERE dedup_key = $1 LIMIT 1",
+        )
+        .bind(key)
+        .fetch_optional(&mut **tx)
+        .await?;
+        if already.is_some() {
+            let bal: Decimal =
+                sqlx::query_scalar("SELECT wallet_credit_bourse FROM users WHERE id = $1")
+                    .bind(user_id)
+                    .fetch_one(&mut **tx)
+                    .await?;
+            return Ok(bal);
+        }
+    }
+
     // Vérification + débit atomique : on update seulement si solde suffisant.
     // Si pas suffisant, on lève une erreur explicite.
     let result = sqlx::query_scalar::<_, Decimal>(
@@ -199,8 +281,8 @@ pub async fn consume_credit_tx(
     sqlx::query(
         r#"
         INSERT INTO wallet_credit_bourse_ledger
-            (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, balance_after)
-        VALUES ($1, $2, 'debit', $3, $4, $5, $6, $7, $8, $9)
+            (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, dedup_key, balance_after)
+        VALUES ($1, $2, 'debit', $3, $4, $5, $6, $7, $8, $9, $10)
         "#,
     )
     .bind(user_id)
@@ -211,6 +293,7 @@ pub async fn consume_credit_tx(
     .bind(ctx.troc_id)
     .bind(ctx.purchase_id)
     .bind(ctx.note.as_deref())
+    .bind(ctx.dedup_key.as_deref())
     .bind(new_balance)
     .execute(&mut **tx)
     .await?;

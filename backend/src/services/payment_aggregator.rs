@@ -767,7 +767,7 @@ impl PaymentAggregator {
         body: &[u8],
     ) -> WebhookVerification {
         match provider {
-            AggregatorProvider::CinetPay => self.verify_cinetpay_webhook(body),
+            AggregatorProvider::CinetPay => self.verify_cinetpay_webhook(headers, body),
             AggregatorProvider::NotchPay => self.verify_notchpay_webhook(headers, body),
             AggregatorProvider::Flutterwave => {
                 let secret_hash = headers.get("verif-hash").map(|s| s.as_str());
@@ -1095,8 +1095,96 @@ impl PaymentAggregator {
         })
     }
 
-    fn verify_cinetpay_webhook(&self, body: &[u8]) -> WebhookVerification {
-        // CinetPay envoie un POST avec cpm_trans_id dans le body
+    fn verify_cinetpay_webhook(
+        &self,
+        headers: &std::collections::HashMap<String, String>,
+        body: &[u8],
+    ) -> WebhookVerification {
+        // ✅ 2026-05-16 — Vérification HMAC-SHA256 du webhook CinetPay.
+        //
+        // CinetPay V2 envoie un header `x-token` = HMAC-SHA256(secret, body_raw)
+        // (cf. https://docs.cinetpay.com/sdk/webhook-securisation/).
+        //
+        // Avant ce patch : on acceptait n'importe quel POST tant qu'il avait un
+        // `cpm_trans_id`, on déléguait la "vraie" vérification à l'appel
+        // /v2/payment/check via check_status. Faille : un attaquant pouvait
+        // forger un webhook avec un transaction_id connu (le sien, en relay) et
+        // déclencher des effets de bord (rappel notification, log audit, etc.)
+        // SANS jamais passer par CinetPay. Si check_status était indisponible
+        // (timeout réseau), certains paths fallback marquaient `is_valid = true`.
+        //
+        // Maintenant : on exige le header `x-token` qui doit match HMAC-SHA256
+        // du body avec `CINETPAY_SECRET_KEY`. Pas de match → rejet immédiat.
+        //
+        // Comportement si secret non configuré :
+        //   - prod (APP_ENV=production) → REJECT (fail-closed)
+        //   - autre env → ACCEPT + warn (compat dev/staging)
+        // Override possible via `CINETPAY_HMAC_ENFORCE=false` pour migration
+        // progressive (à retirer une fois HMAC déployé partout).
+
+        let signature = headers
+            .get("x-token")
+            .or_else(|| headers.get("X-Token"))
+            .or_else(|| headers.get("x-cinetpay-signature"))
+            .cloned()
+            .unwrap_or_default();
+
+        let secret = &self.config.cinetpay_secret_key;
+        let enforce = std::env::var("CINETPAY_HMAC_ENFORCE")
+            .map(|v| v.to_lowercase() != "false")
+            .unwrap_or(true);
+        let is_prod = std::env::var("APP_ENV").as_deref() == Ok("production");
+
+        let signature_ok = if !secret.is_empty() && !signature.is_empty() {
+            use hmac::{Hmac, Mac};
+            use sha2::Sha256;
+            type HmacSha256 = Hmac<Sha256>;
+
+            match HmacSha256::new_from_slice(secret.as_bytes()) {
+                Ok(mut mac) => {
+                    mac.update(body);
+                    let expected = hex::encode(mac.finalize().into_bytes());
+                    // Comparaison normalisée case-insensitive (CinetPay peut envoyer hex maj/min)
+                    expected.eq_ignore_ascii_case(signature.trim())
+                }
+                Err(e) => {
+                    log::error!("[CinetPay] HMAC init error: {}", e);
+                    false
+                }
+            }
+        } else if secret.is_empty() {
+            if is_prod && enforce {
+                log::error!("[CinetPay] CINETPAY_SECRET_KEY vide en production — webhook rejeté");
+                false
+            } else {
+                log::warn!(
+                    "[CinetPay] Webhook accepté sans HMAC (secret non configuré, env non-prod)"
+                );
+                true
+            }
+        } else {
+            // Secret présent mais signature absente du header → rejet (sauf si enforce off)
+            if enforce {
+                log::warn!("[CinetPay] Header x-token absent — webhook rejeté");
+                false
+            } else {
+                log::warn!("[CinetPay] Header x-token absent — accepté (HMAC enforce off)");
+                true
+            }
+        };
+
+        if !signature_ok {
+            return WebhookVerification {
+                is_valid: false,
+                transaction_id: None,
+                status: None,
+                amount: None,
+                currency: None,
+                provider_reference: None,
+                raw_data: None,
+            };
+        }
+
         let body_json: serde_json::Value = match serde_json::from_slice(body) {
             Ok(v) => v,
             Err(e) => {
@@ -1119,14 +1207,10 @@ impl PaymentAggregator {
             .and_then(|t| t.as_str())
             .map(|s| s.to_string());
 
-        // CinetPay webhook est considéré valide si on a un transaction_id
-        // La vérification réelle se fait via l'appel check_status
-        let is_valid = transaction_id.is_some();
-
         WebhookVerification {
-            is_valid,
+            is_valid: transaction_id.is_some(),
             transaction_id,
-            status: None, // On vérifiera via check_status
+            status: None, // toujours re-vérifié via check_status après ce contrôle HMAC
             amount: None,
             currency: None,
             provider_reference: body_json
