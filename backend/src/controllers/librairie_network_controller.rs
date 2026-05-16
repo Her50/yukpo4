@@ -238,10 +238,16 @@ pub async fn create_commande_mixte(
         payload.livres_neufs.iter().map(|l| l.prix_officiel * l.quantite as f64).sum();
 
     // Récupérer prix livres occasion
+    // ✅ FIX 2026-05-16 : les colonnes prix_detecte et valeur_calculee sont
+    // NUMERIC en SQL, pas TEXT. On les CAST en f64 au SELECT pour décodage
+    // direct. Avant : décodage Option<String> → toujours None → prix=0.
     let mut total_occasion = 0.0;
     for livre_req in &payload.livres_occasion {
         let livre_row = sqlx::query(
-            "SELECT prix_detecte, valeur_calculee FROM livres_scolaires WHERE id = $1 AND is_active = true",
+            "SELECT prix_detecte::DOUBLE PRECISION AS prix_detecte,
+                    valeur_calculee::DOUBLE PRECISION AS valeur_calculee
+               FROM livres_scolaires
+              WHERE id = $1 AND is_active = true",
         )
         .bind(livre_req.livre_scolaire_id)
         .fetch_optional(&state.pg)
@@ -249,12 +255,9 @@ pub async fn create_commande_mixte(
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
         .ok_or_else(|| AppError::NotFound("Livre d'occasion non trouvé".to_string()))?;
 
-        let valeur_calculee: Option<String> = livre_row.try_get("valeur_calculee").unwrap_or(None);
-        let prix_detecte: Option<String> = livre_row.try_get("prix_detecte").unwrap_or(None);
-        let prix = valeur_calculee
-            .and_then(|v| v.parse::<f64>().ok())
-            .or_else(|| prix_detecte.and_then(|p| p.parse::<f64>().ok()))
-            .unwrap_or(0.0);
+        let valeur_calculee: Option<f64> = livre_row.try_get("valeur_calculee").ok();
+        let prix_detecte: Option<f64> = livre_row.try_get("prix_detecte").ok();
+        let prix = valeur_calculee.or(prix_detecte).unwrap_or(0.0);
 
         total_occasion += prix * livre_req.quantite as f64;
     }
@@ -437,30 +440,78 @@ pub async fn create_commande_mixte(
     }
 
     // Insérer livres occasion
+    // ✅ FIX 2026-05-16 : décodage des colonnes corrigé.
+    //   - user_id (vendeur) : INTEGER en DB, pas UUID → Option<i32>
+    //   - prix_detecte / valeur_calculee : NUMERIC → CAST en DOUBLE PRECISION
+    //   - titre/classe/matiere/etat_livre : NOT NULL en DB → on REJETTE
+    //     explicitement la commande si l'un est absent (au lieu d'INSERT NULL
+    //     qui causait une violation silencieuse côté SQL).
+    //   - vendeur_id : NOT NULL en DB → idem, rejet explicite.
     for livre_req in payload.livres_occasion {
-        // Récupérer infos livre
         let livre_row = sqlx::query(
-            "SELECT titre, auteur, classe, matiere, etat_livre, prix_detecte, valeur_calculee, user_id FROM livres_scolaires WHERE id = $1",
+            "SELECT titre, auteur, classe, matiere, etat_livre,
+                    prix_detecte::DOUBLE PRECISION  AS prix_detecte,
+                    valeur_calculee::DOUBLE PRECISION AS valeur_calculee,
+                    user_id
+               FROM livres_scolaires WHERE id = $1",
         )
         .bind(livre_req.livre_scolaire_id)
         .fetch_one(&mut *tx)
         .await
-            .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?;
 
-        let l_valeur_calculee: Option<String> =
-            livre_row.try_get("valeur_calculee").unwrap_or(None);
-        let l_prix_detecte: Option<String> = livre_row.try_get("prix_detecte").unwrap_or(None);
-        let l_titre: Option<String> = livre_row.try_get("titre").unwrap_or(None);
-        let l_auteur: Option<String> = livre_row.try_get("auteur").unwrap_or(None);
-        let l_classe: Option<String> = livre_row.try_get("classe").unwrap_or(None);
-        let l_matiere: Option<String> = livre_row.try_get("matiere").unwrap_or(None);
-        let l_etat_livre: Option<String> = livre_row.try_get("etat_livre").unwrap_or(None);
-        let l_user_id: Option<Uuid> = livre_row.try_get("user_id").unwrap_or(None);
+        let l_valeur_calculee: Option<f64> = livre_row.try_get("valeur_calculee").ok();
+        let l_prix_detecte: Option<f64> = livre_row.try_get("prix_detecte").ok();
+        let l_titre: Option<String> = livre_row.try_get("titre").ok();
+        let l_auteur: Option<String> = livre_row.try_get("auteur").ok();
+        let l_classe: Option<String> = livre_row.try_get("classe").ok();
+        let l_matiere: Option<String> = livre_row.try_get("matiere").ok();
+        let l_etat_livre: Option<String> = livre_row.try_get("etat_livre").ok();
+        // user_id (vendeur) est INTEGER en DB, pas UUID
+        let l_vendeur_id: Option<i32> = livre_row.try_get("user_id").ok();
 
-        let prix = l_valeur_calculee
-            .and_then(|v| v.parse::<f64>().ok())
-            .or_else(|| l_prix_detecte.and_then(|p| p.parse::<f64>().ok()))
-            .unwrap_or(0.0);
+        let prix = l_valeur_calculee.or(l_prix_detecte).unwrap_or(0.0);
+
+        // Validation explicite des champs NOT NULL — évite la violation SQL
+        // silencieuse et donne un message clair au frontend.
+        let titre = l_titre.as_deref().filter(|s| !s.is_empty()).ok_or_else(|| {
+            log::error!(
+                "[create_commande_mixte] livre_scolaire {} : titre absent",
+                livre_req.livre_scolaire_id
+            );
+            AppError::BadRequest(format!(
+                "Le livre d'occasion #{} n'a pas de titre.",
+                livre_req.livre_scolaire_id
+            ))
+        })?;
+        let classe = l_classe.as_deref().filter(|s| !s.is_empty()).ok_or_else(|| {
+            AppError::BadRequest(format!(
+                "Le livre d'occasion #{} n'a pas de classe associée.",
+                livre_req.livre_scolaire_id
+            ))
+        })?;
+        let matiere = l_matiere.as_deref().filter(|s| !s.is_empty()).ok_or_else(|| {
+            AppError::BadRequest(format!(
+                "Le livre d'occasion #{} n'a pas de matière associée.",
+                livre_req.livre_scolaire_id
+            ))
+        })?;
+        let etat_livre = l_etat_livre.as_deref().filter(|s| !s.is_empty()).ok_or_else(|| {
+            AppError::BadRequest(format!(
+                "Le livre d'occasion #{} n'a pas d'état renseigné.",
+                livre_req.livre_scolaire_id
+            ))
+        })?;
+        let vendeur_id = l_vendeur_id.ok_or_else(|| {
+            log::error!(
+                "[create_commande_mixte] livre_scolaire {} : user_id (vendeur) absent",
+                livre_req.livre_scolaire_id
+            );
+            AppError::BadRequest(format!(
+                "Le livre d'occasion #{} n'a pas de vendeur associé.",
+                livre_req.livre_scolaire_id
+            ))
+        })?;
 
         sqlx::query(
             r#"
@@ -473,13 +524,13 @@ pub async fn create_commande_mixte(
         )
         .bind(commande.id)
         .bind(livre_req.livre_scolaire_id)
-        .bind(&l_titre)
-        .bind(&l_auteur)
-        .bind(&l_classe)
-        .bind(&l_matiere)
-        .bind(&l_etat_livre)
+        .bind(titre)
+        .bind(l_auteur.as_deref())
+        .bind(classe)
+        .bind(matiere)
+        .bind(etat_livre)
         .bind(prix)
-        .bind(l_user_id)
+        .bind(vendeur_id)
         .bind(livre_req.quantite)
         .execute(&mut *tx)
         .await
