@@ -303,31 +303,41 @@ const LivreScolaireHomePage: React.FC = () => {
               choisie (programme national par défaut). Garde une seule
               porte d'entrée pour réduire la confusion utilisateur. */}
 
-          {/* Liens discrets vers les portails (connexion requise) */}
-          <div className="mt-auto pt-8 flex flex-col items-center gap-2.5">
-            <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              Yukpo
+          {/* Liens portails — affichage gaté par rôle (2026-05-16) :
+              - Espace Librairie : admin Yukpo uniquement (gestion interne)
+              - Espace Établissement : partenaires partner_type === 'etablissementscolaire'
+              Évite la confusion utilisateur : les parents ordinaires ne
+              voient aucun bouton "espace pro" qui ne les concerne pas. */}
+          {(user?.isAdmin || user?.partnerType === 'etablissementscolaire') && (
+            <div className="mt-auto pt-8 flex flex-col items-center gap-2.5">
+              <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Yukpo
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {user?.isAdmin && (
+                  <button
+                    onClick={() => navigate('/librairie')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-indigo-700"
+                  >
+                    <Store className="w-3.5 h-3.5" />
+                    {t('bourse.home.librairie_portal')}
+                    <ChevronRight className="w-3 h-3 opacity-60" />
+                  </button>
+                )}
+                {user?.partnerType === 'etablissementscolaire' && (
+                  <button
+                    onClick={() => navigate('/etablissement-portal')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-emerald-700"
+                  >
+                    <School className="w-3.5 h-3.5" />
+                    {t('bourse.home.etablissement_portal')}
+                    <ChevronRight className="w-3 h-3 opacity-60" />
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <button
-                onClick={() => navigate('/librairie')}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-indigo-700"
-              >
-                <Store className="w-3.5 h-3.5" />
-                {t('bourse.home.librairie_portal')}
-                <ChevronRight className="w-3 h-3 opacity-60" />
-              </button>
-              <button
-                onClick={() => navigate('/etablissement-portal')}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-emerald-700"
-              >
-                <School className="w-3.5 h-3.5" />
-                {t('bourse.home.etablissement_portal')}
-                <ChevronRight className="w-3 h-3 opacity-60" />
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
