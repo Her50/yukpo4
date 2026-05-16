@@ -1139,6 +1139,30 @@ const RecapAchatPage: React.FC = () => {
     // ✅ 2026-05-16 — Écran "panier vide" repensé : on affiche les MÊMES
     // 4 CTAs que la page d'accueil pour permettre à l'user de démarrer une
     // commande directement sans devoir repasser par la home.
+    //
+    // DEBUG visible : si le user a un panier dans localStorage MAIS pas
+    // d'enfants correspondants (items orphelins), on lui montre + bouton
+    // de réinitialisation pour débloquer la situation.
+    let rawPanier: any[] = [];
+    let rawEnfants: any[] = [];
+    try {
+      const raw = localStorage.getItem('yukpo_parent_shop_v4');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        rawPanier = Array.isArray(parsed.panier) ? parsed.panier : [];
+        rawEnfants = Array.isArray(parsed.enfants) ? parsed.enfants : [];
+      }
+    } catch { /* localStorage indispo */ }
+    const orphanCount = rawPanier.filter((p) => !rawEnfants.some((e) => e.id === p?.enfantId)).length;
+    const purgeAll = () => {
+      try {
+        localStorage.removeItem('yukpo_parent_shop_v4');
+        localStorage.removeItem('yukpo_parent_shop_v3');
+        localStorage.removeItem('yukpo_parent_shop_v2');
+        window.location.reload();
+      } catch { /* */ }
+    };
+
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="bg-amber-600 px-4 pt-10 pb-5 text-white flex items-center gap-3">
@@ -1149,6 +1173,34 @@ const RecapAchatPage: React.FC = () => {
           <LanguageSwitcherBourse tone="white" />
         </div>
         <div className="max-w-2xl mx-auto px-4 py-6">
+          {/* ✅ 2026-05-16 — Debug visible : si on voit cet écran ALORS QUE
+              le localStorage contient des items, c'est un bug. On le signale
+              à l'user et on propose un bouton de réinitialisation. */}
+          {(rawPanier.length > 0 || rawEnfants.length > 0) && (
+            <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+              <p className="text-xs font-bold text-amber-900 mb-1">
+                ⚠️ Données détectées dans votre navigateur
+              </p>
+              <p className="text-[11px] text-amber-800 leading-snug mb-2">
+                {rawPanier.length} article(s), {rawEnfants.length} classe(s){' '}
+                {orphanCount > 0 && (
+                  <span className="font-bold">
+                    — dont {orphanCount} orphelin(s) (sans classe associée)
+                  </span>
+                )}
+                . Si vous attendiez d'y voir vos articles, vos données peuvent
+                avoir été sauvegardées avant la dernière mise à jour. Cliquez
+                ci-dessous pour réinitialiser et recommencer proprement.
+              </p>
+              <button
+                onClick={purgeAll}
+                className="bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg active:bg-amber-700"
+              >
+                🔄 Réinitialiser mon panier
+              </button>
+            </div>
+          )}
+
           <div className="text-center mb-5">
             <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-2" />
             <p className="text-gray-700 text-sm font-semibold mb-0.5">

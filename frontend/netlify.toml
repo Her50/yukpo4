@@ -172,6 +172,24 @@
 [[headers]]
   for = "/*"
   [headers.values]
+    # Anti-clickjacking
     X-Frame-Options = "DENY"
+    # Filtres legacy (anciens browsers, harmless sur modernes)
     X-XSS-Protection = "1; mode=block"
+    # Empêche le MIME-sniffing
     X-Content-Type-Options = "nosniff"
+    # HSTS — force HTTPS 2 ans, sous-domaines inclus. Tous les domains Yukpo
+    # sont en HTTPS via Netlify/Fly, donc safe à activer.
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+    # Limite la fuite d'URL référente vers les tiers (privacy + sécurité)
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Restrictions API browser. Autorisé : geo (recherche prox), camera (scan
+    # programme/QR), microphone (chat vocal éventuel). Reste désactivé.
+    Permissions-Policy = "geolocation=(self), camera=(self), microphone=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+    # Isolation cross-origin (limite Spectre + clic-jacking via popups)
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    # CSP en mode Report-Only d'abord : observe les violations sans bloquer la
+    # prod. Activer la version stricte (sans -Report-Only) quand on a confirmé
+    # qu'aucune ressource légitime n'est cassée. Sources autorisées : Google
+    # Maps, OpenStreetMap (tiles), Photon (geocoding), Fly backend, WebSockets.
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://yukpo-fly-backend.fly.dev wss://yukpo-fly-backend.fly.dev https://yukpo-backend-376093909298.europe-west1.run.app wss://yukpo-backend-376093909298.europe-west1.run.app https://maps.googleapis.com https://*.tile.openstreetmap.org https://photon.komoot.io https://api.openai.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';"

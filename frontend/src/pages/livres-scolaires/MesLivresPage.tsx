@@ -311,8 +311,25 @@ const MesLivresPage: React.FC = () => {
                                     {livre.auteur && (
                                         <p className="text-xs sm:text-sm text-gray-600 mb-2 line-clamp-1">{livre.auteur}</p>
                                     )}
+                                    {/* ✅ FIX 2026-05-16 — Affichage classe selon mode_listing.
+                                        - troc  : 'classe_actuelle → classe_souhaitee' (échange contre classe sup)
+                                        - vente : 'classe_actuelle' seulement (pas d'attente en retour)
+                                        - don   : 'classe_actuelle' seulement
+                                        Avant le fix : flèche affichée même en vente/don → user pensait
+                                        que son livre serait "échangé" alors qu'il l'avait mis en vente. */}
                                     <div className="space-y-1 mb-3 text-xs sm:text-sm text-gray-600">
-                                        <p>📚 {livre.classe_actuelle} → {livre.classe_souhaitee}</p>
+                                        <p>
+                                            📚 {livre.classe_actuelle}
+                                            {livre.mode_listing === 'troc' && livre.classe_souhaitee && (
+                                                <> → <span className="font-semibold text-amber-700">{livre.classe_souhaitee}</span></>
+                                            )}
+                                            {livre.mode_listing === 'vente' && (
+                                                <span className="ml-1 text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">· vente</span>
+                                            )}
+                                            {livre.mode_listing === 'don' && (
+                                                <span className="ml-1 text-[10px] uppercase tracking-wide text-blue-700 font-semibold">· don</span>
+                                            )}
+                                        </p>
                                         <p>📖 {livre.matiere}</p>
                                     </div>
 
