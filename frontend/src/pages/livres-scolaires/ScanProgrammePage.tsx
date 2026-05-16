@@ -79,6 +79,42 @@ const effectivePrice = (it: ExtractedItem): number => {
     : it.prix;
 };
 
+/**
+ * ✅ 2026-05-16 — Prix dynamique selon le choix actif. Aligné avec
+ * RecapAchatPage:ItemCard + BrowseProgrammeByEtablissementPage.
+ * Ratios: livre_scolaire.rs (BON=70%, ACCEPTABLE=45%, CREDIT=70%).
+ */
+const priceTextForItem = (it: ExtractedItem): { text: string; subtext?: string } => {
+  const base = it.prix ?? 0;
+  if (isOccasionableType(it.type)) {
+    if (base <= 0) return { text: '—' };
+    const RATIO_OCC_MIN = 0.45;
+    const RATIO_OCC_MAX = 0.70;
+    const RATIO_CREDIT = 0.70;
+    if (it.choix === 'occasion' && it.troc_intent) {
+      const gapMin = Math.max(0, Math.round(base * (RATIO_OCC_MIN - RATIO_OCC_MAX * RATIO_CREDIT)));
+      const gapMax = Math.round(base * (RATIO_OCC_MAX - RATIO_OCC_MIN * RATIO_CREDIT));
+      return {
+        text: gapMin > 0
+          ? `${gapMin.toLocaleString('fr-FR')} – ${gapMax.toLocaleString('fr-FR')} F`
+          : `≤ ${gapMax.toLocaleString('fr-FR')} F`,
+        subtext: 'reste après échange',
+      };
+    }
+    if (it.choix === 'occasion') {
+      const min = Math.round(base * RATIO_OCC_MIN);
+      const max = Math.round(base * RATIO_OCC_MAX);
+      return {
+        text: `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} F`,
+        subtext: 'selon état',
+      };
+    }
+    return { text: `${base.toLocaleString('fr-FR')} F` };
+  }
+  const v = effectivePrice(it);
+  return { text: v > 0 ? `${v.toLocaleString('fr-FR')} F` : '—' };
+};
+
 interface ScanDetection {
   etablissement?: string | null;
   ville?: string | null;
@@ -1324,12 +1360,23 @@ const ScanProgrammePage: React.FC = () => {
                               aria-label={t('bourse.scan.increase')}>+</button>
                           </div>
 
-                          {/* Prix unitaire — collapsé si inconnu pour libérer la place au titre */}
-                          {(effectivePrice(item) || 0) > 0 && (
-                            <span className="text-right text-[12px] font-bold text-amber-700 tabular-nums shrink-0">
-                              {formatPrix(effectivePrice(item) || undefined, pays)}
-                            </span>
-                          )}
+                          {/* Prix unitaire dynamique selon Neuf/Occasion/Échange */}
+                          {(() => {
+                            const pd = priceTextForItem(item);
+                            if (pd.text === '—') return null;
+                            return (
+                              <div className="flex flex-col items-end shrink-0 leading-tight">
+                                <span className="text-right text-[11px] font-bold text-amber-700 tabular-nums whitespace-nowrap">
+                                  {pd.text}
+                                </span>
+                                {pd.subtext && (
+                                  <span className="text-[8px] text-gray-500 italic leading-none mt-0.5">
+                                    {pd.subtext}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Dupliquer : masqué pour libérer la largeur du titre.
                               Garde la fonction (long-press / menu contextuel à venir si besoin). */}
