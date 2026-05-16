@@ -2,6 +2,55 @@
 
 use std::collections::HashSet;
 
+/// Forme canonique d'un libellé de classe ou de matière pour comparaison.
+/// Trim + lowercase + suppression d'accents fréquents + normalisation des
+/// suffixes `eme/ème → e` + collapse d'espaces multiples.
+///
+/// ✅ 2026-05-16 — Utiliser pour stocker un champ `_norm` ou pour comparer
+/// au moment du matching, afin d'éviter les faux négatifs sur "6e" vs "6ème"
+/// vs "SIXIÈME ". Toujours conserver la chaîne originale pour l'affichage.
+pub fn canonical(input: &str) -> String {
+    let mut s = input.trim().to_lowercase();
+    // Strip accents FR usuels
+    s = s
+        .replace('é', "e")
+        .replace('è', "e")
+        .replace('ê', "e")
+        .replace('ë', "e")
+        .replace('à', "a")
+        .replace('â', "a")
+        .replace('î', "i")
+        .replace('ï', "i")
+        .replace('ô', "o")
+        .replace('ö', "o")
+        .replace('û', "u")
+        .replace('ù', "u")
+        .replace('ü', "u")
+        .replace('ç', "c");
+    // Suffixes "Xème"/"Xeme" → "Xe" (6ème, 6eme → 6e)
+    s = s.replace("eme", "e");
+    // Mots longs courants → forme courte canonique
+    for (long, short) in [
+        ("sixieme", "6e"),
+        ("cinquieme", "5e"),
+        ("quatrieme", "4e"),
+        ("troisieme", "3e"),
+        ("seconde", "2nde"),
+        ("premiere", "1ere"),
+        ("terminale", "tle"),
+    ] {
+        if s == long {
+            s = short.to_string();
+            break;
+        }
+    }
+    // Espaces multiples → 1 seul
+    while s.contains("  ") {
+        s = s.replace("  ", " ");
+    }
+    s
+}
+
 /// Retourne un ensemble de chaînes à tester en base pour une même classe (ordre stable, dédoublonné).
 pub fn classe_match_variants(input: &str) -> Vec<String> {
     let base = input.trim();
@@ -78,5 +127,15 @@ mod tests {
     fn keeps_single() {
         let v = classe_match_variants("CP");
         assert!(v.iter().any(|s| s == "CP"));
+    }
+
+    #[test]
+    fn canonical_variants_collide() {
+        assert_eq!(canonical("6e"), canonical("6ème"));
+        assert_eq!(canonical("6e"), canonical("6eme"));
+        assert_eq!(canonical("6e"), canonical("Sixième"));
+        assert_eq!(canonical("6e"), canonical(" 6E "));
+        assert_eq!(canonical("CM1"), canonical("cm1"));
+        assert_eq!(canonical("Mathématiques"), canonical("mathematiques"));
     }
 }

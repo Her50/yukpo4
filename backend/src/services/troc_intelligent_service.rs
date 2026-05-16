@@ -6,6 +6,7 @@ use crate::models::troc_livre::{
     BookCancellationRequest, ChainTransfer, ChaineTrocLivre, CreateTrocChaineRequest,
     CreateTrocDirectRequest, MatchingChaine, MatchingDirect, ParticipantChaine, TrocLivre,
 };
+use crate::utils::classe_normalization::{canonical, classe_match_variants};
 use log::{self, info};
 #[allow(unused_imports)]
 use sqlx::{PgPool, Row};
@@ -118,7 +119,14 @@ impl TrocIntelligentService {
 
         let initiateur_id = livre_offert.user_id;
 
-        // Chercher les livres qui correspondent
+        // ✅ FIX 2026-05-16 — Matching tolérant aux variantes de libellés :
+        // "6e" / "6ème" / "Sixième" / "6E " étaient 4 valeurs distinctes en
+        // base. On compare désormais sur les variantes pré-calculées par
+        // `classe_match_variants` + ANY(...). Pour la matière, on lowercase
+        // les deux côtés via `canonical()`.
+        let classe_act_variants = classe_match_variants(&livre_offert.classe_souhaitee);
+        let classe_souh_variants = classe_match_variants(&livre_offert.classe_actuelle);
+        let matiere_canon = canonical(&livre_offert.matiere);
         let livres_candidates = sqlx::query_as::<_, LivreScolaire>(
             r#"
             SELECT * FROM livres_scolaires
@@ -126,9 +134,9 @@ impl TrocIntelligentService {
             AND is_available = true
             AND id != $1
             AND user_id != $2
-            AND classe_actuelle = $3
-            AND classe_souhaitee = $4
-            AND matiere = $5
+            AND classe_actuelle = ANY($3)
+            AND classe_souhaitee = ANY($4)
+            AND LOWER(BTRIM(matiere)) = $5
             AND COALESCE(etat_classification, 'acceptable') != 'rejete'
             AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')
             ORDER BY created_at DESC
@@ -137,9 +145,9 @@ impl TrocIntelligentService {
         )
         .bind(livre_offert_id)
         .bind(initiateur_id)
-        .bind(&livre_offert.classe_souhaitee)
-        .bind(&livre_offert.classe_actuelle)
-        .bind(&livre_offert.matiere)
+        .bind(&classe_act_variants)
+        .bind(&classe_souh_variants)
+        .bind(&matiere_canon)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur recherche matchings: {}", e)))?;
@@ -329,15 +337,21 @@ impl TrocIntelligentService {
                 let classe_actuelle = livres[0].classe_actuelle.clone();
                 let classe_souhaitee = livres[0].classe_souhaitee.clone();
 
-                // Vérifier que tous les livres sont du même utilisateur et même classe
+                // ✅ FIX 2026-05-16 — Comparer sur forme canonique pour tolérer
+                // les variantes "6e"/"6ème"/"Sixième" dans le même bundle.
+                let classe_canon_ref = canonical(&classe_actuelle);
                 if !livres
                     .iter()
-                    .all(|l| l.user_id == user_id && l.classe_actuelle == classe_actuelle)
+                    .all(|l| l.user_id == user_id && canonical(&l.classe_actuelle) == classe_canon_ref)
                 {
                     return None;
                 }
 
-                let matieres: HashSet<String> = livres.iter().map(|l| l.matiere.clone()).collect();
+                // Stocker les matières sous forme canonique : évite que
+                // "Mathématiques" et "mathematiques" soient considérées comme
+                // 2 matières distinctes.
+                let matieres: HashSet<String> =
+                    livres.iter().map(|l| canonical(&l.matiere)).collect();
 
                 Some(Bundle {
                     livres,
@@ -349,16 +363,19 @@ impl TrocIntelligentService {
             }
 
             fn contient_matiere(&self, matiere: &str) -> bool {
-                self.matieres.contains(matiere)
+                // Compare sur forme canonique (cf. construction du HashSet ci-dessus).
+                self.matieres.contains(&canonical(matiere))
             }
         }
 
         let mut edges: Vec<PotentialEdge> = Vec::new();
 
-        // ✅ MULTI-MATIÈRE : Regrouper les livres par utilisateur et classe en bundles
+        // ✅ MULTI-MATIÈRE : Regrouper les livres par utilisateur et classe en bundles.
+        // Clé = (user_id, canonical(classe_actuelle)) pour fusionner les livres
+        // saisis avec des variantes différentes du même libellé de classe.
         let mut bundles_par_user: HashMap<(i32, String), Bundle> = HashMap::new();
         for l in &tous_livres {
-            let key = (l.user_id, l.classe_actuelle.clone());
+            let key = (l.user_id, canonical(&l.classe_actuelle));
             match bundles_par_user.entry(key) {
                 std::collections::hash_map::Entry::Occupied(mut e) => {
                     e.get_mut().livres.push(l);
@@ -369,9 +386,13 @@ impl TrocIntelligentService {
             }
         }
 
-        // Finaliser les bundles (calculer les matières)
+        // Finaliser les bundles (matières sous forme canonique)
         for bundle in bundles_par_user.values_mut() {
-            bundle.matieres = bundle.livres.iter().map(|l| l.matiere.clone()).collect();
+            bundle.matieres = bundle
+                .livres
+                .iter()
+                .map(|l| canonical(&l.matiere))
+                .collect();
         }
 
         // Pour chaque paire (sender_bundle, receiver_bundle), vérifier le matching multi-matières
@@ -385,29 +406,37 @@ impl TrocIntelligentService {
                     continue;
                 }
 
-                // Vérifier si les classes correspondent
-                if sender_bundle.classe_actuelle != receiver_bundle.classe_souhaitee
-                    || receiver_bundle.classe_souhaitee.is_empty()
-                {
+                // ✅ FIX 2026-05-16 — Comparaison sur forme canonique (lower
+                // + trim + accents) pour ne pas rater "6e" vs "Sixième" etc.
+                let sender_classe = canonical(&sender_bundle.classe_actuelle);
+                let receiver_souh = canonical(&receiver_bundle.classe_souhaitee);
+                if sender_classe != receiver_souh || receiver_souh.is_empty() {
                     continue;
                 }
 
                 // ✅ MULTI-MATIÈRE : Le receiver a-t-il besoin d'AU MOINS UNE matière du sender ?
+                // Comparaison canonique aussi sur la matière.
+                let sender_matieres_canon: HashSet<String> = sender_bundle
+                    .matieres
+                    .iter()
+                    .map(|m| canonical(m))
+                    .collect();
                 let matiere_match = receiver_bundle
                     .livres
                     .iter()
-                    .any(|rl| sender_bundle.contient_matiere(&rl.matiere));
+                    .any(|rl| sender_matieres_canon.contains(&canonical(&rl.matiere)));
 
                 if !matiere_match {
                     continue;
                 }
 
                 // Trouver la meilleure paire de livres pour le calcul GPS
+                // (comparaison canonique de la matière).
                 let (best_sender_livre, best_receiver_livre) = {
                     let mut best_pair = (&sender_bundle.livres[0], &receiver_bundle.livres[0]);
                     for sl in &sender_bundle.livres {
                         for rl in &receiver_bundle.livres {
-                            if sl.matiere == rl.matiere {
+                            if canonical(&sl.matiere) == canonical(&rl.matiere) {
                                 best_pair = (sl, rl);
                                 break;
                             }
@@ -939,13 +968,19 @@ impl TrocIntelligentService {
         // Valider la chaîne
         self.validate_chaine_troc(&request.participants).await?;
 
-        // Calculer la distance totale et le score de proximité
+        // Calculer la distance totale et le score de proximité.
+        // ✅ FIX 2026-05-16 — La chaîne est un DAG linéaire (cf. commentaire
+        // validate_chaine_troc:1008 "pas d'anneau"), donc on calcule la
+        // distance sur n-1 segments (i → i+1), pas n segments avec un
+        // segment de fermeture fantôme (i → (i+1) % n). Le bug précédent
+        // surestimait la distance d'un segment, faussant le score de
+        // proximité et le ranking des chaînes.
         let mut distance_totale_km = 0.0;
         let mut scores_proximite = Vec::new();
 
-        for i in 0..request.participants.len() {
+        for i in 0..request.participants.len().saturating_sub(1) {
             let participant = &request.participants[i];
-            let participant_suivant = &request.participants[(i + 1) % request.participants.len()];
+            let participant_suivant = &request.participants[i + 1];
 
             // Récupérer les livres pour calculer la distance
             let livre1 =
@@ -1063,9 +1098,11 @@ impl TrocIntelligentService {
                         ))
                     })?;
 
-            // Le matching DAG: le livre envoyé a la classe que le receiver cherche
-            if livre_envoye.classe_actuelle != livre_receiver.classe_souhaitee
-                || livre_envoye.matiere != livre_receiver.matiere
+            // Le matching DAG: le livre envoyé a la classe que le receiver cherche.
+            // ✅ FIX 2026-05-16 — Comparaison canonique (lower+trim+accents)
+            // pour tolérer "6e" vs "6ème", "MATHS" vs "maths", etc.
+            if canonical(&livre_envoye.classe_actuelle) != canonical(&livre_receiver.classe_souhaitee)
+                || canonical(&livre_envoye.matiere) != canonical(&livre_receiver.matiere)
             {
                 return Err(AppError::BadRequest(format!(
                     "Correspondance DAG incorrecte: livre {} (classe={}, matière={}) ne correspond pas au besoin du participant {} (classe_souhaitee={}, matière={})",
