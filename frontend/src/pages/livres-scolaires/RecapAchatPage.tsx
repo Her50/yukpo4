@@ -180,19 +180,32 @@ function ItemCard({
    */
   const RATIO_OCC_MIN = 0.45; // état "acceptable"
   const RATIO_OCC_MAX = 0.70; // état "bon"
-  const RATIO_CREDIT = 0.70; // part user (l'app prend 30%)
+  const RATIO_CREDIT = 0.70; // part user sur le livre donné (l'app prend 30%)
   const priceDisplay: { text: string; subtext?: string } = (() => {
     if (isLivre) {
       const base = item.prixNeuf ?? 0;
       if (base <= 0) return { text: '—' };
       if (item.choix === 'occasion' && item.troc_intent) {
-        // Échange : crédit reçu (intervalle)
-        const min = Math.round(base * RATIO_OCC_MIN * RATIO_CREDIT);
-        const max = Math.round(base * RATIO_OCC_MAX * RATIO_CREDIT);
+        // ✅ Échange — Affichage du GAP à payer (plus motivant que le crédit).
+        // Hypothèse de calcul (livre donné ≈ même prix que livre acheté,
+        // typique pour des manuels d'une classe à la suivante) :
+        //   prix_occ_N+1 ∈ [45% × prix, 70% × prix]      (livre acheté)
+        //   crédit_N     ∈ [45% × prix × 0.70, 70% × prix × 0.70]
+        //                ∈ [31.5% × prix, 49% × prix]    (livre donné)
+        // Gap MIN (livre acheté pas cher × livre donné cher) ≈ -4% → clampé à 0
+        // Gap MAX (livre acheté cher × livre donné pas cher) ≈ 38.5%
+        const gapMin = Math.max(
+          0,
+          Math.round(base * (RATIO_OCC_MIN - RATIO_OCC_MAX * RATIO_CREDIT)),
+        );
+        const gapMax = Math.round(base * (RATIO_OCC_MAX - RATIO_OCC_MIN * RATIO_CREDIT));
         return {
-          text: `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} F`,
-          subtext: t('bourse.recap.price_credit_hint', {
-            defaultValue: 'crédit selon état',
+          text:
+            gapMin > 0
+              ? `${gapMin.toLocaleString('fr-FR')} – ${gapMax.toLocaleString('fr-FR')} F`
+              : `≤ ${gapMax.toLocaleString('fr-FR')} F`,
+          subtext: t('bourse.recap.price_gap_hint', {
+            defaultValue: 'reste après échange',
           }),
         };
       }
@@ -2033,6 +2046,16 @@ const RecapAchatPage: React.FC = () => {
                       "Ce montant est le PIRE cas. Il peut être revu à la baisse une fois que vos livres d'occasion ou en échange seront évalués (selon leur état réel). Vous êtes ainsi préparé(e) au maximum possible — la facture finale sera souvent moins chère.",
                   })}
                 </p>
+                {/* Note spécifique aux échanges (livres troc) si présents. */}
+                {panier.some((p) => p.choix === 'occasion' && p.troc_intent) && (
+                  <p className="text-[11px] text-amber-700 leading-snug mt-1.5 pt-1.5 border-t border-amber-200">
+                    <span className="font-bold">🔄 Échange :</span>{' '}
+                    {t('bourse.recap.exchange_logic_help', {
+                      defaultValue:
+                        "Vous donnez vos livres de l'année passée et recevez un crédit Yukpo, déduit du prix des manuels de la classe supérieure. Le reste à payer dépend de l'état des deux côtés.",
+                    })}
+                  </p>
+                )}
               </div>
             )}
           </div>
