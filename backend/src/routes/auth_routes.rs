@@ -68,6 +68,12 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/auth/oauth", options(cors_preflight_handler))
         // ✅ TEMPORAIRE: Endpoint pour créer le super admin (sécurisé par token)
         .route("/auth/bootstrap-super-admin", post(bootstrap_super_admin))
+        // ✅ 2026-05-16: Logout — blacklist le JWT côté serveur (Redis)
+        .route(
+            "/auth/logout",
+            post(crate::controllers::auth_logout_controller::logout_handler),
+        )
+        .route("/auth/logout", options(cors_preflight_handler))
         .layer(middleware::from_fn(
             crate::middlewares::monitoring::monitoring,
         ))

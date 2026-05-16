@@ -81,6 +81,8 @@ pub fn ensure_admin_role_str(role: &str) -> AppResult<()> {
 // ============================================================================
 
 /// Vérifie si le user est admin de la librairie Yukpo officielle (via env var).
+/// ⚠️ Source de vérité héritée — préférer `is_yukpo_official_librairie_admin_async`
+/// qui interroge le flag DB `users.is_yukpo_official_librairie` (révocable runtime).
 pub fn is_yukpo_official_librairie_admin(user_id: i32) -> bool {
     let csv = match std::env::var("YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS") {
         Ok(v) if !v.trim().is_empty() => v,
@@ -91,18 +93,56 @@ pub fn is_yukpo_official_librairie_admin(user_id: i32) -> bool {
         .any(|id| id == user_id)
 }
 
+/// ✅ 2026-05-16 — Vérifie le flag DB `users.is_yukpo_official_librairie`
+/// avec fallback sur l'env var (transition douce). À privilégier dans les
+/// nouveaux endpoints car révocable au runtime sans redéploiement.
+pub async fn is_yukpo_official_librairie_admin_async(user_id: i32, pg: &sqlx::PgPool) -> bool {
+    // 1) Flag DB prioritaire
+    let from_db = sqlx::query_scalar::<_, bool>(
+        "SELECT COALESCE(is_yukpo_official_librairie, FALSE) FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pg)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or(false);
+    if from_db {
+        return true;
+    }
+    // 2) Fallback env var (legacy)
+    is_yukpo_official_librairie_admin(user_id)
+}
+
 /// Vérifie qu'un user a accès aux opérations admin de la Bourse du Livre :
 ///   - super_admin / admin globaux Yukpo
-///   - admin de la librairie Yukpo officielle (via YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS)
+///   - admin de la librairie Yukpo officielle (env var legacy — sync seulement)
 ///
-/// Les libraires externes (rôle "librairie"/"libraire") sont REJETÉS — ils ont
-/// leurs propres endpoints (stocks, ventes par succursale) et ne doivent pas
-/// voir les agrégats marketplace globaux.
+/// Pour la version async qui consulte aussi le flag DB, utiliser
+/// `ensure_bourse_admin_async`.
 pub fn ensure_bourse_admin(user: &AuthenticatedUser) -> AppResult<()> {
     if is_admin_role(&user.role) {
         return Ok(());
     }
     if is_yukpo_official_librairie_admin(user.id) {
+        return Ok(());
+    }
+    Err(AppError::Forbidden(
+        "Accès réservé aux administrateurs Yukpo et aux admins de la librairie officielle".into(),
+    ))
+}
+
+/// ✅ 2026-05-16 — Variante async qui consulte le flag DB en plus de l'env var.
+/// À utiliser dans les endpoints sensibles (marketplace-overview,
+/// recover_consignation, etc.) pour permettre la révocation runtime.
+pub async fn ensure_bourse_admin_async(
+    user: &AuthenticatedUser,
+    pg: &sqlx::PgPool,
+) -> AppResult<()> {
+    if is_admin_role(&user.role) {
+        return Ok(());
+    }
+    if is_yukpo_official_librairie_admin_async(user.id, pg).await {
         return Ok(());
     }
     Err(AppError::Forbidden(

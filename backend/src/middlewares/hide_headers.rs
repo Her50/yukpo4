@@ -47,11 +47,46 @@ pub async fn hide_headers(req: Request<Body>, next: Next) -> Response {
 
     // Permissions-Policy (anciennement Feature-Policy)
     let permissions_policy = HeaderValue::from_static(
-        "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()"
+        "geolocation=(self), microphone=(), camera=(self), payment=(), usb=(), magnetometer=(), gyroscope=()"
     );
     res.headers_mut().insert(
         HeaderName::from_static("permissions-policy"),
         permissions_policy,
+    );
+
+    // ✅ 2026-05-16 — Content-Security-Policy strict.
+    // Mitigation principale du risque XSS qui pourrait voler le JWT en
+    // localStorage. Sans CSP, un payload XSS exfiltre vers n'importe quel
+    // domaine ; avec CSP `connect-src 'self' …` strict, l'exfiltration
+    // est bloquée par le navigateur même si le payload exécute.
+    //
+    // Surcharge possible via env CSP_HEADER (pour ajouter des CDN au besoin).
+    // Par défaut on autorise images self/data/https (medias Wasabi/Cloudfront)
+    // et connect-src self + ws (WebSocket) + https pour APIs externes.
+    let csp_default = "default-src 'self'; \
+        script-src 'self' 'unsafe-inline'; \
+        style-src 'self' 'unsafe-inline'; \
+        img-src 'self' data: blob: https:; \
+        font-src 'self' data: https:; \
+        connect-src 'self' https: wss:; \
+        media-src 'self' blob: https:; \
+        object-src 'none'; \
+        frame-ancestors 'none'; \
+        base-uri 'self'; \
+        form-action 'self'";
+    let csp = std::env::var("CSP_HEADER").unwrap_or_else(|_| csp_default.to_string());
+    if let Ok(v) = HeaderValue::from_str(&csp) {
+        res.headers_mut().insert(HeaderName::from_static("content-security-policy"), v);
+    }
+
+    // Cross-Origin Opener Policy + Resource Policy : isole l'app des popups/embeds
+    res.headers_mut().insert(
+        HeaderName::from_static("cross-origin-opener-policy"),
+        HeaderValue::from_static("same-origin"),
+    );
+    res.headers_mut().insert(
+        HeaderName::from_static("cross-origin-resource-policy"),
+        HeaderValue::from_static("same-site"),
     );
 
     res

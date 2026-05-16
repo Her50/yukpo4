@@ -264,6 +264,28 @@ function DeliveryModal({
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(defaultGps ?? null);
   const [showMapPicker, setShowMapPicker] = useState(false);
 
+  /** ✅ 2026-05-16 — Position GPS courante du navigateur pour biaiser
+   *  l'autocomplete. Priorité décroissante pour le biais :
+   *    1. coords du lieu déjà choisi par l'user
+   *    2. position GPS courante (browserGps)
+   *    3. fallback Douala côté backend si rien
+   *  La géoloc est demandée silencieusement au mount — l'user voit le
+   *  popup natif du navigateur, peut refuser sans casser le flow. */
+  const [browserGps, setBrowserGps] = useState<{ lat: number; lon: number } | null>(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setBrowserGps({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      },
+      () => {
+        // permission refusée ou erreur — pas bloquant
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 },
+    );
+  }, []);
+  const biasGps = coords ?? browserGps;
+
   // ✅ 2026-05-16 — Autocomplete via /api/places/autocomplete (Google Places
   // côté backend, fallback Photon si pas de clé OU si Google échoue/bloqué).
   // Bien plus précis que Nominatim OSM : rues, écoles, points d'intérêt,
@@ -295,11 +317,12 @@ function DeliveryModal({
       try {
         const params = new URLSearchParams();
         params.set('query', val);
-        // Biais vers la position connue de l'user (sinon Douala par défaut)
-        if (coords) {
-          params.set('lat', String(coords.lat));
-          params.set('lng', String(coords.lon));
-          params.set('radius', '50000');
+        // ✅ Biais GPS prioritaire (cf. biasGps : lieu déjà choisi > géoloc
+        // navigateur > Douala par défaut côté backend).
+        if (biasGps) {
+          params.set('lat', String(biasGps.lat));
+          params.set('lng', String(biasGps.lon));
+          params.set('radius', '25000');
         }
         const r = await apiGet(`/api/places/autocomplete?${params}`);
         const d = await r.json();

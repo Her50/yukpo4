@@ -65,6 +65,23 @@ const DeliveryLocationOnboardingPage: React.FC = () => {
   const [whatsappSecondary, setWhatsappSecondary] = useState('');
   const [saving, setSaving] = useState(false);
 
+  /** ✅ 2026-05-16 — Position GPS courante du navigateur, demandée
+   *  silencieusement au mount pour biaiser l'autocomplete. Priorité
+   *  décroissante : lieu déjà choisi (locationCoords) > géoloc navigateur
+   *  (browserGps) > Douala côté backend. */
+  const [browserGps, setBrowserGps] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setBrowserGps({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {
+        // refusé ou erreur — non bloquant
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 },
+    );
+  }, []);
+  const biasGps = locationCoords ?? browserGps;
+
   // Charge l'état actuel : si user a déjà fait l'onboarding, on pré-remplit
   // pour permettre l'édition. Sinon vide.
   useEffect(() => {
@@ -109,10 +126,11 @@ const DeliveryLocationOnboardingPage: React.FC = () => {
       try {
         const params = new URLSearchParams();
         params.set('query', q);
-        if (locationCoords) {
-          params.set('lat', String(locationCoords.lat));
-          params.set('lng', String(locationCoords.lng));
-          params.set('radius', '50000');
+        // ✅ Biais GPS prioritaire (lieu choisi > géoloc navigateur > backend)
+        if (biasGps) {
+          params.set('lat', String(biasGps.lat));
+          params.set('lng', String(biasGps.lng));
+          params.set('radius', '25000');
         }
         const r = await apiGet(`/api/places/autocomplete?${params}`);
         if (!r.ok) {
@@ -146,7 +164,8 @@ const DeliveryLocationOnboardingPage: React.FC = () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [locationQuery, locationCoords]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationQuery, biasGps]);
 
   const pickPrediction = async (p: Suggestion) => {
     setLocationQuery(p.label);

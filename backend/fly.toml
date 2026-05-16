@@ -29,10 +29,18 @@ primary_region = "cdg"
   GPU_ENABLED = "false"
   ENABLE_AI_OPTIMIZATIONS = "true"
 
-  # Pool DB (à ajuster selon Fly Postgres single-node max ~95 connexions)
-  DB_POOL_SIZE = "20"
-  DB_POOL_MIN_SIZE = "2"
-  DB_ACQUIRE_TIMEOUT_SECS = "10"
+  # Pool DB — calibré pour scale dynamique 1→25 VM sur Fly Postgres.
+  # Avec 25 VM × 60 = 1500 connexions max. Si Fly PG single-node sature à ~95,
+  # mettre Cloudflare Hyperdrive devant (cf scripts/setup-hyperdrive.sh) :
+  # Hyperdrive multiplexe les conn backend → DB et tient des milliers de
+  # clients sur une centaine de conn DB réelles.
+  DB_POOL_SIZE = "60"
+  DB_POOL_MIN_SIZE = "5"
+  DB_ACQUIRE_TIMEOUT_SECS = "8"
+  # ✅ Statement timeout par-requête (évite qu'une requête bloque tout le pool)
+  DB_STATEMENT_TIMEOUT_MS = "30000"
+  DB_LOCK_TIMEOUT_MS = "8000"
+  DB_IDLE_IN_TX_TIMEOUT_MS = "15000"
 
   # Sécurité / billing Yukpo
   YUKPO_IA_TOKEN_MULTIPLIER = "20"
@@ -55,51 +63,55 @@ primary_region = "cdg"
 [http_service]
   internal_port = 8080
   force_https = true
-  # ✅ Patch 2026-05-12 — Autoscaling intelligent pour la phase test :
-  #   - 1 seule machine en idle (économie phase test) ; scale automatique sous charge
-  #   - auto_stop_machines = "stop" : arrête les VMs excédentaires après ~5 min idle
-  #   - auto_start_machines = true : démarre des VMs supplémentaires quand soft_limit atteint
-  # Coût en phase test ≈ inchangé (1 VM 1 GB / 1 vCPU) ; explose à la demande seulement.
-  # Pour passer en prod HA : remettre min_machines_running = 2 (zéro cold-start).
+  # ✅ Patch 2026-05-16 — Autoscaling dynamique calibré campagne 10k users :
+  #   - 1 seule VM en idle (≈$10-15/mois) — économie maximum hors campagne
+  #   - auto_stop_machines = "stop" → kill des VM idle après idle_timeout
+  #   - auto_start_machines = true → spawn nouvelles VM quand soft_limit atteint
+  #   - VM 2 GB pour cold-start réduit (~15-25 s vs 60 s en 1 GB) et headroom
+  #     mémoire pour Rust/sqlx + cache
+  # Capacité finale : 25 VM × 500 hard = 12 500 conn HTTP simultanées
+  # Coût pic campagne (~2 h × 25 VM 2 GB) ≈ $5-10 ; idle reste à $10-15/mois
   auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 1
+  # Plafond explicite : 25 = défaut Fly (extensible sur demande à 100+)
+  max_machines_running = 25
 
-  # ✅ Concurrence orientée connexions (et non requêtes), car les requêtes LLM
-  # durent 5-30 s : on saturerait `requests` bien avant la vraie capacité réseau.
-  # Avec type = "connections", Fly scale dès que les sockets ouvertes dépassent
-  # le seuil — plus pertinent pour une API qui mixe REST courts + LLM longs.
-  # Capacité visée : 200 conn × N machines → 1 machine = 200, 4 machines = 800,
-  # 16 machines (plafond Fly par défaut) = 3200 connexions simultanées.
-  # Pour 10k users actifs : pas un problème (pas tous connectés en même temps).
+  # ✅ Concurrence orientée connexions — soft déclenche scale-up bien avant
+  # saturation hard. Marge de 50 % pour permettre le boot d'une nouvelle VM
+  # avant qu'on refuse des connexions (proxy 503).
+  # 25 × 250 soft = 6 250 conn → début du scale ; 25 × 500 hard = 12 500 max
   [http_service.concurrency]
     type = "connections"
-    soft_limit = 200
-    hard_limit = 350
+    soft_limit = 250
+    hard_limit = 500
 
   [http_service.http_options]
     response_timeout = 120         # 2 min — marge pour appels LLM lourds
-    # Idle timeout court pour libérer les connexions plus vite et permettre
-    # à l'autoscaler de redescendre quand le pic est passé.
-    idle_timeout = 60
+    # Idle timeout court → libère vite les conn pour que l'autoscaler
+    # puisse redescendre rapidement et tuer les VM excédentaires.
+    idle_timeout = 30
 
 [[vm]]
-  # Démarrage minimal — 1 GB suffit pour Rust Axum + sqlx (très léger).
-  # Vertical scaling manuel : `fly scale memory 2gb -a yukpo-fly-backend` si RAM saturée.
-  # Cf. scripts/fly-monitor-and-scale.sh pour automatisation (cron horaire).
-  memory = "1gb"
+  # ✅ 2026-05-16 — Passage à 2 GB :
+  #   - Cold-start réduit (la JVM-like init de sqlx + tokio + ort_sys tient mieux)
+  #   - Headroom mémoire pour cache Redis local + multiplexage connexions DB
+  #   - Coût marginal : ~$10/mois supplémentaire par VM idle (vs 1 GB)
+  memory = "2gb"
   cpu_kind = "shared"
   cpus = 1
 
 # Health check Fly (différent du HEALTHCHECK Docker, plus rapide)
+# ✅ 2026-05-16 — grace_period réduit : avec 2 GB et binaire stripped,
+# le boot Rust + pool warm-up tient en ~25-30 s. 45 s = marge confort.
 [checks]
   [checks.health]
-    grace_period = "60s"           # 1 min pour boot Rust + connexion DB + migrations
-    interval = "15s"
+    grace_period = "45s"
+    interval = "10s"               # check + fréquent → détection panne plus rapide
     method = "get"
     path = "/health"
     port = 8080
-    timeout = "10s"
+    timeout = "5s"                 # /health doit être ultra-rapide (sans hit DB)
     type = "http"
 
 # ✅ Patch 2026-05-12 — Shutdown gracieux lors du scale-down auto :

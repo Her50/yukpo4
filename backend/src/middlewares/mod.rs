@@ -14,6 +14,7 @@ pub mod monitoring;
 pub mod rate_limit;
 pub mod request_size_limit;
 pub mod service_interaction;
+pub mod token_blacklist; // ✅ 2026-05-16 : blacklist JWT pour révocation côté serveur
 pub mod yukpo_gdpr_rate_limit; // YukpoIA — rate limit export / suppression RGPD
 
 pub use anti_bruteforce::anti_bruteforce;

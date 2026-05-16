@@ -148,7 +148,7 @@ use crate::state::AppState;
 use crate::websocket::chat_websocket::create_chat_websocket_router;
 use crate::websocket::flash_sale_websocket::create_flash_sale_websocket_router;
 use crate::websocket::websocket_handler::create_websocket_router;
-use axum::{extract::State, routing::get, Json, Router};
+use axum::{extract::State, middleware, routing::get, Json, Router};
 use std::sync::Arc;
 use tower_http::compression::CompressionLayer;
 use tower_http::services::ServeDir;
@@ -617,6 +617,32 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         }))
         // ✅ Phase 7: Compression gzip/brotli pour réponses volumineuses
         .layer(CompressionLayer::new().gzip(true).br(true))
+        // ✅ 2026-05-16 — STACK DE SÉCURITÉ GLOBALE
+        // Avant : aucun middleware de sécurité n'était appliqué au router global.
+        // Les middlewares (CORS, headers sécurité, rate-limit, audit) n'étaient
+        // branchés que sur /auth/*. Toutes les autres routes étaient nues.
+        //
+        // Ordre des layers (axum applique du plus interne au plus externe) :
+        //   1. audit_log         (journalise après exécution)
+        //   2. monitoring        (métriques Prometheus)
+        //   3. rate_limit        (par-IP / par-user)
+        //   4. hide_headers      (CSP, HSTS, X-Frame-Options, masque Server:)
+        //   5. cors_middleware   (vérifie origin contre ALLOWED_ORIGINS env)
+        // CORS doit être le PLUS EXTERNE pour que les pre-flight passent même
+        // sur les routes refusées par rate-limit/auth.
+        .layer(middleware::from_fn(crate::middlewares::audit_log::audit_log))
+        .layer(middleware::from_fn(crate::middlewares::monitoring::monitoring))
+        // ✅ 2026-05-16 — Blacklist JWT (Redis) : refuse tokens révoqués via /auth/logout
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            crate::middlewares::token_blacklist::check_blacklist,
+        ))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            crate::middlewares::rate_limit::rate_limit_middleware,
+        ))
+        .layer(middleware::from_fn(crate::middlewares::hide_headers::hide_headers))
+        .layer(middleware::from_fn(crate::middlewares::cors::cors_middleware))
         .with_state(state);
     // Ajouter les routes WebSocket séparément
     // let app = app.merge(websocket);

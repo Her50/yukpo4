@@ -766,24 +766,34 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                 })
                 .after_connect(|conn, _meta| {
                     Box::pin(async move {
-                        if let Err(e) =
-                            sqlx::query("SET statement_timeout = 0").execute(&mut *conn).await
-                        {
-                            let error_msg = e.to_string();
-                            if error_msg.contains("TLS")
-                                || error_msg.contains("close_notify")
-                                || error_msg.contains("Connection reset")
-                                || error_msg.contains("peer closed")
-                            {
-                                log::debug!(
-                                    "⚠️ Configuration statement_timeout échouée: {}",
-                                    error_msg
-                                );
-                            }
-                        }
-                        let _ = sqlx::query("SET idle_in_transaction_session_timeout = '180s'")
+                        // ✅ 2026-05-16 PATCH SCALE — limites par-conn pour résister à la
+                        // montée en charge. Évite qu'une requête bloquée tienne une conn
+                        // du pool pendant des heures (le pool sature à 25 VM × 60 = 1500).
+                        // Valeurs configurables via env (cf. fly.toml DB_*_TIMEOUT_MS).
+                        let stmt_ms = std::env::var("DB_STATEMENT_TIMEOUT_MS")
+                            .ok()
+                            .and_then(|s| s.parse::<u64>().ok())
+                            .unwrap_or(30_000);
+                        let lock_ms = std::env::var("DB_LOCK_TIMEOUT_MS")
+                            .ok()
+                            .and_then(|s| s.parse::<u64>().ok())
+                            .unwrap_or(8_000);
+                        let idle_tx_ms = std::env::var("DB_IDLE_IN_TX_TIMEOUT_MS")
+                            .ok()
+                            .and_then(|s| s.parse::<u64>().ok())
+                            .unwrap_or(15_000);
+                        let _ = sqlx::query(&format!("SET statement_timeout = '{}'", stmt_ms))
                             .execute(&mut *conn)
                             .await;
+                        let _ = sqlx::query(&format!("SET lock_timeout = '{}'", lock_ms))
+                            .execute(&mut *conn)
+                            .await;
+                        let _ = sqlx::query(&format!(
+                            "SET idle_in_transaction_session_timeout = '{}'",
+                            idle_tx_ms
+                        ))
+                        .execute(&mut *conn)
+                        .await;
                         Ok(())
                     })
                 })
@@ -2670,6 +2680,10 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         redis_available_for_ws,
         degraded_mode, // ✅ CORRIGÉ 2026-03-23: Passer le flag de mode dégradé
     ));
+
+    // ✅ 2026-05-16 — Initialise le pool Postgres pour le middleware audit_log
+    // (sans cet appel, le middleware tourne mais n'insère rien dans audit_logs).
+    yukpomnang_backend::middlewares::audit_log::init_from_state(&app_state).await;
 
     // ✅ 2026-05-14 Piste 4 Phase B — worker queue distribution sociale YukpoShop.
     // Lancé juste après création app_state pour qu'il puisse cloner la pool DB
