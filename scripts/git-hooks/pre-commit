@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# ============================================================================
+# Pre-commit hook anti-secrets pour Yukpo
+# ----------------------------------------------------------------------------
+# Scanne les fichiers stagés à la recherche de patterns de secrets connus.
+# Bloque le commit si match. Bypass possible avec `git commit --no-verify`
+# (à utiliser uniquement en connaissance de cause).
+#
+# Installation : bash scripts/git-hooks/install.sh
+#
+# Patterns détectés :
+#   - AWS Access Key ID                  (AKIA...)
+#   - Google API Key                     (AIza...)
+#   - Pinecone API Key                   (pcsk_...)
+#   - OpenAI / Anthropic API Key         (sk-...)
+#   - Slack tokens                       (xoxb-/xoxp-/xoxa-/xoxr-/xoxs-)
+#   - GitHub Personal Access Token       (ghp_...)
+#   - SendGrid API Key                   (SG.xxx.yyy)
+#   - Twilio Account SID                 (AC + 32 hex)
+#   - Private keys                       (-----BEGIN PRIVATE KEY-----)
+#   - Postgres/Mongo/Redis URL with pwd  (proto://user:pass@host)
+# ============================================================================
+set -e
+
+# Patterns de secrets (egrep)
+PATTERNS=(
+  'AKIA[0-9A-Z]{16}'                                # AWS Access Key
+  'AIza[0-9A-Za-z\-_]{35}'                          # Google API Key
+  'pcsk_[A-Za-z0-9_]{50,}'                          # Pinecone
+  'sk-[A-Za-z0-9_-]{20,}'                           # OpenAI / Anthropic
+  'xox[baprs]-[A-Za-z0-9-]{10,}'                    # Slack
+  'ghp_[A-Za-z0-9]{36}'                             # GitHub PAT
+  'SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}'        # SendGrid
+  'AC[a-f0-9]{32}'                                  # Twilio Account SID
+  '-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY' # Private keys
+  'postgres(ql)?://[^:[:space:]]+:[^@/[:space:]]+@' # PG with password
+  'mongodb(\+srv)?://[^:[:space:]]+:[^@/[:space:]]+@' # Mongo with password
+  'redis://[^:[:space:]]*:[^@/[:space:]]+@'         # Redis with password
+)
+
+# Fichiers à ignorer (binaires, lockfiles, vendor, etc.)
+SKIP_REGEX='\.(png|jpg|jpeg|gif|webp|ico|pdf|zip|tar\.gz|tgz|tar|woff2?|ttf|eot|otf|mp4|webm|mp3|wav|exe|dll|so|dylib|class|jar|war|bin|wbk|docx|pptx|xlsx)$|(^|/)(node_modules|target|dist|dist-bourse|dist-lite|dist-pharmacie|dist-restaurant|build|coverage|\.next|\.cache|vendor)/|\.(lock|min\.js|min\.css)$'
+
+# Récupère les fichiers stagés (ajout/modif/copie, pas les deletions)
+files=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$files" ] && exit 0
+
+violations=0
+violating_files=""
+
+while IFS= read -r file; do
+  # Skip fichiers binaires / vendor / lock
+  if echo "$file" | grep -qE "$SKIP_REGEX"; then
+    continue
+  fi
+
+  # Récupère le contenu du fichier depuis l'index (pas le working tree)
+  content=$(git show ":$file" 2>/dev/null) || continue
+
+  for pattern in "${PATTERNS[@]}"; do
+    match=$(echo "$content" | grep -nE "$pattern" 2>/dev/null | head -3 || true)
+    if [ -n "$match" ]; then
+      echo "❌ Secret potentiel dans $file (pattern: $pattern)"
+      echo "$match" | sed 's/^/     /'
+      violations=$((violations + 1))
+      violating_files="$violating_files $file"
+    fi
+  done
+done <<< "$files"
+
+if [ "$violations" -gt 0 ]; then
+  echo ""
+  echo "🚫 Commit bloqué : $violations secret(s) potentiel(s) détecté(s)."
+  echo ""
+  echo "Que faire :"
+  echo "  1. Vérifier les matches ci-dessus (faux positifs possibles)."
+  echo "  2. Si c'est un VRAI secret : retire-le du fichier, mets le secret"
+  echo "     dans 'fly secrets set' ou Netlify env vars."
+  echo "  3. Si c'est un faux positif (ex: pattern de doc, valeur tronquée) :"
+  echo "     bypass avec : git commit --no-verify"
+  echo "  4. Pour une analyse plus complète : pip install gitleaks && gitleaks detect"
+  exit 1
+fi
+
+exit 0
