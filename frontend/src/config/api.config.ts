@@ -19,21 +19,22 @@ const VITE_ENV = import.meta.env.VITE_ENVIRONMENT || 'production';
 // - En dev/prod ailleurs : tape directement le backend (CORS côté backend)
 //
 // Backends disponibles :
-// ✅ ACTIF — 2026-05-16 : Fly.io (yukpo-fly-backend.fly.dev) — temporaire
+// ✅ ACTIF — 2026-05-16 : Cloudflare proxy → Fly (api.yukpomnang.com)
+//    Cloudflare : WAF, DDoS L7, SSL Strict, rate-limit /api/auth/* (3 req/10s/IP),
+//    hides Fly origin IP. Pour rebasculer : commenter ces lignes, décommenter Fly direct.
+// 💤 Fly direct — fallback sans CF (yukpo-fly-backend.fly.dev)
 // 💤 PRINCIPAL — GCP Cloud Run (yukpo-backend-376093909298.europe-west1.run.app)
-//    Pour rebasculer : commenter BACKEND_URL/WS_BASE_URL Fly, décommenter GCP.
-// 🗄️ ARCHIVE — AWS ECS (api.yukpomnang.com)
 const isNetlify = typeof window !== 'undefined' && window.location.hostname.includes('netlify.app');
 const isVercel = typeof window !== 'undefined' && (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('yukpomnang.com'));
 
-const BACKEND_URL = 'https://yukpo-fly-backend.fly.dev';
+const BACKEND_URL = 'https://api.yukpomnang.com';
+// const BACKEND_URL = 'https://yukpo-fly-backend.fly.dev';  // 💤 Fly direct (sans CF)
 // const BACKEND_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app';  // 💤 GCP (principal)
-// const BACKEND_URL = 'https://api.yukpomnang.com';  // 🗄️ AWS (archive)
 
 export const API_BASE_URL = VITE_API_URL || ((isNetlify || isVercel) ? '' : BACKEND_URL);
-export const WS_BASE_URL = VITE_WS_URL || 'wss://yukpo-fly-backend.fly.dev';
+export const WS_BASE_URL = VITE_WS_URL || 'wss://api.yukpomnang.com';
+// export const WS_BASE_URL = VITE_WS_URL || 'wss://yukpo-fly-backend.fly.dev';  // 💤 Fly direct
 // export const WS_BASE_URL = VITE_WS_URL || 'wss://yukpo-backend-376093909298.europe-west1.run.app';  // 💤 GCP
-// export const WS_BASE_URL = VITE_WS_URL || 'wss://api.yukpomnang.com';  // 🗄️ AWS
 
 // Log pour vérifier la configuration chargée (seulement en développement)
 if (import.meta.env.DEV) {

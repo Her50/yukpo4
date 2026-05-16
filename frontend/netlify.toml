@@ -8,109 +8,110 @@
   VITE_APP_DEBUG = "false"
 
 # Backend cible des redirects :
-# ✅ ACTIF — 2026-05-16 : Fly.io (https://yukpo-fly-backend.fly.dev)
-#    Bascule temporaire pendant que GCP est en panne / facturation suspendue.
+# ✅ ACTIF — 2026-05-16 : Cloudflare proxy → Fly (https://api.yukpomnang.com)
+#    Cloudflare protège avec : WAF Managed Free Ruleset, DDoS L7 mitigation,
+#    SSL Full Strict, rate-limit anti-brute-force /api/auth/* (3 req/10s/IP),
+#    bot management, hides Fly origin IP.
+# 💤 Fly direct — fallback sans CF (https://yukpo-fly-backend.fly.dev)
+#    Si Cloudflare a un incident, swap activement vers cette ligne.
 # 💤 PRINCIPAL — GCP Cloud Run (https://yukpo-backend-376093909298.europe-west1.run.app)
-#    Backend long terme. Pour rebasculer : décommenter les lignes GCP ci-dessous
-#    et commenter les lignes Fly correspondantes.
-# 🗄️ ARCHIVE — AWS ECS (https://api.yukpomnang.com)
-#    Plus utilisé ; gardé pour mémoire.
+#    Backend long terme. Réactiver quand GCP repart.
 
 [[redirects]]
   from = "/api/*"
-  to = "https://yukpo-fly-backend.fly.dev/api/:splat"
+  to = "https://api.yukpomnang.com/api/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/api/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/api/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/auth/*"
-  to = "https://yukpo-fly-backend.fly.dev/auth/:splat"
+  to = "https://api.yukpomnang.com/auth/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/auth/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/auth/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/auth/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/services/*"
-  to = "https://yukpo-fly-backend.fly.dev/services/:splat"
+  to = "https://api.yukpomnang.com/services/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/services/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/services/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/services/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/healthz"
-  to = "https://yukpo-fly-backend.fly.dev/healthz"
+  to = "https://api.yukpomnang.com/healthz"
+  # to = "https://yukpo-fly-backend.fly.dev/healthz"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/healthz"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/prestataire/*"
-  to = "https://yukpo-fly-backend.fly.dev/prestataire/:splat"
+  to = "https://api.yukpomnang.com/prestataire/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/prestataire/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/prestataire/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/prestataire/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/user/*"
-  to = "https://yukpo-fly-backend.fly.dev/user/:splat"
+  to = "https://api.yukpomnang.com/user/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/user/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/user/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/user/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/users/*"
-  to = "https://yukpo-fly-backend.fly.dev/users/:splat"
+  to = "https://api.yukpomnang.com/users/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/users/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/users/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/users/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/ia/*"
-  to = "https://yukpo-fly-backend.fly.dev/ia/:splat"
+  to = "https://api.yukpomnang.com/ia/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/ia/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/ia/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/ia/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/ws/*"
-  to = "wss://yukpo-fly-backend.fly.dev/ws/:splat"
+  to = "wss://api.yukpomnang.com/ws/:splat"
+  # to = "wss://yukpo-fly-backend.fly.dev/ws/:splat"  # 💤 Fly direct (sans CF)
   # to = "wss://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"  # 💤 GCP (principal)
-  # to = "wss://api.yukpomnang.com/ws/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/fournitures/*"
-  to = "https://yukpo-fly-backend.fly.dev/fournitures/:splat"
+  to = "https://api.yukpomnang.com/fournitures/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/fournitures/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/fournitures/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/fournitures/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/echange/*"
-  to = "https://yukpo-fly-backend.fly.dev/echange/:splat"
+  to = "https://api.yukpomnang.com/echange/:splat"
+  # to = "https://yukpo-fly-backend.fly.dev/echange/:splat"  # 💤 Fly direct (sans CF)
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/echange/:splat"  # 💤 GCP (principal)
-  # to = "https://api.yukpomnang.com/echange/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
@@ -192,4 +193,4 @@
     # prod. Activer la version stricte (sans -Report-Only) quand on a confirmé
     # qu'aucune ressource légitime n'est cassée. Sources autorisées : Google
     # Maps, OpenStreetMap (tiles), Photon (geocoding), Fly backend, WebSockets.
-    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://yukpo-fly-backend.fly.dev wss://yukpo-fly-backend.fly.dev https://yukpo-backend-376093909298.europe-west1.run.app wss://yukpo-backend-376093909298.europe-west1.run.app https://maps.googleapis.com https://*.tile.openstreetmap.org https://photon.komoot.io https://api.openai.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';"
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.yukpomnang.com wss://api.yukpomnang.com https://yukpo-fly-backend.fly.dev wss://yukpo-fly-backend.fly.dev https://yukpo-backend-376093909298.europe-west1.run.app wss://yukpo-backend-376093909298.europe-west1.run.app https://maps.googleapis.com https://*.tile.openstreetmap.org https://photon.komoot.io https://api.openai.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';"

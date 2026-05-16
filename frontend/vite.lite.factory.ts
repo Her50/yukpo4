@@ -4,10 +4,11 @@ import path from 'path';
 import fs from 'fs';
 
 // Backend cible pour les rewrites Netlify (_redirects).
-// ✅ ACTIF — Fly.io (yukpo-fly-backend.fly.dev) — temporaire 2026-05-16
-// 💤 PRINCIPAL — GCP Cloud Run. Pour rebasculer sans redéployer le code :
+// ✅ ACTIF — Cloudflare → Fly (api.yukpomnang.com) — temporaire 2026-05-16
+// 💤 Fly direct — fallback (yukpo-fly-backend.fly.dev)
+// 💤 PRINCIPAL — GCP Cloud Run. Override sans redéployer le code :
 //   YUKPO_BACKEND_URL=https://yukpo-backend-376093909298.europe-west1.run.app npm run build:bourse
-const BACKEND_URL = process.env.YUKPO_BACKEND_URL || 'https://yukpo-fly-backend.fly.dev';
+const BACKEND_URL = process.env.YUKPO_BACKEND_URL || 'https://api.yukpomnang.com';
 
 interface LiteAppConfig {
   app: 'bourse' | 'pharmacie' | 'restaurant';
