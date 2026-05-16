@@ -2,6 +2,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::models::livre_scolaire::{BookDeliveryPackage, LivreScolaire};
+use crate::models::livre_scolaire_demande::LivreScolaireDemande;
 use crate::models::troc_livre::{
     BookCancellationRequest, ChainTransfer, ChaineTrocLivre, CreateTrocChaineRequest,
     CreateTrocDirectRequest, MatchingChaine, MatchingDirect, ParticipantChaine, TrocLivre,
@@ -292,11 +293,49 @@ impl TrocIntelligentService {
         .await
         .map_err(|e| AppError::Internal(format!("Erreur livres initiateur: {}", e)))?;
 
-        // Tous les livres = initiateur + autres
+        // ✅ 2026-05-16 — Charger les demandes d'achat d'occasion actives.
+        // Les acheteurs sont représentés ici comme nœuds-sinks potentiels du
+        // DAG : un sender (vente ou trocer) peut leur livrer un livre
+        // contre cash. L'acheteur n'a pas de livre offert et ne peut donc
+        // jamais être sender, juste receiver final de la chaîne.
+        // ⚠️ Doit être chargé AVANT la construction de `livres_par_user`
+        // (qui prend des références) pour éviter une réallocation du Vec.
+        let demandes_ouvertes = sqlx::query_as::<_, LivreScolaireDemande>(
+            r#"
+            SELECT * FROM livres_scolaires_demandes
+            WHERE is_active = true
+              AND is_satisfied = false
+              AND matched_chaine_id IS NULL
+              AND expires_at > NOW()
+              AND user_id != $1
+            ORDER BY created_at ASC
+            LIMIT 500
+            "#,
+        )
+        .bind(initiateur_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération demandes: {}", e)))?;
+        info!(
+            "[TROC_INTELLIGENT] {} demande(s) d'achat actives chargées comme sinks potentiels",
+            demandes_ouvertes.len()
+        );
+
+        // Tous les livres = initiateur + autres + demandes synthétiques (sinks)
         let mut tous_livres = initiateur_livres.clone();
         tous_livres.extend(all_livres);
+        // Conversion des demandes en `LivreScolaire` synthétiques (id négatif,
+        // classe_actuelle vide, mode_listing='demande'). Elles s'agrègent
+        // naturellement dans `bundles_par_user` ci-dessous et sont exclues
+        // comme senders par le filtre `sender_classe.is_empty()` dans la
+        // boucle de génération d'arêtes — donc elles ne peuvent être que
+        // receivers (= bouts de chaîne).
+        for d in &demandes_ouvertes {
+            tous_livres.push(d.into_synthetic_livre());
+        }
 
-        // Index par user_id pour accès rapide
+        // Index par user_id pour accès rapide (construit APRÈS l'injection
+        // des demandes pour éviter d'invalider les références)
         let mut livres_par_user: HashMap<i32, Vec<&LivreScolaire>> = HashMap::new();
         for l in &tous_livres {
             livres_par_user.entry(l.user_id).or_default().push(l);
@@ -410,7 +449,16 @@ impl TrocIntelligentService {
                 // + trim + accents) pour ne pas rater "6e" vs "Sixième" etc.
                 let sender_classe = canonical(&sender_bundle.classe_actuelle);
                 let receiver_souh = canonical(&receiver_bundle.classe_souhaitee);
-                if sender_classe != receiver_souh || receiver_souh.is_empty() {
+                // ✅ Bundles "demande" (acheteurs sans livre offert) :
+                //   - classe_actuelle = "" → ne peuvent PAS être senders
+                //   - classe_souhaitee renseignée → PEUVENT être receivers
+                // Bundles "vente" purs (vendeurs cash, pas d'échange souhaité) :
+                //   - classe_souhaitee = "" → ne peuvent PAS être receivers
+                //   - classe_actuelle renseignée → PEUVENT être senders
+                if sender_classe.is_empty()
+                    || receiver_souh.is_empty()
+                    || sender_classe != receiver_souh
+                {
                     continue;
                 }
 
@@ -462,6 +510,52 @@ impl TrocIntelligentService {
             }
         }
 
+        // ✅ 2026-05-16 — Edges sender → demande (acheteur d'occasion).
+        // Pour chaque bundle vendeur SB et chaque demande D : on crée une arête
+        // si SB a un livre dans la classe et matière demandées par D. Le buyer
+        // (D.user_id) devient ainsi un sink possible de la chaîne.
+        for demande in &demandes_ouvertes {
+            let demande_classe_canon = canonical(&demande.classe_souhaitee);
+            let demande_matiere_canon = canonical(&demande.matiere);
+            if demande_classe_canon.is_empty() || demande_matiere_canon.is_empty() {
+                continue;
+            }
+            for (sender_key, sender_bundle) in &bundles_par_user {
+                let (sender_id, _) = sender_key;
+                if *sender_id == demande.user_id {
+                    continue;
+                }
+                if canonical(&sender_bundle.classe_actuelle) != demande_classe_canon {
+                    continue;
+                }
+                if !sender_bundle.contient_matiere(&demande.matiere) {
+                    continue;
+                }
+                let best_book = sender_bundle
+                    .livres
+                    .iter()
+                    .find(|l| canonical(&l.matiere) == demande_matiere_canon)
+                    .copied()
+                    .unwrap_or(sender_bundle.livres[0]);
+                let sender_gps = Self::parse_gps(&best_book.gps);
+                let demande_gps = Self::parse_gps(&demande.gps);
+                let dist = match (sender_gps, demande_gps) {
+                    (Some(a), Some(b)) => Self::haversine_distance(a.0, a.1, b.0, b.1),
+                    _ => 0.0,
+                };
+                if dist > MAX_EDGE_DISTANCE_KM {
+                    continue;
+                }
+                edges.push(PotentialEdge {
+                    sender_id: *sender_id,
+                    receiver_id: demande.user_id,
+                    livre: (*best_book).clone(),
+                    distance_km: dist,
+                    matieres_bundle: vec![demande_matiere_canon.clone()],
+                });
+            }
+        }
+
         // Tri des arêtes :
         //   1. Les livres d'OCCASION (mode_listing='vente') passent en PREMIER
         //      → ils ancrent le début de la chaîne car ils sont tangibles et
@@ -493,6 +587,13 @@ impl TrocIntelligentService {
         let mut user_gps_cache: HashMap<i32, Option<(f64, f64)>> = HashMap::new();
         for l in &tous_livres {
             user_gps_cache.entry(l.user_id).or_insert_with(|| Self::parse_gps(&l.gps));
+        }
+        // ✅ 2026-05-16 — Ajouter les acheteurs (demandes) au cache GPS pour
+        // que la contrainte de rayon MAX_CHAIN_RADIUS_KM s'applique aussi à eux.
+        for d in &demandes_ouvertes {
+            user_gps_cache
+                .entry(d.user_id)
+                .or_insert_with(|| Self::parse_gps(&d.gps));
         }
         if let Some(gps) = initiateur_gps {
             user_gps_cache.insert(initiateur_id, Some(gps));
@@ -755,14 +856,30 @@ impl TrocIntelligentService {
             b_is_vendeur.cmp(&a_is_vendeur).then_with(|| a.1.cmp(&b.1))
         });
 
+        // ✅ 2026-05-16 — Map user_id → demande_id pour les acheteurs sinks.
+        // Si un user reçoit dans la chaîne sans jamais envoyer (= buyer), on
+        // encode l'identifiant de sa demande dans `livre_offert_id` (négatif)
+        // pour que validate_chaine_troc puisse le retrouver.
+        let demande_for_user: HashMap<i32, i32> = demandes_ouvertes
+            .iter()
+            .map(|d| (d.user_id, d.id))
+            .collect();
+
         // Re-numéroter
         let participant_chaines: Vec<ParticipantChaine> = participants
             .iter()
             .enumerate()
             .map(|(i, (uid, _))| {
                 // Trouver le premier livre offert par cet utilisateur dans les transfers
-                let livre_offert_id =
-                    transfers.iter().find(|t| t.sender_id == *uid).map(|t| t.livre_id).unwrap_or(0);
+                let livre_offert_id = transfers
+                    .iter()
+                    .find(|t| t.sender_id == *uid)
+                    .map(|t| t.livre_id)
+                    .unwrap_or_else(|| {
+                        // Cet utilisateur n'envoie rien : c'est un buyer/sink.
+                        // S'il a une demande active, on encode -demande_id.
+                        demande_for_user.get(uid).map(|d_id| -*d_id).unwrap_or(0)
+                    });
                 let livre_souhaite_id = transfers
                     .iter()
                     .find(|t| t.receiver_id == *uid)
@@ -978,29 +1095,43 @@ impl TrocIntelligentService {
         let mut distance_totale_km = 0.0;
         let mut scores_proximite = Vec::new();
 
+        // Helper local : récupère le GPS d'un participant, qu'il soit un vrai
+        // livre (id ≥ 0) ou une demande synthétique (id < 0).
+        async fn resolve_participant_gps(
+            pool: &PgPool,
+            livre_offert_id: i32,
+        ) -> AppResult<Option<String>> {
+            if livre_offert_id >= 0 {
+                let row: Option<(Option<String>,)> =
+                    sqlx::query_as("SELECT gps FROM livres_scolaires WHERE id = $1")
+                        .bind(livre_offert_id)
+                        .fetch_optional(pool)
+                        .await
+                        .map_err(|e| AppError::Internal(format!("Erreur GPS livre: {}", e)))?;
+                Ok(row.and_then(|r| r.0))
+            } else {
+                let demande_id = -livre_offert_id;
+                let row: Option<(Option<String>,)> = sqlx::query_as(
+                    "SELECT gps FROM livres_scolaires_demandes WHERE id = $1",
+                )
+                .bind(demande_id)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur GPS demande: {}", e)))?;
+                Ok(row.and_then(|r| r.0))
+            }
+        }
+
         for i in 0..request.participants.len().saturating_sub(1) {
             let participant = &request.participants[i];
             let participant_suivant = &request.participants[i + 1];
 
-            // Récupérer les livres pour calculer la distance
-            let livre1 =
-                sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
-                    .bind(participant.livre_offert_id)
-                    .fetch_optional(&*self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?
-                    .ok_or_else(|| AppError::NotFound("Livre non trouvé".to_string()))?;
-
-            let livre2 =
-                sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
-                    .bind(participant_suivant.livre_offert_id)
-                    .fetch_optional(&*self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?
-                    .ok_or_else(|| AppError::NotFound("Livre non trouvé".to_string()))?;
+            let gps1 = resolve_participant_gps(&self.pool, participant.livre_offert_id).await?;
+            let gps2 =
+                resolve_participant_gps(&self.pool, participant_suivant.livre_offert_id).await?;
 
             if let (Some((lat1, lon1)), Some((lat2, lon2))) =
-                (Self::parse_gps(&livre1.gps), Self::parse_gps(&livre2.gps))
+                (Self::parse_gps(&gps1), Self::parse_gps(&gps2))
             {
                 let distance = Self::haversine_distance(lat1, lon1, lat2, lon2);
                 distance_totale_km += distance;
@@ -1048,23 +1179,52 @@ impl TrocIntelligentService {
             ));
         }
 
-        // Vérifier que chaque participant a un livre offert valide
-        for participant in participants {
-            let livre_offert = sqlx::query_as::<_, LivreScolaire>(
-                "SELECT * FROM livres_scolaires WHERE id = $1 AND is_active = true AND is_available = true"
-            )
-            .bind(participant.livre_offert_id)
-            .fetch_optional(&*self.pool)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
-            .ok_or_else(|| AppError::BadRequest(format!("Livre offert {} non trouvé ou indisponible", participant.livre_offert_id)))?;
+        // ✅ 2026-05-16 — Convention pour les acheteurs/demandes :
+        // un `livre_offert_id` NÉGATIF signifie « cette entrée est une demande
+        // d'achat (livres_scolaires_demandes.id = -livre_offert_id) », pas un
+        // vrai livre offert. Les demandes ne peuvent occuper QUE la dernière
+        // position de la chaîne (= sink / buyer terminal).
+        for (idx, participant) in participants.iter().enumerate() {
+            if participant.livre_offert_id >= 0 {
+                // Cas régulier : livre offert physique
+                let livre_offert = sqlx::query_as::<_, LivreScolaire>(
+                    "SELECT * FROM livres_scolaires WHERE id = $1 AND is_active = true AND is_available = true"
+                )
+                .bind(participant.livre_offert_id)
+                .fetch_optional(&*self.pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
+                .ok_or_else(|| AppError::BadRequest(format!("Livre offert {} non trouvé ou indisponible", participant.livre_offert_id)))?;
 
-            // Vérifier que le livre appartient bien à ce participant
-            if livre_offert.user_id != participant.user_id {
-                return Err(AppError::BadRequest(format!(
-                    "Le livre {} n'appartient pas à l'utilisateur {}",
-                    participant.livre_offert_id, participant.user_id
-                )));
+                if livre_offert.user_id != participant.user_id {
+                    return Err(AppError::BadRequest(format!(
+                        "Le livre {} n'appartient pas à l'utilisateur {}",
+                        participant.livre_offert_id, participant.user_id
+                    )));
+                }
+            } else {
+                // Cas demande : ne peut occuper QUE la dernière position
+                if idx + 1 != participants.len() {
+                    return Err(AppError::BadRequest(format!(
+                        "Demande d'achat (livre_offert_id={}) doit être en dernière position, trouvée à l'index {}",
+                        participant.livre_offert_id, idx
+                    )));
+                }
+                let demande_id = -participant.livre_offert_id;
+                let demande = sqlx::query_as::<_, LivreScolaireDemande>(
+                    "SELECT * FROM livres_scolaires_demandes WHERE id = $1 AND is_active = true AND is_satisfied = false"
+                )
+                .bind(demande_id)
+                .fetch_optional(&*self.pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur validation demande: {}", e)))?
+                .ok_or_else(|| AppError::BadRequest(format!("Demande {} introuvable ou déjà satisfaite", demande_id)))?;
+                if demande.user_id != participant.user_id {
+                    return Err(AppError::BadRequest(format!(
+                        "La demande {} n'appartient pas à l'utilisateur {}",
+                        demande_id, participant.user_id
+                    )));
+                }
             }
         }
 
@@ -1072,6 +1232,14 @@ impl TrocIntelligentService {
         for i in 0..participants.len().saturating_sub(1) {
             let sender = &participants[i];
             let receiver = &participants[i + 1];
+
+            // Sender DOIT être un vrai livre (les demandes ne peuvent jamais être sender)
+            if sender.livre_offert_id < 0 {
+                return Err(AppError::BadRequest(format!(
+                    "Une demande (id={}) ne peut pas être expéditrice dans la chaîne",
+                    -sender.livre_offert_id
+                )));
+            }
 
             let livre_envoye =
                 sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
@@ -1083,31 +1251,46 @@ impl TrocIntelligentService {
                         AppError::BadRequest(format!("Livre {} non trouvé", sender.livre_offert_id))
                     })?;
 
-            // Le livre envoyé par sender doit correspondre au besoin du receiver
-            // (sender.classe_actuelle == receiver.classe_souhaitee du livre qu'il veut)
-            let livre_receiver =
-                sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
+            // Le receiver peut être soit un livre régulier, soit une demande.
+            // On résout les champs (classe_souhaitee, matiere) selon le cas.
+            let (receiver_classe_souhaitee, receiver_matiere, receiver_label) =
+                if receiver.livre_offert_id >= 0 {
+                    let l = sqlx::query_as::<_, LivreScolaire>(
+                        "SELECT * FROM livres_scolaires WHERE id = $1",
+                    )
                     .bind(receiver.livre_offert_id)
                     .fetch_optional(&*self.pool)
                     .await
                     .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
                     .ok_or_else(|| {
-                        AppError::BadRequest(format!(
-                            "Livre {} non trouvé",
-                            receiver.livre_offert_id
-                        ))
+                        AppError::BadRequest(format!("Livre {} non trouvé", receiver.livre_offert_id))
                     })?;
+                    (l.classe_souhaitee.clone(), l.matiere.clone(), format!("livre {}", l.id))
+                } else {
+                    let demande_id = -receiver.livre_offert_id;
+                    let d = sqlx::query_as::<_, LivreScolaireDemande>(
+                        "SELECT * FROM livres_scolaires_demandes WHERE id = $1",
+                    )
+                    .bind(demande_id)
+                    .fetch_optional(&*self.pool)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Erreur validation demande: {}", e)))?
+                    .ok_or_else(|| {
+                        AppError::BadRequest(format!("Demande {} non trouvée", demande_id))
+                    })?;
+                    (d.classe_souhaitee.clone(), d.matiere.clone(), format!("demande {}", d.id))
+                };
 
             // Le matching DAG: le livre envoyé a la classe que le receiver cherche.
             // ✅ FIX 2026-05-16 — Comparaison canonique (lower+trim+accents)
             // pour tolérer "6e" vs "6ème", "MATHS" vs "maths", etc.
-            if canonical(&livre_envoye.classe_actuelle) != canonical(&livre_receiver.classe_souhaitee)
-                || canonical(&livre_envoye.matiere) != canonical(&livre_receiver.matiere)
+            if canonical(&livre_envoye.classe_actuelle) != canonical(&receiver_classe_souhaitee)
+                || canonical(&livre_envoye.matiere) != canonical(&receiver_matiere)
             {
                 return Err(AppError::BadRequest(format!(
-                    "Correspondance DAG incorrecte: livre {} (classe={}, matière={}) ne correspond pas au besoin du participant {} (classe_souhaitee={}, matière={})",
+                    "Correspondance DAG incorrecte: livre {} (classe={}, matière={}) ne correspond pas au besoin du participant {} ({} — classe_souhaitee={}, matière={})",
                     sender.livre_offert_id, livre_envoye.classe_actuelle, livre_envoye.matiere,
-                    receiver.user_id, livre_receiver.classe_souhaitee, livre_receiver.matiere
+                    receiver.user_id, receiver_label, receiver_classe_souhaitee, receiver_matiere
                 )));
             }
 

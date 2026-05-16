@@ -614,6 +614,41 @@ pub async fn create_commande_mixte(
         .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur insertion livre occasion: {}", e)))?;
+
+        // ✅ 2026-05-16 — Crée une `livre_scolaire_demande` parallèle pour que
+        // l'acheteur soit représenté comme nœud-sink du DAG. Cela permet au
+        // moteur de matching de proposer une chaîne fallback (V → trocer →
+        // buyer) si la vente directe pré-assignée échoue/se retire. Le lien
+        // `commande_mixte_id` permet de retrouver la demande au fulfillment
+        // et de la marquer "satisfaite" à la livraison.
+        //
+        // Best-effort : si l'insert échoue (table absente, etc.) on ignore —
+        // le flux principal (commande directe) reste fonctionnel.
+        let demande_insert_res = sqlx::query(
+            r#"
+            INSERT INTO livres_scolaires_demandes
+                (user_id, titre, auteur, matiere, classe_souhaitee, budget_max_xaf,
+                 gps, commande_mixte_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            "#,
+        )
+        .bind(user_id)
+        .bind(titre)
+        .bind(l_auteur.as_deref())
+        .bind(matiere)
+        .bind(classe)
+        .bind(prix)
+        .bind(payload.gps_livraison.as_deref())
+        .bind(commande.id)
+        .execute(&mut *tx)
+        .await;
+        if let Err(e) = demande_insert_res {
+            log::warn!(
+                "[create_commande_mixte] demande shadow non créée pour livre {} : {} (continue)",
+                livre_req.livre_scolaire_id,
+                e
+            );
+        }
     }
 
     tx.commit()

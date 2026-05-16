@@ -70,6 +70,7 @@ pub mod librairie_admin_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur admin
 pub mod librairie_network_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur réseau de librairies et QR codes
 pub mod live_ai_controller;
 pub mod live_controller;
+pub mod livre_demande_controller; // ✅ 2026-05-16: Contrôleur demandes d'achat occasion (buyer = sink DAG)
 pub mod livres_scolaires_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur livres scolaires
 pub mod loyalty_controller; // ✅ NOUVEAU: Contrôleur pour programme de fidélité
 pub mod media_analytics_controller;

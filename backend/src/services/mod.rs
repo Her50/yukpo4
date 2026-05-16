@@ -121,6 +121,7 @@ pub mod live_audience_service;
 pub mod live_flash_sale_service;
 pub mod live_stream_service;
 pub mod livekit_vm_service; // ✅ Gestion automatique VM LiveKit selon sessions actives
+pub mod livre_scolaire_demande_service; // ✅ 2026-05-16: CRUD demandes occasion (buyer = sink DAG)
 pub mod livres_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service livres scolaires
 pub mod llm_service;
 pub mod local_ai_ultra_fast;

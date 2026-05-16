@@ -298,10 +298,13 @@ pub async fn match_all_pending(
         let credit = wallet::compute_credit_for_book(valeur);
 
         // Tentative de matching pour ce livre — on vérifie juste s'il y a
-        // un candidat (direct OU chaîne avec max=5 — le DAG cherche le minimum).
+        // un candidat (direct OU chaîne avec max=10 — le DAG cherche le minimum
+        // et stoppe dès qu'une chaîne valide est trouvée, donc augmenter la
+        // borne supérieure n'augmente pas le coût de calcul tant qu'on trouve
+        // tôt ; ça élargit juste l'espace pour les chaînes longues utiles).
         let direct = service.find_matching_direct(livre_id).await.unwrap_or_default();
         let chain = if direct.is_empty() {
-            service.find_matching_chaine(livre_id, Some(5)).await.unwrap_or_default()
+            service.find_matching_chaine(livre_id, Some(10)).await.unwrap_or_default()
         } else {
             Vec::new()
         };

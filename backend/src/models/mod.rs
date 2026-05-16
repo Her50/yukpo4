@@ -20,6 +20,7 @@ pub mod librairie_network; // Modèles avancés réseau librairies
 pub mod librairie_network_model; // ✅ NOUVEAU 2026-03-16: Modèles réseau de librairies
 pub mod live_model;
 pub mod livre_scolaire; // ✅ NOUVEAU 2025-01-28: Livres scolaires
+pub mod livre_scolaire_demande; // ✅ 2026-05-16: Demandes d'achat occasion (buyer = sink du DAG)
 pub mod offres_emploi_model; // ✅ NOUVEAU 2025-01-28: Offres d'emploi et matching intelligent
 pub mod orientation_ai; // ✅ NOUVEAU 2025-01-27: Orientation scolaire IA (profils, recommandations, comparaisons, analytics)
 pub mod orientation_scolaire; // ✅ NOUVEAU 2025-01-28: Orientation scolaire et établissements

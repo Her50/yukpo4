@@ -992,6 +992,21 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/livres-scolaires/{id}/availability",
             axum::routing::patch(livres_scolaires_controller::update_availability),
         )
+        // ✅ 2026-05-16 — Demandes d'achat occasion (buyer = sink du DAG)
+        .route(
+            "/api/livres-scolaires/demandes",
+            post(crate::controllers::livre_demande_controller::create_demande),
+        )
+        .route(
+            "/api/livres-scolaires/demandes/me",
+            get(crate::controllers::livre_demande_controller::list_mine),
+        )
+        .route(
+            "/api/livres-scolaires/demandes/{id}",
+            get(crate::controllers::livre_demande_controller::get_demande)
+                .patch(crate::controllers::livre_demande_controller::update_demande)
+                .delete(crate::controllers::livre_demande_controller::cancel_demande),
+        )
         // ✅ Routes Troc Livres (protégées)
         .route(
             "/api/troc-livres/match",
