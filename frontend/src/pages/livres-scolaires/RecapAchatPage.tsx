@@ -723,10 +723,20 @@ const RecapAchatPage: React.FC = () => {
    *  appel à POST /api/librairie-network/commandes. */
   const LIVRE_TYPES = new Set(['livre', 'workbook', 'livret', 'manuel', 'textbook', 'book']);
   const isLivreItem = (it: PanierItem) => LIVRE_TYPES.has(String(it.type ?? '').toLowerCase());
-  const [topTab, setTopTab] = useState<'livres' | 'fournitures'>('livres');
+  // ✅ FIX 2026-05-16 — Initialisation intelligente du tab pour éviter
+  // l'écran "Aucun livre" pendant 1 render quand l'user arrive de
+  // CahiersAccessoiresPage avec UNIQUEMENT des fournitures. On regarde le
+  // panier hydraté depuis localStorage et on pointe directement le bon tab.
+  const [topTab, setTopTab] = useState<'livres' | 'fournitures'>(() => {
+    const hasLivres = panier.some(isLivreItem);
+    const hasFournitures = panier.some((p) => !isLivreItem(p));
+    if (!hasLivres && hasFournitures) return 'fournitures';
+    return 'livres';
+  });
   const countLivres = panier.filter(isLivreItem).length;
   const countFournitures = panier.filter((p) => !isLivreItem(p)).length;
-  // Auto-basculer vers l'onglet qui a du contenu si l'autre est vide.
+  // Auto-basculer si l'onglet actif devient vide alors que l'autre a
+  // du contenu (cas où l'user supprime tous les items d'un côté).
   useEffect(() => {
     if (topTab === 'livres' && countLivres === 0 && countFournitures > 0) {
       setTopTab('fournitures');
