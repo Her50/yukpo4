@@ -44,8 +44,10 @@ pub async fn get_my_referral(
     // Override possible via env REFERRAL_SHARE_BASE_URL (ex: pour staging).
     // ✅ 2026-05-15 — On pointe vers /parrainage (page dédiée) plutôt que /
     //    pour que le filleul voie le pitch invitation avant de s'inscrire.
+    // ✅ 2026-05-16 — Domaine canonique : bourse-du-livre-scolaire.yukpomnang.com
+    //    (nom directement compréhensible par l'utilisateur, vs bourse.* trop court).
     let base = std::env::var("REFERRAL_SHARE_BASE_URL")
-        .unwrap_or_else(|_| "https://bourse.yukpomnang.com".to_string());
+        .unwrap_or_else(|_| "https://bourse-du-livre-scolaire.yukpomnang.com".to_string());
     let share_url = format!(
         "{}/parrainage?ref={}",
         base.trim_end_matches('/'),

@@ -47,7 +47,10 @@ primary_region = "cdg"
   YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS = ""
 
   # Migrations auto au démarrage (sqlx::migrate!)
-  ENABLE_AUTO_MIGRATIONS = "true"
+  # ⚠️ Désactivé 2026-05-15 : seed MINESEC Technique cassé (etablissement_id NOT NULL).
+  # Le router complet ne chargeait pas (return Err sur erreur critique → bloque
+  # tout le démarrage Axum). À réactiver après fix du seed dans auto_migrate.rs.
+  ENABLE_AUTO_MIGRATIONS = "false"
 
 [http_service]
   internal_port = 8080
