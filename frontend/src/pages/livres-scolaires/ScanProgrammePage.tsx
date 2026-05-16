@@ -614,9 +614,10 @@ const ScanProgrammePage: React.FC = () => {
       setTimeout(() => navigate('/rentree?capture-troc=1', { replace: false }), 50);
       return;
     }
-    // Pas de troc : on bascule sur le mini-récap classique (/rentree sans
-    // capture-troc) — cohérent avec le parcours école partenaire.
-    setTimeout(() => navigate('/rentree', { replace: false }), 50);
+    // Pas de troc : on bascule directement sur le panier (/recap). Harmonisé
+    // avec Browse/Cahiers — l'utilisateur voit immédiatement ses articles
+    // dans le panier au lieu d'un écran intermédiaire /rentree.
+    setTimeout(() => navigate('/recap', { replace: false }), 50);
   };
 
   const addToCart = () => {

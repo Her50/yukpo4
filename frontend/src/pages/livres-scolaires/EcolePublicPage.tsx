@@ -505,7 +505,8 @@ export const EcoleListeScolairePage: React.FC = () => {
     if (trocCount > 0) {
       navigate('/rentree?capture-troc=1');
     } else {
-      navigate('/rentree');
+      // Harmonisé 2026-05-16 : direct au panier (cohérent avec Browse/Cahiers).
+      navigate('/recap');
     }
   };
 
