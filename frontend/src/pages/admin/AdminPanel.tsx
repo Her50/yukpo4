@@ -82,6 +82,18 @@ const AdminPanel: React.FC = () => {
           <a href="/admin/blocks-status">🧠 Blocs IA</a>
           <a href="/admin/translate/test">🌍 Tester traduction multilingue</a>
           <button onClick={handleExportTranslations}>📤 Générer PDF des traductions</button>
+          {/* ✅ 2026-05-16 — Accès direct admin à Yukpo Librairie pour les tests.
+              Le backend (super_librairie_dashboard) accepte explicitement les
+              rôles 'admin' et 'super_admin' et prend le 1er super-librairie
+              actif en base — pas besoin d'avoir un compte libraire dédié. */}
+          <a
+            href="https://bourse-du-livre-scolaire.yukpomnang.com/librairie"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-indigo-700 hover:text-indigo-900 font-semibold"
+          >
+            🏪 Espace Yukpo Librairie (test admin) ↗
+          </a>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
