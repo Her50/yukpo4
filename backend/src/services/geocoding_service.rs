@@ -180,9 +180,117 @@ impl GeocodingService {
             return Ok(mapbox_result);
         }
 
+        // ✅ 2026-05-16 — Fallback Photon (OSM, gratuit, sans clé).
+        // Utilisé quand Google est bloqué (compte GCP suspendu) ET Mapbox
+        // absent. Photon retourne rue/quartier/ville depuis OSM, donc bien
+        // mieux que des coords brutes pour l'affichage à l'utilisateur.
+        if let Some(photon_result) = self.reverse_geocode_photon(latitude, longitude).await {
+            self.set_cache(&cache_key, &photon_result).await?;
+            return Ok(photon_result);
+        }
+
         let fallback = self.build_offline_result(latitude, longitude);
         self.set_cache(&cache_key, &fallback).await?;
         Ok(fallback)
+    }
+
+    /// ✅ 2026-05-16 — Reverse geocoding via Photon (Komoot, OSM).
+    /// Sans clé API, gratuit, couverture mondiale. Précision moindre que
+    /// Google mais bien suffisant pour afficher un nom de quartier/rue.
+    async fn reverse_geocode_photon(
+        &self,
+        latitude: f64,
+        longitude: f64,
+    ) -> Option<GeocodingResult> {
+        let url = format!(
+            "https://photon.komoot.io/reverse?lat={}&lon={}&lang=fr",
+            latitude, longitude
+        );
+        let client = reqwest::Client::new();
+        let resp = client.get(&url).timeout(std::time::Duration::from_secs(6)).send().await.ok()?;
+        let body: serde_json::Value = resp.json().await.ok()?;
+        let features = body.get("features")?.as_array()?;
+        let f = features.first()?;
+        let p = f.get("properties")?;
+        let name = p.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let housenumber = p.get("housenumber").and_then(|v| v.as_str()).unwrap_or("");
+        let street = p.get("street").and_then(|v| v.as_str()).unwrap_or("");
+        let postcode = p.get("postcode").and_then(|v| v.as_str()).unwrap_or("");
+        let city = p.get("city").and_then(|v| v.as_str()).unwrap_or("");
+        let state = p.get("state").and_then(|v| v.as_str()).unwrap_or("");
+        let country = p.get("country").and_then(|v| v.as_str()).unwrap_or("");
+
+        let street_full = if !housenumber.is_empty() && !street.is_empty() {
+            format!("{} {}", housenumber, street)
+        } else {
+            street.to_string()
+        };
+        let city_full = if !postcode.is_empty() && !city.is_empty() {
+            format!("{} {}", postcode, city)
+        } else {
+            city.to_string()
+        };
+        let parts: Vec<String> = [
+            name.clone(),
+            street_full.clone(),
+            city_full.clone(),
+            state.to_string(),
+            country.to_string(),
+        ]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect();
+        let mut dedup: Vec<String> = Vec::new();
+        for s in parts {
+            if !dedup.contains(&s) {
+                dedup.push(s);
+            }
+        }
+        let formatted = dedup.join(", ");
+        if formatted.is_empty() {
+            return None;
+        }
+
+        let osm_id = p.get("osm_id").and_then(|v| v.as_i64()).map(|i| i.to_string());
+
+        Some(GeocodingResult {
+            address: Some(formatted.clone()),
+            neighborhood: if name.is_empty() {
+                None
+            } else {
+                Some(name.clone())
+            },
+            place_name: if name.is_empty() { None } else { Some(name) },
+            city: if city.is_empty() {
+                None
+            } else {
+                Some(city.to_string())
+            },
+            country: if country.is_empty() {
+                None
+            } else {
+                Some(country.to_string())
+            },
+            formatted_address: Some(formatted),
+            latitude,
+            longitude,
+            place_id: osm_id,
+            postal_code: if postcode.is_empty() {
+                None
+            } else {
+                Some(postcode.to_string())
+            },
+            administrative_area_level_1: if state.is_empty() {
+                None
+            } else {
+                Some(state.to_string())
+            },
+            administrative_area_level_2: None,
+            location_type: Some("photon".to_string()),
+            types: vec!["photon_reverse".to_string()],
+            partial_match: false,
+            confidence: 0.7,
+        })
     }
 
     pub async fn geocode(&self, address: &str) -> Result<Vec<GeocodingResult>, AppError> {

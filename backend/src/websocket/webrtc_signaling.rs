@@ -5,7 +5,6 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         State,
     },
-    response::IntoResponse,
     routing::get,
     Router,
 };
@@ -145,13 +144,19 @@ impl WebRTCSignalingManager {
     }
 }
 
-/// Handler WebSocket pour le signaling WebRTC
+/// Handler WebSocket pour le signaling WebRTC.
+/// ✅ 2026-05-16 — Pré-auth JWT obligatoire au upgrade. L'auth in-band post-upgrade
+/// est conservée (compat) mais ne peut plus être contournée.
 pub async fn webrtc_signaling_handler(
     ws: WebSocketUpgrade,
-    State(_app_state): State<Arc<AppState>>,
+    State(app_state): State<Arc<AppState>>,
     axum::extract::Extension(manager): axum::extract::Extension<Arc<WebRTCSignalingManager>>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_webrtc_socket(socket, manager))
+    axum::extract::OriginalUri(uri): axum::extract::OriginalUri,
+) -> axum::response::Response {
+    match crate::websocket::ws_auth::authenticate_ws(&app_state, &uri).await {
+        Ok(_) => ws.on_upgrade(move |socket| handle_webrtc_socket(socket, manager)),
+        Err(status) => crate::websocket::ws_auth::reject_upgrade(status, "Auth WebRTC WS échouée"),
+    }
 }
 
 /// Gère une connexion WebSocket WebRTC

@@ -5,7 +5,6 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         OriginalUri, Path, State,
     },
-    response::IntoResponse,
     routing::get,
     Router,
 };
