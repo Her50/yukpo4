@@ -102,12 +102,23 @@ const WalletPayoutSection: React.FC = () => {
       return;
     }
     setSubmitting(true);
+    // ✅ 2026-05-16 — Idempotency-Key (RFC 7240) : protège contre les retries
+    // (double-clic, perte réseau, navigation rapide). Le backend dédoublera
+    // la demande via UNIQUE INDEX `uniq_wallet_payout_requests_idem`.
+    const idemKey =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     try {
-      const res = await apiPost('/api/wallet/payout/request', {
-        amount_xaf: amountNum,
-        operator,
-        phone_e164: phoneTrim,
-      });
+      const res = await apiPost(
+        '/api/wallet/payout/request',
+        {
+          amount_xaf: amountNum,
+          operator,
+          phone_e164: phoneTrim,
+        },
+        { headers: { 'Idempotency-Key': idemKey } },
+      );
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
         const msg = errBody.message || errBody.error || 'Erreur';
