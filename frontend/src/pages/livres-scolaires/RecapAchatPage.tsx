@@ -1944,17 +1944,28 @@ const RecapAchatPage: React.FC = () => {
                 </div>
               );
             })}
+            {/* ✅ 2026-05-16 — Affichage Budget MAX (au lieu d'intervalle).
+                Préparation pédagogique : l'user voit le MAXIMUM possible et
+                sera content si la facture finale est moins chère. Le hint
+                en dessous explique que ça peut baisser selon l'état réel
+                des livres d'occasion/échange. */}
             <div className="border-t border-amber-300 mt-2 pt-2 flex items-center justify-between">
-              <p className="font-bold text-amber-900 text-sm">{t('bourse.recap.total_estimated')}</p>
+              <div>
+                <p className="font-bold text-amber-900 text-sm">
+                  {hasOccasionRange
+                    ? t('bourse.recap.total_max', { defaultValue: 'Budget max' })
+                    : t('bourse.recap.total_estimated', { defaultValue: 'Total estimé' })}
+                </p>
+                {hasOccasionRange && (
+                  <p className="text-[10px] text-amber-700 leading-tight mt-0.5">
+                    {t('bourse.recap.total_max_hint_short', {
+                      defaultValue: 'Maximum possible — peut baisser',
+                    })}
+                  </p>
+                )}
+              </div>
               <p className="font-bold text-amber-800 text-base text-right">
-                {hasOccasionRange ? (
-                  <>
-                    {grandTotalRange.min.toLocaleString()} – {grandTotalRange.max.toLocaleString()}
-                    <span className="text-xs font-normal text-amber-600 ml-1">FCFA</span>
-                  </>
-                ) : grandTotal > 0 ? (
-                  `${grandTotal.toLocaleString()} FCFA`
-                ) : '—'}
+                {grandTotal > 0 ? `${grandTotal.toLocaleString()} FCFA` : '—'}
               </p>
             </div>
             {/* Crédit Bourse prévisionnel issu du troc — déduit du total */}
@@ -1998,7 +2009,11 @@ const RecapAchatPage: React.FC = () => {
             {/* Gap à payer — toujours visible, mis en évidence. */}
             <div className="mt-2 pt-2 border-t-2 border-amber-300 flex items-center justify-between bg-amber-100 -mx-4 -mb-4 px-4 py-3 rounded-b-2xl">
               <div>
-                <p className="font-bold text-amber-900 text-sm">💰 Reste à payer</p>
+                <p className="font-bold text-amber-900 text-sm">
+                  💰 {hasOccasionRange
+                    ? t('bourse.recap.max_to_pay', { defaultValue: 'Reste à payer (max)' })
+                    : t('bourse.recap.to_pay', { defaultValue: 'Reste à payer' })}
+                </p>
                 {pendingCredit.engageable > 0 && (
                   <p className="text-[10px] text-amber-700 mt-0.5">
                     Après déduction crédit troc {pendingCredit.engageable.toLocaleString()} F
@@ -2010,9 +2025,15 @@ const RecapAchatPage: React.FC = () => {
               </p>
             </div>
             {hasOccasionRange && (
-              <p className="text-[11px] text-amber-700 mt-1.5 leading-snug">
-                {t('bourse.recap.range_help')}
-              </p>
+              <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-[11px] text-amber-800 leading-snug">
+                  <span className="font-bold">ℹ️ Budget maximum.</span>{' '}
+                  {t('bourse.recap.budget_max_help', {
+                    defaultValue:
+                      "Ce montant est le PIRE cas. Il peut être revu à la baisse une fois que vos livres d'occasion ou en échange seront évalués (selon leur état réel). Vous êtes ainsi préparé(e) au maximum possible — la facture finale sera souvent moins chère.",
+                  })}
+                </p>
+              </div>
             )}
           </div>
         )}
