@@ -26,10 +26,19 @@ const INTERVAL_SECS: u64 = 900; // 15 minutes
 const REFUND_DELAY_HOURS: i64 = 48; // Délai avant remboursement si QR non validé (48h)
 
 pub async fn start_qr_expiry_refund_worker(state: Arc<AppState>) {
+    // ✅ 2026-05-16 — Jitter init contre thundering herd. Sans ça, les 3-50 VM
+    // Fly exécutent ce worker à la même seconde toutes les 15 min → 50× la même
+    // query DB simultanément, lock contention sur user_wallets et pic CPU/IO
+    // côté Postgres. Décale chaque VM de 0..INTERVAL_SECS au démarrage pour
+    // dérouler le travail en continu sur la fenêtre au lieu d'un spike.
+    let jitter = TokioDuration::from_secs(rand::random::<u64>() % INTERVAL_SECS);
     info!(
-        "[QRExpiryRefund] Démarré — intervalle {}s, délai remboursement {}h",
-        INTERVAL_SECS, REFUND_DELAY_HOURS
+        "[QRExpiryRefund] Démarré — intervalle {}s, délai remboursement {}h, jitter init {}s",
+        INTERVAL_SECS,
+        REFUND_DELAY_HOURS,
+        jitter.as_secs()
     );
+    tokio::time::sleep(jitter).await;
 
     let mut timer = interval(TokioDuration::from_secs(INTERVAL_SECS));
 

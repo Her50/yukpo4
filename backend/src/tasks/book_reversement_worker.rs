@@ -44,10 +44,16 @@ impl Default for BookReversementWorkerConfig {
 
 /// Lance le worker en boucle infinie (tokio task).
 pub async fn run_book_reversement_worker(pool: Arc<PgPool>, config: BookReversementWorkerConfig) {
+    // ✅ 2026-05-16 — Jitter init contre thundering herd. Avec 3-50 VM Fly,
+    // sans jitter elles exécutent toutes le worker à la même seconde toutes
+    // les heures → 50× le même SELECT batch + lock contention sur la table
+    // book_exchange_commissions. Décale chaque VM aléatoirement au démarrage.
+    let jitter_secs = rand::random::<u64>() % config.interval_seconds.max(1);
     info!(
-        "[BookReversement] Worker démarré — intervalle {}s, batch {}",
-        config.interval_seconds, config.batch_size
+        "[BookReversement] Worker démarré — intervalle {}s, batch {}, jitter init {}s",
+        config.interval_seconds, config.batch_size, jitter_secs
     );
+    tokio::time::sleep(tokio::time::Duration::from_secs(jitter_secs)).await;
 
     loop {
         if let Err(e) = process_pending_reversements(&pool, config.batch_size).await {
