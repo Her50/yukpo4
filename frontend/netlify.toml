@@ -7,97 +7,110 @@
   VITE_APP_ENV = "production"
   VITE_APP_DEBUG = "false"
 
-# ✅ 2026-02-14: Migration vers GCP Cloud Run
-# Backend GCP: https://yukpo-backend-376093909298.europe-west1.run.app
-# ⚠️ CORRIGÉ 2026-02-20: URL mise à jour vers l'URL réelle qui fonctionne
-# ⚠️ AWS (ancien backend, commenté pour utilisation future):
-# - https://api.yukpomnang.com (Cloudflare → AWS ECS)
-# - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
+# Backend cible des redirects :
+# ✅ ACTIF — 2026-05-16 : Fly.io (https://yukpo-fly-backend.fly.dev)
+#    Bascule temporaire pendant que GCP est en panne / facturation suspendue.
+# 💤 PRINCIPAL — GCP Cloud Run (https://yukpo-backend-376093909298.europe-west1.run.app)
+#    Backend long terme. Pour rebasculer : décommenter les lignes GCP ci-dessous
+#    et commenter les lignes Fly correspondantes.
+# 🗄️ ARCHIVE — AWS ECS (https://api.yukpomnang.com)
+#    Plus utilisé ; gardé pour mémoire.
 
 [[redirects]]
   from = "/api/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"
-  # to = "https://api.yukpomnang.com/api/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/api/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/api/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/auth/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/auth/:splat"
-  # to = "https://api.yukpomnang.com/auth/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/auth/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/auth/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/auth/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/services/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/services/:splat"
-  # to = "https://api.yukpomnang.com/services/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/services/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/services/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/services/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/healthz"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"
-  # to = "https://api.yukpomnang.com/healthz"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/healthz"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/healthz"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/prestataire/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/prestataire/:splat"
-  # to = "https://api.yukpomnang.com/prestataire/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/prestataire/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/prestataire/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/prestataire/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/user/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/user/:splat"
-  # to = "https://api.yukpomnang.com/user/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/user/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/user/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/user/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/users/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/users/:splat"
-  # to = "https://api.yukpomnang.com/users/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/users/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/users/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/users/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/ia/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/ia/:splat"
-  # to = "https://api.yukpomnang.com/ia/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/ia/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/ia/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/ia/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/ws/*"
-  to = "wss://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"
-  # to = "wss://api.yukpomnang.com/ws/:splat"  # ⚠️ AWS (ancien)
+  to = "wss://yukpo-fly-backend.fly.dev/ws/:splat"
+  # to = "wss://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"  # 💤 GCP (principal)
+  # to = "wss://api.yukpomnang.com/ws/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/fournitures/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/fournitures/:splat"
-  # to = "https://api.yukpomnang.com/fournitures/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/fournitures/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/fournitures/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/fournitures/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/echange/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/echange/:splat"
-  # to = "https://api.yukpomnang.com/echange/:splat"  # ⚠️ AWS (ancien)
+  to = "https://yukpo-fly-backend.fly.dev/echange/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/echange/:splat"  # 💤 GCP (principal)
+  # to = "https://api.yukpomnang.com/echange/:splat"  # 🗄️ AWS (archive)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
@@ -161,4 +174,4 @@
   [headers.values]
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff" 
+    X-Content-Type-Options = "nosniff"

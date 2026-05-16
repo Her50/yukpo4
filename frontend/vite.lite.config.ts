@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
-const GCP_BACKEND = 'https://yukpo-backend-376093909298.europe-west1.run.app';
+// Backend cible pour les rewrites Netlify (_redirects).
+// ✅ ACTIF — Fly.io (yukpo-fly-backend.fly.dev) — temporaire 2026-05-16
+// 💤 PRINCIPAL — GCP Cloud Run. Pour rebasculer sans redéployer le code :
+//   YUKPO_BACKEND_URL=https://yukpo-backend-376093909298.europe-west1.run.app npm run build:lite
+const BACKEND_URL = process.env.YUKPO_BACKEND_URL || 'https://yukpo-fly-backend.fly.dev';
 
 const copyIndexPlugin = () => ({
   name: 'copy-index-lite',
@@ -17,11 +21,11 @@ const copyIndexPlugin = () => ({
 
     // Netlify proxy redirects — proxies /api/* etc. to GCP backend
     const redirects = [
-      `/api/*  ${GCP_BACKEND}/api/:splat  200`,
-      `/auth/*  ${GCP_BACKEND}/api/auth/:splat  200`,
-      `/ai/*  ${GCP_BACKEND}/ai/:splat  200`,
-      `/ws/*  ${GCP_BACKEND}/ws/:splat  200`,
-      `/healthz  ${GCP_BACKEND}/healthz  200`,
+      `/api/*  ${BACKEND_URL}/api/:splat  200`,
+      `/auth/*  ${BACKEND_URL}/api/auth/:splat  200`,
+      `/ai/*  ${BACKEND_URL}/ai/:splat  200`,
+      `/ws/*  ${BACKEND_URL}/ws/:splat  200`,
+      `/healthz  ${BACKEND_URL}/healthz  200`,
       `/*  /index.html  200`,
     ].join('\n');
     fs.writeFileSync(path.resolve(__dirname, 'dist-lite/_redirects'), redirects);

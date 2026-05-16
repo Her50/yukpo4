@@ -5,16 +5,23 @@
 [build.environment]
   VITE_APP_ENV = "production"
 
+# Backend cible :
+# ✅ ACTIF — 2026-05-16 : Fly.io (yukpo-fly-backend.fly.dev) — temporaire
+# 💤 PRINCIPAL — GCP Cloud Run (yukpo-backend-376093909298.europe-west1.run.app)
+#    Pour rebasculer : décommenter les lignes GCP, commenter les Fly.
+
 [[redirects]]
   from = "/api/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"
+  to = "https://yukpo-fly-backend.fly.dev/api/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/auth/*"
-  to = "https://yukpo-backend-376093909298.europe-west1.run.app/auth/:splat"
+  to = "https://yukpo-fly-backend.fly.dev/auth/:splat"
+  # to = "https://yukpo-backend-376093909298.europe-west1.run.app/auth/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
 

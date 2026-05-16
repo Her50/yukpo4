@@ -99,7 +99,13 @@ primary_region = "cdg"
   auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 3
-  max_machines_running = 50
+  # ✅ 2026-05-16 — Plafond 25 (au lieu de 50) avant campagne.
+  # Calcul : 25 VM × 600 hard = 15 000 conn HTTP max → couvre 10 000 conn
+  # simultanées avec marge. Worst-case facture = 25 × $3.89 ≈ $97/mois si
+  # toutes tournent 24/7 (impossible avec auto_stop). Si la campagne sature
+  # ce plafond, monter dynamiquement :
+  #     fly scale count 50 -a yukpo-fly-backend
+  max_machines_running = 25
 
   # ✅ 2026-05-16 — Concurrence rehausse : soft 300 / hard 600 par VM.
   # Soft déclenche le scale-up à 50 % de la capacité hard → laisse le temps
