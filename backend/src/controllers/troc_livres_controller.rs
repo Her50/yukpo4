@@ -259,18 +259,25 @@ pub async fn match_all_pending(
         user_id, params.target_amount
     );
 
-    // 1. Récupère les livres en pending du user
+    // 1. Récupère les livres en pending du user — modes 'troc' et 'vente'.
+    // ✅ FIX 2026-05-16 — Élargi aux livres en VENTE (pas au DON).
+    // Décision user : les livres en vente font partie intégrante du système
+    // de matching ; ils peuvent même être en première position d'une chaîne
+    // (pas de réciprocité requise, le vendeur reçoit cash). C'est en partie
+    // grâce aux ventes qu'on parvient à boucler certaines chaînes.
+    // Le DON est EXCLU du matching (livre offert gratuitement, ne participe
+    // pas à la mécanique de troc/vente).
     use sqlx::Row;
     let rows = sqlx::query(
         r#"
         SELECT id, titre, classe_actuelle, classe_souhaitee, matiere, valeur_calculee::float8 as valeur,
-               etat_classification, gps
+               etat_classification, gps, mode_listing
         FROM livres_scolaires
         WHERE user_id = $1
           AND troc_status = 'pending'
           AND is_active = true
           AND COALESCE(etat_classification, 'acceptable') != 'rejete'
-          AND COALESCE(mode_listing, 'troc') = 'troc'
+          AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')
         ORDER BY valeur_calculee DESC NULLS LAST
         "#,
     )

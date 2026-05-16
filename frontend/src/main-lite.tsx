@@ -4,8 +4,15 @@ import AppLite from './AppLite';
 import './index.css';
 
 const showError = (msg: string) => {
+  // ✅ 2026-05-16 — Pas d'innerHTML avec interpolation (anti-XSS au boot).
   document.body.style.cssText = 'margin:0;padding:20px;font-family:monospace;background:#fff';
-  document.body.innerHTML = `<h2 style="color:red">Erreur de démarrage</h2><pre style="white-space:pre-wrap;font-size:13px;color:#333;background:#f5f5f5;padding:16px;border-radius:8px">${msg}</pre>`;
+  const h2 = document.createElement('h2');
+  h2.style.color = 'red';
+  h2.textContent = 'Erreur de démarrage';
+  const pre = document.createElement('pre');
+  pre.style.cssText = 'white-space:pre-wrap;font-size:13px;color:#333;background:#f5f5f5;padding:16px;border-radius:8px';
+  pre.textContent = msg;
+  document.body.replaceChildren(h2, pre);
 };
 
 window.addEventListener('error', (e) => {

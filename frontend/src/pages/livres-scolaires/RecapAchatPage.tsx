@@ -1201,111 +1201,21 @@ const RecapAchatPage: React.FC = () => {
             </div>
           )}
 
-          <div className="text-center mb-5">
-            <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-700 text-sm font-semibold mb-0.5">
-              {t('bourse.recap.empty', { defaultValue: 'Votre brouillon est vide' })}
+          {/* ✅ 2026-05-16 — Panier vide : message minimaliste.
+              Décision user : pas de boutons d'action ici, juste un message
+              clair "aucun article ajouté". Les CTAs d'ajout sont déjà sur la
+              page d'accueil, inutile de les dupliquer. */}
+          <div className="text-center py-12">
+            <ShoppingCart className="w-14 h-14 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-700 text-base font-semibold mb-1">
+              {t('bourse.recap.empty_title', { defaultValue: 'Votre panier est vide' })}
             </p>
-            <p className="text-gray-500 text-xs">
-              {t('bourse.recap.empty_pick_one', {
-                defaultValue: 'Choisissez par où démarrer votre commande :',
+            <p className="text-gray-500 text-sm">
+              {t('bourse.recap.empty_help', {
+                defaultValue: "Aucun article n'a encore été ajouté.",
               })}
             </p>
           </div>
-
-          {/* CTA 1 : École partenaire / Programme national */}
-          <button
-            onClick={() => navigate('/recherche-ecole')}
-            className="group w-full bg-white rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md border-2 border-amber-300 hover:border-amber-400 text-left min-h-[80px] transition-all active:scale-[0.99]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-amber-100 to-amber-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                <School className="w-5 h-5 text-amber-700" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm text-gray-900">
-                  {t('bourse.home.partner_school_cta', { defaultValue: 'Programme par école' })}
-                </div>
-                <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                  {t('bourse.home.partner_school_description', {
-                    defaultValue: 'Liste officielle d\'une école partenaire ou programme national',
-                  })}
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-amber-700 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-            </div>
-          </button>
-
-          {/* CTA 2 : Scan liste papier */}
-          <button
-            onClick={() => navigate('/scan-programme')}
-            className="group w-full bg-white rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md border border-gray-200 hover:border-blue-300 text-left active:scale-[0.99] transition-all min-h-[80px]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Camera className="w-5 h-5 text-blue-700" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm text-gray-900">
-                  {t('bourse.home.scan_cta', { defaultValue: 'Photographier ma liste scolaire' })}
-                </div>
-                <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                  {t('bourse.home.scan_description', {
-                    defaultValue: 'Yukpo extrait toute la liste automatiquement.',
-                  })}
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-blue-700 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-            </div>
-          </button>
-
-          {/* CTA 3 : Cahiers & Accessoires */}
-          <button
-            onClick={() => navigate('/cahiers-accessoires')}
-            className="group w-full bg-white rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md border border-gray-200 hover:border-purple-300 text-left active:scale-[0.99] transition-all min-h-[80px]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Pencil className="w-5 h-5 text-purple-700" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm text-gray-900">
-                  {t('bourse.home.cahiers_cta', { defaultValue: 'Cahiers & Accessoires' })}
-                </div>
-                <div className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                  {t('bourse.home.cahiers_description', {
-                    defaultValue: 'Liste agrégée multi-classes.',
-                  })}
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-purple-700 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-            </div>
-          </button>
-
-          {/* CTA 4 : Vendre / Troquer mes vieux livres */}
-          <button
-            onClick={() => navigate('/vendre')}
-            className="group w-full bg-emerald-50 rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md border border-emerald-200 hover:border-emerald-300 text-left active:scale-[0.99] transition-all min-h-[80px]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Repeat className="w-5 h-5 text-emerald-700" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm text-gray-900">
-                  {t('bourse.recap.empty_cta_sell', {
-                    defaultValue: 'Vendre / troquer mes vieux livres',
-                  })}
-                </div>
-                <div className="text-[11px] text-emerald-700 mt-0.5 leading-snug">
-                  {t('bourse.recap.empty_cta_sell_desc', {
-                    defaultValue: 'Gagnez du crédit Yukpo en publiant vos manuels.',
-                  })}
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-emerald-700 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-            </div>
-          </button>
         </div>
       </div>
     );

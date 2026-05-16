@@ -988,16 +988,33 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
         )}
       </div>
 
-      {/* CTA Ajouter à ma sélection */}
+      {/* ✅ 2026-05-16 — CTA Ajouter à ma sélection.
+          Bouton TRÈS visible + bannière d'avertissement orange clignotante
+          au-dessus quand l'user a coché des articles. Évite que l'user
+          quitte la page sans valider et arrive sur un récap vide. */}
       {loaded && items.length > 0 && (
         <div className="fixed bottom-16 left-0 right-0 px-4 pb-2 z-40 max-w-2xl mx-auto">
+          {selectedCount > 0 && (
+            <div className="mb-1 bg-amber-100 border-2 border-amber-400 rounded-xl px-3 py-2 text-center animate-pulse">
+              <p className="text-[11px] font-bold text-amber-900">
+                ⚠️ Vous avez {selectedCount} article{selectedCount > 1 ? 's' : ''} sélectionné{selectedCount > 1 ? 's' : ''} —
+                cliquez le bouton ci-dessous pour les ajouter à votre commande
+              </p>
+            </div>
+          )}
           <button
             disabled={selectedCount === 0 || saving}
             onClick={handleAddToCart}
-            className="w-full bg-amber-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg"
+            className={`w-full text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg ${
+              selectedCount === 0 || saving
+                ? 'bg-gray-300 text-gray-500'
+                : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 ring-4 ring-amber-300/50'
+            }`}
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
-            Ajouter {selectedCount > 0 ? `${selectedCount} article${selectedCount > 1 ? 's' : ''}` : ''} à ma sélection
+            {selectedCount === 0
+              ? 'Cochez des articles ci-dessus pour les ajouter'
+              : `➕ Ajouter ${selectedCount} article${selectedCount > 1 ? 's' : ''} à ma commande`}
             <ChevronRight className="w-4 h-4 ml-auto" />
           </button>
         </div>

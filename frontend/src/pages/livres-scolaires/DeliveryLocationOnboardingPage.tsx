@@ -269,75 +269,8 @@ const DeliveryLocationOnboardingPage: React.FC = () => {
               defaultValue: 'Là où le coursier vous livrera vos livres + fournitures, ou viendra récupérer vos livres à échanger.',
             })}
           </p>
-          {/* ✅ 2026-05-16 — Bouton "Capter ma position courante".
-              Au clic : demande géoloc haute précision + reverse geocoding via
-              /api/geocoding/reverse pour pré-remplir l'adresse texte. */}
-          <button
-            type="button"
-            onClick={async () => {
-              if (!navigator.geolocation) {
-                toast({
-                  title: t('bourse.delivery.gps_unsupported', {
-                    defaultValue: 'Géolocalisation non supportée par ce navigateur',
-                  }),
-                  variant: 'destructive',
-                });
-                return;
-              }
-              setSearching(true);
-              try {
-                const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-                  navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 0,
-                  });
-                });
-                const { latitude, longitude } = pos.coords;
-                setLocationCoords({ lat: latitude, lng: longitude });
-                const r = await apiPost('/api/geocoding/reverse', { latitude, longitude });
-                const d = await r.json().catch(() => ({}));
-                const formatted =
-                  d?.formatted_address ||
-                  d?.address ||
-                  `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-                setLocationQuery(formatted);
-                setShowPredictions(false);
-                toast({
-                  title: t('bourse.delivery.gps_captured', { defaultValue: 'Position captée' }),
-                  description: formatted,
-                });
-              } catch (err: any) {
-                const code = err?.code;
-                const msg =
-                  code === 1
-                    ? t('bourse.delivery.gps_denied', {
-                        defaultValue:
-                          'Permission refusée. Autorisez la géolocalisation dans votre navigateur.',
-                      })
-                    : code === 3
-                      ? t('bourse.delivery.gps_timeout', {
-                          defaultValue:
-                            "Temps écoulé. Réessayez à l'extérieur ou près d'une fenêtre.",
-                        })
-                      : t('bourse.delivery.gps_error', {
-                          defaultValue: 'Impossible de capter votre position.',
-                        });
-                toast({ title: msg, variant: 'destructive' });
-              } finally {
-                setSearching(false);
-              }
-            }}
-            disabled={searching}
-            className="mb-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-xs font-semibold disabled:opacity-50"
-          >
-            {searching ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <MapPin className="w-3.5 h-3.5" />
-            )}
-            {t('bourse.delivery.gps_button', { defaultValue: 'Capter ma position actuelle' })}
-          </button>
+          {/* ✅ 2026-05-16 — Bouton "Capter ma position" retiré sur demande user.
+              L'autocomplete reste avec biais GPS automatique (silencieux). */}
           <div className="relative">
             <input
               type="search"

@@ -41,7 +41,7 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
   // ============================================================================
   fr: {
     bourse: {
-      nav: { home: 'Accueil', recap: 'Récap', my_books: 'Mes livres', dashboard: 'Dashboard', tracking: 'Suivi' },
+      nav: { home: 'Accueil', recap: 'Panier', my_books: 'Mes livres', dashboard: 'Dashboard', tracking: 'Suivi' },
       dashboard: {
         title: 'Tableau de bord',
         subtitle: "Vue d'ensemble de votre activité Bourse du Livre",
