@@ -827,7 +827,7 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                           <div className="flex items-center gap-2 mt-1 ml-7">
                             {isOccasionableType(item.type) && (
                               <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
-                                <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">Mode</span>
+                                <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">État</span>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setChoix(i, 'neuf'); }}
                                   className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${

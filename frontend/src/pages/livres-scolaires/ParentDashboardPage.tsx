@@ -59,6 +59,7 @@ interface LivreLite {
   // Cycle troc (migration 20260510_008) : pending → matched → chained →
   // delivered | expired | returned. Permet de calculer crédit estimé vs libéré.
   troc_status?: string | null;
+  mode_listing?: string | null; // 'vente' | 'echange' | 'troc' | 'don'
   is_available?: boolean;
   is_active?: boolean;
 }
@@ -283,6 +284,71 @@ const ParentDashboardPage: React.FC = () => {
             <ChevronRight className="w-5 h-5 text-indigo-600 shrink-0 group-hover:translate-x-1 transition-transform" />
           </div>
         </Link>
+
+        {/* ✅ 2026-05-16 — Carte "Mes ventes / Mon troc" : 4 métriques
+            dérivées de l'array `livres`. Affichée juste après le CTA
+            parrainage car c'est la situation principale du parent vendeur. */}
+        {(() => {
+          const isSale = (l: LivreLite) => l.mode_listing === 'vente';
+          const isPending = (l: LivreLite) =>
+            STATUS_PENDING.has((l.troc_status ?? 'pending').toLowerCase());
+          const isReleased = (l: LivreLite) =>
+            STATUS_RELEASED.has((l.troc_status ?? '').toLowerCase());
+
+          const enVente = livres.filter((l) => isSale(l) && isPending(l)).length;
+          const vendus = livres.filter((l) => isSale(l) && isReleased(l)).length;
+          const enTroc = livres.filter((l) => !isSale(l) && isPending(l)).length;
+          const troques = livres.filter((l) => !isSale(l) && isReleased(l)).length;
+
+          // Si l'utilisateur n'a aucun livre, on cache la carte (pas
+          // pertinent pour un parent qui n'a pas encore publié).
+          const totalLivres = livres.length;
+          if (totalLivres === 0) return null;
+
+          return (
+            <Link
+              to="/mes-livres"
+              className="block mb-4 sm:mb-6 bg-white rounded-2xl border-2 border-blue-200 hover:border-blue-300 p-3 sm:p-4 shadow-sm hover:shadow-md transition-all"
+              aria-label={t('bourse.dashboard.troc_card_aria', {
+                defaultValue: 'Voir le détail de mes livres en vente et en troc',
+              })}
+            >
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" />
+                  <h2 className="font-bold text-sm sm:text-base text-gray-900">
+                    {t('bourse.dashboard.troc_title', {
+                      defaultValue: 'Mes ventes & mon troc',
+                    })}
+                  </h2>
+                </div>
+                <ChevronRight className="w-4 h-4 text-blue-600 shrink-0" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <TrocTile
+                  label={t('bourse.dashboard.troc_in_sale', { defaultValue: 'En vente' })}
+                  value={enVente}
+                  color="amber"
+                />
+                <TrocTile
+                  label={t('bourse.dashboard.troc_sold', { defaultValue: 'Vendus' })}
+                  value={vendus}
+                  color="emerald"
+                />
+                <TrocTile
+                  label={t('bourse.dashboard.troc_in_swap', { defaultValue: 'En troc' })}
+                  value={enTroc}
+                  color="blue"
+                />
+                <TrocTile
+                  label={t('bourse.dashboard.troc_swapped', { defaultValue: 'Troqués' })}
+                  value={troques}
+                  color="indigo"
+                />
+              </div>
+            </Link>
+          );
+        })()}
 
         {/* Wallet (hero) */}
         <section
@@ -532,6 +598,26 @@ const ParentDashboardPage: React.FC = () => {
           </div>
         </section>
       </div>
+    </div>
+  );
+};
+
+// ✅ 2026-05-16 — Mini tile pour la carte "Mes ventes & mon troc"
+const TrocTile: React.FC<{
+  label: string;
+  value: number;
+  color: 'amber' | 'emerald' | 'blue' | 'indigo';
+}> = ({ label, value, color }) => {
+  const colorMap = {
+    amber: 'bg-amber-50 border-amber-200 text-amber-800',
+    emerald: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    blue: 'bg-blue-50 border-blue-200 text-blue-800',
+    indigo: 'bg-indigo-50 border-indigo-200 text-indigo-800',
+  };
+  return (
+    <div className={`rounded-lg border px-2 py-1.5 ${colorMap[color]}`}>
+      <p className="text-[9px] uppercase font-bold tracking-wider opacity-80">{label}</p>
+      <p className="text-lg sm:text-xl font-bold tabular-nums leading-tight">{value}</p>
     </div>
   );
 };

@@ -213,14 +213,31 @@ const MesLivresPage: React.FC = () => {
                     creditCls: 'bg-rose-50 text-rose-700 border-rose-200',
                 };
             case 'pending':
-            default:
+            default: {
+                // ✅ 2026-05-16 — Différencier le label pending selon le mode :
+                //   - vente : "En vente, pas encore vendu" (clair pour l'user)
+                //   - troc/echange : "En attente d'un troc"
+                //   - don : "Disponible (don)"
+                const labelKey =
+                    mode === 'vente'
+                        ? 'troc_pending_sale'
+                        : mode === 'don'
+                            ? 'troc_pending_gift'
+                            : 'troc_pending';
+                const labelDefault =
+                    mode === 'vente'
+                        ? 'En vente, pas encore vendu'
+                        : mode === 'don'
+                            ? 'Disponible (don)'
+                            : "En attente d'un troc";
                 return {
-                    label: t('bourse.mesLivres.troc_pending', { defaultValue: 'En attente de match' }),
+                    label: t(`bourse.mesLivres.${labelKey}`, { defaultValue: labelDefault }),
                     icon: Clock,
                     cls: 'bg-amber-100 text-amber-800',
                     creditLabel: t('bourse.mesLivres.credit_estimated', { defaultValue: 'Crédit estimé (non encore acquis)' }),
                     creditCls: 'bg-amber-50 text-amber-700 border-amber-200',
                 };
+            }
         }
     };
 
