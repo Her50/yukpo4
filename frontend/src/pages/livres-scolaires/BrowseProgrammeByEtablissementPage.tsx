@@ -466,20 +466,32 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
       const snap = localStorage.getItem('yukpo_parent_shop_v4');
       console.log('[Browse] toAdd=', toAdd.length, 'enfantId=', enfantId, 'localStorage=', snap);
     } catch {}
-    // Si au moins un item est en mode Échange → bascule sur /troc-prep
-    // pour photographier le livre à donner. Sinon flow normal vers /recap.
+    // ✅ 2026-05-17 — Toast intelligent + routing différencié.
+    // Compte les 3 catégories pour donner un retour précis et compact.
     const trocCount = selected.filter(it => it.choix === 'occasion' && it.troc_intent).length;
+    const occasionAchatCount = selected.filter(it => it.choix === 'occasion' && !it.troc_intent).length;
+    const neufCount = selected.filter(it => it.choix === 'neuf').length;
+    const parts: string[] = [];
+    if (neufCount > 0) parts.push(`${neufCount} neuf${neufCount > 1 ? 's' : ''}`);
+    if (occasionAchatCount > 0) parts.push(`${occasionAchatCount} occasion${occasionAchatCount > 1 ? 's' : ''}`);
+    if (trocCount > 0) parts.push(`${trocCount} à échanger`);
     toast({
-      title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} à votre sélection`,
-      description: trocCount > 0
-        ? `${trocCount} en échange — photographiez les livres à donner.`
-        : undefined,
+      title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''}`,
+      description: parts.join(' · '),
+      duration: 2500,
     });
     if (trocCount > 0) {
+      // Marque le flux bourse → TrocPrep redirigera vers /recap après publication
+      // (au lieu de /mes-livres si entrée directe).
+      try {
+        const titres = selected
+          .filter(it => it.choix === 'occasion' && it.troc_intent)
+          .map(it => it.titre);
+        sessionStorage.setItem('troc_prep_origin', 'bourse_flow');
+        sessionStorage.setItem('troc_prep_titres_a_scanner', JSON.stringify(titres));
+      } catch {}
       setTimeout(() => navigate('/troc-prep'), 200);
     } else {
-      // setTimeout pour laisser React commiter les state updates + syncToStorage
-      // avant le mount de RecapAchatPage (sinon /recap lit un localStorage stale).
       setTimeout(() => navigate('/recap'), 50);
     }
   };

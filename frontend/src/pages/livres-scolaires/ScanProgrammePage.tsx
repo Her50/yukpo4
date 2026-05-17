@@ -601,22 +601,34 @@ const ScanProgrammePage: React.FC = () => {
     })));
     setSaving(false);
 
-    // ✅ 2026-05-10 : si l'utilisateur a marqué au moins un article en
-    // troc (intention d'échange), on bascule directement sur /rentree avec
-    // ?capture-troc=1 — la page ouvrira automatiquement la photo capture
-    // pour les livres en attente de matching. Sinon : recap classique.
+    // ✅ 2026-05-17 — Toast intelligent + routing différencié.
     const trocCount = selected.filter(it => it.choix === 'occasion' && it.troc_intent).length;
-    toast({ title: t(selected.length > 1 ? 'bourse.scan.toast_added_other' : 'bourse.scan.toast_added_one', { count: selected.length }) });
-    console.log('[scan] doAddToCart →', { trocCount, selected: selected.length, enfantId });
+    const occasionAchatCount = selected.filter(it => it.choix === 'occasion' && !it.troc_intent).length;
+    const neufCount = selected.filter(it => it.choix === 'neuf').length;
+    const parts: string[] = [];
+    if (neufCount > 0) parts.push(`${neufCount} neuf${neufCount > 1 ? 's' : ''}`);
+    if (occasionAchatCount > 0) parts.push(`${occasionAchatCount} occasion${occasionAchatCount > 1 ? 's' : ''}`);
+    if (trocCount > 0) parts.push(`${trocCount} à échanger`);
+    toast({
+      title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''}`,
+      description: parts.join(' · '),
+      duration: 2500,
+    });
+    console.log('[scan] doAddToCart →', { trocCount, occasionAchatCount, neufCount, enfantId });
     if (trocCount > 0) {
-      // Petite tempo pour laisser le temps à React de flusher l'état du
-      // panier dans localStorage (useEffect du hook) avant la navigation.
-      setTimeout(() => navigate('/rentree?capture-troc=1', { replace: false }), 50);
+      // Flux bourse → /troc-prep avec mémoire pour rediriger vers /recap
+      // après publication. Titres à scanner stockés en sessionStorage.
+      try {
+        const titres = selected
+          .filter(it => it.choix === 'occasion' && it.troc_intent)
+          .map(it => it.titre);
+        sessionStorage.setItem('troc_prep_origin', 'bourse_flow');
+        sessionStorage.setItem('troc_prep_titres_a_scanner', JSON.stringify(titres));
+      } catch {}
+      setTimeout(() => navigate('/troc-prep', { replace: false }), 50);
       return;
     }
-    // Pas de troc : on bascule directement sur le panier (/recap). Harmonisé
-    // avec Browse/Cahiers — l'utilisateur voit immédiatement ses articles
-    // dans le panier au lieu d'un écran intermédiaire /rentree.
+    // Pas de troc : direct au panier
     setTimeout(() => navigate('/recap', { replace: false }), 50);
   };
 

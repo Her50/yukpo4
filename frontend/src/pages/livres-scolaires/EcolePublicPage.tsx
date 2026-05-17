@@ -498,14 +498,33 @@ export const EcoleListeScolairePage: React.FC = () => {
         };
       })
     );
+    // ✅ 2026-05-17 — Toast intelligent + routing différencié.
     const trocCount = items.filter(
       it => isOccasionable(it.type) && choix[it.id] === 'occasion' && trocIntent[it.id]
     ).length;
-    toast({ title: `${items.length} article(s) ajouté(s)` });
+    const occasionAchatCount = items.filter(
+      it => isOccasionable(it.type) && choix[it.id] === 'occasion' && !trocIntent[it.id]
+    ).length;
+    const neufCount = items.filter(it => choix[it.id] === 'neuf').length;
+    const parts: string[] = [];
+    if (neufCount > 0) parts.push(`${neufCount} neuf${neufCount > 1 ? 's' : ''}`);
+    if (occasionAchatCount > 0) parts.push(`${occasionAchatCount} occasion${occasionAchatCount > 1 ? 's' : ''}`);
+    if (trocCount > 0) parts.push(`${trocCount} à échanger`);
+    toast({
+      title: `${items.length} article${items.length > 1 ? 's' : ''} ajouté${items.length > 1 ? 's' : ''}`,
+      description: parts.join(' · '),
+      duration: 2500,
+    });
     if (trocCount > 0) {
-      navigate('/rentree?capture-troc=1');
+      try {
+        const titres = items
+          .filter(it => isOccasionable(it.type) && choix[it.id] === 'occasion' && trocIntent[it.id])
+          .map(it => it.titre);
+        sessionStorage.setItem('troc_prep_origin', 'bourse_flow');
+        sessionStorage.setItem('troc_prep_titres_a_scanner', JSON.stringify(titres));
+      } catch {}
+      navigate('/troc-prep');
     } else {
-      // Harmonisé 2026-05-16 : direct au panier (cohérent avec Browse/Cahiers).
       navigate('/recap');
     }
   };

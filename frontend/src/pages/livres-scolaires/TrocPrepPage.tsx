@@ -49,6 +49,29 @@ const TrocPrepPage: React.FC = () => {
     [panier]
   );
 
+  // ✅ 2026-05-17 — Mémoire du flux d'origine pour redirection conditionnelle
+  // après publication. Set par BrowseProgramme/ScanProgramme/EcolePublic
+  // quand le user a cliqué "Ajouter au panier" avec des items en échange.
+  const cameFromBourseFlow = useMemo(() => {
+    try {
+      return sessionStorage.getItem('troc_prep_origin') === 'bourse_flow';
+    } catch {
+      return false;
+    }
+  }, []);
+  // Liste des titres exacts que le user a coché en échange — affichée comme
+  // checklist au sommet de la page pour qu'il sache quoi photographier.
+  const titresAScanner = useMemo<string[]>(() => {
+    try {
+      const raw = sessionStorage.getItem('troc_prep_titres_a_scanner');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((s: any) => typeof s === 'string') : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
   // ─── État session + GPS ───
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionCreating, setSessionCreating] = useState(false);
@@ -310,7 +333,14 @@ const TrocPrepPage: React.FC = () => {
         setFinalizing(false);
       }
     }
-    navigate('/recap');
+    // ✅ 2026-05-17 — Redirection conditionnelle :
+    //   - bourse_flow (Browse/Scan/Ecole) → /recap (l'user finalise sa commande)
+    //   - direct (Vendre / Mes livres) → /mes-livres (gestion de ses propres livres)
+    try {
+      sessionStorage.removeItem('troc_prep_origin');
+      sessionStorage.removeItem('troc_prep_titres_a_scanner');
+    } catch {}
+    navigate(cameFromBourseFlow ? '/recap' : '/mes-livres');
   };
 
   return (
@@ -361,6 +391,41 @@ const TrocPrepPage: React.FC = () => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-4">
+        {/* ✅ 2026-05-17 — Rappel des titres à scanner si l'user vient
+            du flux bourse (Browse/Scan/Ecole). Aide à savoir quels livres
+            sortir de son sac pour les photographier. */}
+        {cameFromBourseFlow && titresAScanner.length > 0 && (
+          <div className="bg-cyan-50 border border-cyan-200 rounded-2xl p-3 mb-3">
+            <p className="text-xs font-bold text-cyan-900 mb-2">
+              📸 {t('bourse.trocPrep.titres_a_scanner_title', {
+                defaultValue: 'Livres à photographier',
+              })}{' '}
+              <span className="font-normal text-cyan-700">
+                ({titresAScanner.length})
+              </span>
+            </p>
+            <ul className="space-y-1">
+              {titresAScanner.map((titre, i) => (
+                <li
+                  key={`${titre}-${i}`}
+                  className="text-[11px] text-cyan-800 leading-snug flex gap-1.5"
+                >
+                  <span className="text-cyan-400">•</span>
+                  <span className="truncate" title={titre}>
+                    {titre}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[10px] text-cyan-700 italic mt-2">
+              {t('bourse.trocPrep.titres_a_scanner_hint', {
+                defaultValue:
+                  'Sortez ces livres anciens de votre sac. Recto + verso visibles.',
+              })}
+            </p>
+          </div>
+        )}
+
         {/* Bandeau pédagogique */}
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-3 flex gap-3">
           <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
