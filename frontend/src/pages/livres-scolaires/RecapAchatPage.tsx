@@ -227,38 +227,37 @@ function ItemCard({
     return { text: prixEff > 0 ? `${prixEff.toLocaleString('fr-FR')} F` : '—' };
   })();
   return (
-    <div className="px-2 py-1 border-b border-gray-100 last:border-b-0 bg-white text-[12px]">
-      <div className="flex items-center gap-1.5">
+    <div className="px-3 py-3 border-b border-gray-100 last:border-b-0 bg-white">
+      <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <p className="font-semibold leading-tight truncate text-gray-800" title={item.titre} dir="auto">
+          <p className="font-semibold text-[13px] leading-tight text-gray-900" title={item.titre} dir="auto">
             {item.titre}
           </p>
           {(item.auteur || item.editeur) && (
-            <p className="text-[10px] text-gray-500 leading-tight truncate" dir="auto">
+            <p className="text-xs text-gray-500 mt-1 truncate" dir="auto">
               {[item.auteur, item.editeur].filter(Boolean).join(' · ')}
             </p>
           )}
         </div>
 
-        {/* Quantité — stepper compact */}
-        <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-md shrink-0 overflow-hidden">
+        {/* Quantité — stepper aéré */}
+        <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-lg shrink-0 overflow-hidden">
           <button
             onClick={() => onUpdateQuantite(item.id, Math.max(1, quantite - 1))}
             disabled={quantite <= 1}
-            className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-base leading-none"
+            className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-base leading-none"
             aria-label={t('bourse.recap.decrease')}>−</button>
-          <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">{quantite}</span>
+          <span className="text-xs font-bold text-gray-800 w-6 text-center tabular-nums leading-none">{quantite}</span>
           <button
             onClick={() => onUpdateQuantite(item.id, quantite + 1)}
-            className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
+            className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
             aria-label={t('bourse.recap.increase')}>+</button>
         </div>
 
-        {/* Prix unitaire — affichage adapté au choix Neuf/Occasion/Échange.
-            ✅ 2026-05-16 : intervalle pour occasion/échange, prix fixe pour neuf. */}
-        <div className="flex flex-col items-end shrink-0 min-w-[78px] leading-tight">
+        {/* Prix unitaire — affichage adapté au choix Neuf/Occasion/Échange. */}
+        <div className="flex flex-col items-end shrink-0 min-w-[86px] leading-tight">
           <span
-            className={`text-right text-[11px] font-bold tabular-nums whitespace-nowrap ${
+            className={`text-right text-sm font-bold tabular-nums whitespace-nowrap ${
               priceDisplay.text === '—' ? 'text-gray-300' : 'text-amber-700'
             }`}
             title={priceDisplay.text === '—' ? t('bourse.recap.price_unavailable') : undefined}
@@ -266,7 +265,7 @@ function ItemCard({
             {priceDisplay.text}
           </span>
           {priceDisplay.subtext && (
-            <span className="text-[8px] text-gray-500 italic leading-none mt-0.5">
+            <span className="text-[9px] text-gray-500 italic leading-none mt-0.5">
               {priceDisplay.subtext}
             </span>
           )}
@@ -837,35 +836,32 @@ const RecapAchatPage: React.FC = () => {
   const [showOccasionModal, setShowOccasionModal] = useState(false);
   const [submittingOrder, setSubmittingOrder] = useState(false);
 
-  /* ─── ✅ 2026-05-16 — Top-tab Livres scolaires / Fournitures ───
-   *  Permet à l'user de basculer entre les 2 grandes catégories de son
-   *  brouillon de commande. Filtre les items affichés ; le bouton
-   *  "Valider la commande" en bas valide TOUT le panier (mix) en 1
-   *  appel à POST /api/librairie-network/commandes. */
+  /* ─── ✅ 2026-05-17 — Filtres MULTI Livres + Fournitures ───
+   *  Refonte UX : au lieu d'onglets exclusifs (un seul visible à la fois),
+   *  on a 2 chips de FILTRE indépendants — tous les deux activés par défaut.
+   *  L'utilisateur voit tout son panier en une seule liste, et peut masquer
+   *  un type s'il veut focus sur l'autre. Un seul bouton "Commander" au
+   *  bas valide TOUT le panier (mix) en un appel.
+   */
   const LIVRE_TYPES = new Set(['livre', 'workbook', 'livret', 'manuel', 'textbook', 'book']);
   const isLivreItem = (it: PanierItem) => LIVRE_TYPES.has(String(it.type ?? '').toLowerCase());
-  // ✅ FIX 2026-05-16 — Initialisation intelligente du tab pour éviter
-  // l'écran "Aucun livre" pendant 1 render quand l'user arrive de
-  // CahiersAccessoiresPage avec UNIQUEMENT des fournitures. On regarde le
-  // panier hydraté depuis localStorage et on pointe directement le bon tab.
-  const [topTab, setTopTab] = useState<'livres' | 'fournitures'>(() => {
-    const hasLivres = panier.some(isLivreItem);
-    const hasFournitures = panier.some((p) => !isLivreItem(p));
-    if (!hasLivres && hasFournitures) return 'fournitures';
-    return 'livres';
-  });
+  // Deux flags indépendants : par défaut on affiche tout.
+  const [showLivres, setShowLivres] = useState(true);
+  const [showFournitures, setShowFournitures] = useState(true);
+  // État dédié au sélecteur de la section "ManualAddInline" (ajouter un
+  // article manquant). Indépendant des filtres d'affichage.
+  const [manualAddType, setManualAddType] = useState<'livres' | 'fournitures'>('livres');
   const countLivres = panier.filter(isLivreItem).length;
   const countFournitures = panier.filter((p) => !isLivreItem(p)).length;
-  // Auto-basculer si l'onglet actif devient vide alors que l'autre a
-  // du contenu (cas où l'user supprime tous les items d'un côté).
+  // Garantie qu'au moins un filtre reste actif si les 2 ont du contenu —
+  // si l'utilisateur désactive le dernier filtre actif, on réactive l'autre.
   useEffect(() => {
-    if (topTab === 'livres' && countLivres === 0 && countFournitures > 0) {
-      setTopTab('fournitures');
-    } else if (topTab === 'fournitures' && countFournitures === 0 && countLivres > 0) {
-      setTopTab('livres');
+    if (!showLivres && !showFournitures) {
+      if (countLivres > 0) setShowLivres(true);
+      else if (countFournitures > 0) setShowFournitures(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countLivres, countFournitures]);
+  }, [showLivres, showFournitures]);
 
   /* ─── Infos de livraison persistées (DeliveryLocationOnboardingPage) ───
    *  ✅ 2026-05-16 — Si l'utilisateur a déjà rempli son adresse + GPS lors de
@@ -986,13 +982,11 @@ const RecapAchatPage: React.FC = () => {
   };
   // Ordre figé : Manuels d'abord (la pièce maîtresse de la rentrée),
   // puis cahiers, fournitures, et enfin un éventuel "Autres".
-  // ✅ 2026-05-16 — Filtre selon topTab :
-  //   - 'livres'      : uniquement manuels/workbooks/livrets (type='livre')
-  //   - 'fournitures' : cahiers + fournitures + autres
-  const types: TypeItem[] =
-    topTab === 'livres'
-      ? ['livre']
-      : ['cahier', 'fourniture', 'autre'];
+  // ✅ 2026-05-17 — Filtres MULTI : on affiche les types selon les chips
+  // actifs. Les 2 actifs par défaut → tout est visible.
+  const types: TypeItem[] = [];
+  if (showLivres) types.push('livre');
+  if (showFournitures) types.push('cahier', 'fourniture', 'autre');
   // Tri intra-section : on stabilise par titre alphabétique pour qu'un même
   // panier soit affiché identiquement quel que soit l'ordre d'ajout (scan,
   // suggestions, école partenaire).
@@ -1453,80 +1447,80 @@ const RecapAchatPage: React.FC = () => {
       </div>
 
       <div className="px-4 pt-4 pb-48 max-w-2xl mx-auto">
-        {/* ✅ 2026-05-16 — Top-tab Livres scolaires / Fournitures.
-            Permet de séparer visuellement les 2 grandes catégories du
-            brouillon. Tout est validé en 1 seule commande à la fin. */}
+        {/* ✅ 2026-05-17 — Filtres MULTI Livres + Fournitures.
+            Les 2 chips sont indépendants et tous les deux activés par défaut.
+            L'utilisateur voit tout son panier en une liste unique ; il peut
+            masquer un type s'il veut focus. Un seul bouton "Commander" en
+            bas valide TOUT le panier en un appel. */}
         {(countLivres > 0 || countFournitures > 0) && (
-          <div className="mb-4 flex gap-2 bg-white rounded-2xl border border-gray-200 p-1 shadow-sm">
+          <div className="mb-4 flex flex-wrap gap-2">
             <button
-              onClick={() => setTopTab('livres')}
-              className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                topTab === 'livres'
-                  ? 'bg-amber-500 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50'
+              onClick={() => setShowLivres(v => !v)}
+              disabled={countLivres === 0}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-colors border-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                showLivres && countLivres > 0
+                  ? 'bg-amber-500 text-white border-amber-500'
+                  : 'bg-white text-gray-700 border-gray-200 hover:border-amber-300'
               }`}
+              aria-pressed={showLivres}
             >
               📚 {t('bourse.recap.tab_livres', { defaultValue: 'Livres scolaires' })}
-              {countLivres > 0 && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  topTab === 'livres' ? 'bg-white text-amber-700' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {countLivres}
-                </span>
-              )}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                showLivres && countLivres > 0
+                  ? 'bg-white/30 text-white'
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {countLivres}
+              </span>
             </button>
             <button
-              onClick={() => setTopTab('fournitures')}
-              className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                topTab === 'fournitures'
-                  ? 'bg-purple-500 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50'
+              onClick={() => setShowFournitures(v => !v)}
+              disabled={countFournitures === 0}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-colors border-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                showFournitures && countFournitures > 0
+                  ? 'bg-purple-500 text-white border-purple-500'
+                  : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'
               }`}
+              aria-pressed={showFournitures}
             >
               ✏️ {t('bourse.recap.tab_fournitures', { defaultValue: 'Fournitures' })}
-              {countFournitures > 0 && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  topTab === 'fournitures' ? 'bg-white text-purple-700' : 'bg-purple-100 text-purple-800'
-                }`}>
-                  {countFournitures}
-                </span>
-              )}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                showFournitures && countFournitures > 0
+                  ? 'bg-white/30 text-white'
+                  : 'bg-purple-100 text-purple-800'
+              }`}>
+                {countFournitures}
+              </span>
             </button>
           </div>
         )}
 
-        {/* CTA depuis l'onglet vide → bouton clair pour ajouter du contenu */}
-        {topTab === 'livres' && countLivres === 0 && (
-          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
-            <p className="text-sm text-amber-900 font-semibold mb-2">
-              {t('bourse.recap.empty_livres_title', { defaultValue: 'Aucun livre dans le brouillon' })}
-            </p>
-            <p className="text-xs text-amber-700 mb-3">
+        {/* CTA encart si le panier est mono-type (manque l'autre côté) */}
+        {countLivres === 0 && countFournitures > 0 && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center">
+            <p className="text-xs text-amber-800 mb-2">
               {t('bourse.recap.empty_livres_hint', {
-                defaultValue: 'Scannez votre liste, choisissez un établissement partenaire ou le programme national.',
+                defaultValue: 'Ajoutez aussi les manuels scolaires : scan de la liste ou école partenaire.',
               })}
             </p>
             <button
               onClick={() => navigate('/')}
-              className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-lg"
+              className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
             >
               {t('bourse.recap.go_pick_books', { defaultValue: 'Ajouter des livres' })}
             </button>
           </div>
         )}
-        {topTab === 'fournitures' && countFournitures === 0 && (
-          <div className="mb-4 bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
-            <p className="text-sm text-purple-900 font-semibold mb-2">
-              {t('bourse.recap.empty_fourni_title', { defaultValue: 'Aucune fourniture dans le brouillon' })}
-            </p>
-            <p className="text-xs text-purple-700 mb-3">
+        {countFournitures === 0 && countLivres > 0 && (
+          <div className="mb-4 bg-purple-50 border border-purple-200 rounded-2xl p-3 text-center">
+            <p className="text-xs text-purple-800 mb-2">
               {t('bourse.recap.empty_fourni_hint', {
-                defaultValue: 'Ajoutez cahiers, accessoires et fournitures depuis la page dédiée.',
+                defaultValue: 'Ajoutez aussi cahiers et accessoires depuis la page Fournitures.',
               })}
             </p>
             <button
               onClick={() => navigate('/cahiers-accessoires')}
-              className="bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold px-4 py-2 rounded-lg"
+              className="bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
             >
               {t('bourse.recap.go_cahiers', { defaultValue: 'Ajouter des fournitures' })}
             </button>
@@ -1770,42 +1764,48 @@ const RecapAchatPage: React.FC = () => {
           });
         })()}
 
-        {/* ✅ 2026-05-16 — Ajouter manuel/fourniture MANQUANT, figé sur la
-            classe de l'enfant en cours. Selon topTab :
-              - 'livres'      : autocomplete manuels (cat='livres')
-              - 'fournitures' : autocomplete cahiers/fournitures (cat='fournitures')
-            Visible uniquement en vue 'classe' où activeEnfant existe. */}
+        {/* ✅ 2026-05-17 — Ajouter un article manquant. Petit segmented control
+            au-dessus pour choisir entre Livres et Fournitures. Visible
+            uniquement en vue 'classe' où activeEnfant existe. */}
         {viewMode === 'classe' && activeEnfant && (
           <div className={`rounded-2xl border bg-white mb-3 overflow-hidden ${
-            topTab === 'livres' ? 'border-amber-200' : 'border-purple-200'
+            manualAddType === 'livres' ? 'border-amber-200' : 'border-purple-200'
           }`}>
             <div className={`px-3 py-2 flex items-center gap-2 ${
-              topTab === 'livres' ? 'bg-amber-50' : 'bg-purple-50'
+              manualAddType === 'livres' ? 'bg-amber-50' : 'bg-purple-50'
             }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${
-                topTab === 'livres' ? 'bg-amber-500' : 'bg-purple-500'
-              }`} />
-              <span className={`text-[11px] font-bold uppercase tracking-wide ${
-                topTab === 'livres' ? 'text-amber-800' : 'text-purple-800'
-              }`}>
-                {topTab === 'livres'
-                  ? t('bourse.recap.add_manual_title', { defaultValue: 'Ajouter un manuel manquant' })
-                  : t('bourse.recap.add_fourni_title', { defaultValue: 'Ajouter une fourniture manquante' })}
-              </span>
+              <div className="inline-flex bg-white rounded-md border border-gray-200 overflow-hidden shadow-sm leading-none">
+                <button
+                  onClick={() => setManualAddType('livres')}
+                  className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors ${
+                    manualAddType === 'livres' ? 'bg-amber-500 text-white' : 'text-gray-500'
+                  }`}
+                >
+                  📚 {t('bourse.recap.add_kind_livres', { defaultValue: 'Manuel' })}
+                </button>
+                <button
+                  onClick={() => setManualAddType('fournitures')}
+                  className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors border-l border-gray-200 ${
+                    manualAddType === 'fournitures' ? 'bg-purple-500 text-white' : 'text-gray-500'
+                  }`}
+                >
+                  ✏️ {t('bourse.recap.add_kind_fourni', { defaultValue: 'Fourniture' })}
+                </button>
+              </div>
               <span className={`text-[10px] ml-auto truncate ${
-                topTab === 'livres' ? 'text-amber-700' : 'text-purple-700'
+                manualAddType === 'livres' ? 'text-amber-700' : 'text-purple-700'
               }`}>
                 {activeEnfant.classe}
               </span>
             </div>
             <ManualAddInline
-              cat={topTab === 'livres' ? 'livres' : 'fournitures'}
+              cat={manualAddType === 'livres' ? 'livres' : 'fournitures'}
               pays={(activeEnfant.pays ?? 'CM') as any}
               classe={activeEnfant.classe}
               niveau={activeEnfant.niveau}
               onPick={(it: ManualAddItem) => {
                 const typeItem: TypeItem =
-                  topTab === 'livres'
+                  manualAddType === 'livres'
                     ? 'livre'
                     : (() => {
                         const ta = String(it.type_article ?? '').toLowerCase();
