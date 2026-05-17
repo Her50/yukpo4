@@ -189,10 +189,39 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
 
 5. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX — DÉCISION VISUELLE OBLIGATOIRE) :
    - Le champ JSON **`etat_classification` DOIT être exactement** l'un des trois mots ASCII, **en minuscules, sans accent** : `bon`, `acceptable`, `rejete` (pas « Bon », pas « bon_etat », pas « rejected »).
-   - **`bon`** : Couverture propre et intacte, dos ferme, pages sans taches ni déchirures majeures, peu ou pas d'annotations. Utilisation confortable.
-   - **`acceptable`** : Usure visible MAIS livre encore utilisable : pliures, coins cornés, quelques annotations au crayon/stylo, jaunissement léger, légères taches sans moisissure.
-   - **`rejete`** : Trop dégradé pour circuler : pages manquantes ou détachées, grosses déchirures, moisissure / odeur, texte souvent illisible, couverture très abîmée ou séparée du bloc.
-   - **Ne choisis `acceptable` par défaut** : si les deux faces sont nettes et le livre semble peu utilisé, choisis `bon`. Réserve `rejete` aux cas réellement limite.
+
+   ⚠️ **RÈGLE PAR DÉFAUT** : la classification par défaut est `bon`. Tu ne descends à `acceptable` que si tu peux pointer ≥ 2 défauts visibles concrets sur les photos. Tu ne descends à `rejete` que si tu peux pointer ≥ 1 défaut bloquant.
+   ⚠️ **EN CAS DE DOUTE → `bon`**. Le doute profite TOUJOURS au vendeur.
+
+   ARBRE DE DÉCISION (à suivre dans l'ordre) :
+
+   a) Y a-t-il ≥ 1 défaut BLOQUANT visible sur les photos ?
+      Défauts bloquants : pages manquantes/détachées, grosse déchirure (>3 cm),
+      moisissure visible, texte illisible sur ≥1 page, couverture séparée du bloc,
+      reliure cassée, pelliculage entièrement arraché, inscription stylo permanent
+      partout, dégât d'eau (papier gondolé sur plusieurs pages).
+      → OUI : `rejete`
+      → NON : passe en (b)
+
+   b) Y a-t-il ≥ 2 défauts MINEURS visibles sur les photos ?
+      Défauts mineurs : pliure de couverture nette, ≥3 coins cornés, ≥3 annotations
+      stylo/crayon visibles, jaunissement marqué sur le bloc papier, tache ≥2 cm,
+      pelliculage légèrement décollé sur un coin.
+      → OUI : `acceptable`
+      → NON : `bon`
+
+   EXEMPLES :
+   - Couverture propre, dos droit, 1 petit coin corné, pas d'annotations visibles → `bon`
+   - Petit jaunissement uniforme du papier (livre ancien), pas de tache, pas
+     d'annotation, couverture propre → `bon`
+   - Petite annotation stylo en page de garde, reste impeccable → `bon`
+   - Couverture pliée + 4 coins cornés + jaunissement → `acceptable`
+   - Page déchirée en deux, reste du livre propre → `rejete`
+
+   **NE PAS** descendre à `acceptable` pour : « j'ai un doute », « le livre paraît
+   un peu vieux », « peut-être un défaut hors champ ». Ces formulations
+   internes doivent toujours pencher vers `bon`. Tu juges sur ce que tu VOIS,
+   pas sur ce que tu imagines.
 
 6. VÉRIFICATION PROGRAMME SCOLAIRE :
    {programmes_disponibles}
