@@ -524,6 +524,7 @@ impl WhatsAppBooksService {
     }
 }
 
+#[allow(dead_code)]
 fn parse_book_from_text(text: &str, image_url: &str) -> ScannedBook {
     let text_lower = text.to_lowercase();
 

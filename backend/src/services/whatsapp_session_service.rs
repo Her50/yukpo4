@@ -562,7 +562,7 @@ impl WhatsAppSessionService {
     }
 
     /// Crée un compte utilisateur via WhatsApp
-    pub async fn create_account(&self, phone: &str, name: &str, city: &str) -> Option<i32> {
+    pub async fn create_account(&self, phone: &str, name: &str, _city: &str) -> Option<i32> {
         let phone_normalized = phone.trim_start_matches("whatsapp:");
         let result = sqlx::query(
             r#"

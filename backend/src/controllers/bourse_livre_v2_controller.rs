@@ -6914,6 +6914,7 @@ pub async fn libraire_bulk_upload(
 
         // Matching via pg_trgm : similarity(titre_normalisé, titre_candidat) + classe + matière
         #[derive(sqlx::FromRow)]
+        #[allow(dead_code)]
         struct MatchRow {
             id: i32,
             titre_livre: String,

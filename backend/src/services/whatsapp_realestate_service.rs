@@ -117,7 +117,7 @@ impl WhatsAppRealEstateService {
         &self,
         user_id: i32,
         property_id: &str,
-        property_name: &str,
+        _property_name: &str,
         visit_date: &str,
         phone: &str,
     ) -> Option<String> {

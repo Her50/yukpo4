@@ -79,8 +79,6 @@ impl LivreScolaireDemande {
     /// - `mode_listing` = "demande" (variante dédiée, exclue du tri vente-first)
     /// - Tous les autres champs : valeurs vides/zéro/false sûres.
     pub fn into_synthetic_livre(&self) -> LivreScolaire {
-        let epoch = chrono::DateTime::<Utc>::from_timestamp(0, 0)
-            .unwrap_or_else(Utc::now);
         LivreScolaire {
             id: -self.id,
             service_id: None,

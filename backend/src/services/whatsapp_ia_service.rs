@@ -17,6 +17,7 @@ pub const DATA_ANALYSIS_COST: i32 = 15;
 const MAX_WA_RESPONSE_LEN: usize = 3800;
 
 pub struct WhatsAppIAService {
+    #[allow(dead_code)]
     pool: Arc<PgPool>,
     http: reqwest::Client,
 }
@@ -518,7 +519,7 @@ fn base64_encode(data: &[u8]) -> String {
     result
 }
 
-async fn parse_excel_simple(b64: &str) -> Option<String> {
+async fn parse_excel_simple(_b64: &str) -> Option<String> {
     // Délégué à document_generation_service::parse_excel_for_ai
     // Retourne None si indisponible — fallback sur analyse texte brut
     None

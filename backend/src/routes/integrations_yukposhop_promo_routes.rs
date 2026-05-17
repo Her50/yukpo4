@@ -144,8 +144,8 @@ pub async fn loyalty_credit(
 }
 
 #[derive(Debug, Deserialize)]
-struct LoyaltyBalanceQuery {
-    user_email: String,
+pub struct LoyaltyBalanceQuery {
+    pub user_email: String,
 }
 
 pub async fn loyalty_balance(
@@ -183,10 +183,10 @@ pub async fn loyalty_balance(
 // ═════════════════════════════════════════════════════════════════════════
 
 #[derive(Debug, Deserialize)]
-struct SimilarQuery {
-    external_product_id: String,
+pub struct SimilarQuery {
+    pub external_product_id: String,
     #[serde(default = "default_similar_limit")]
-    limit: i32,
+    pub limit: i32,
 }
 
 fn default_similar_limit() -> i32 {

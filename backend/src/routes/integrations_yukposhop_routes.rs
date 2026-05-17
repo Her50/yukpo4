@@ -383,7 +383,7 @@ async fn enrich_yukposhop_product(
 
     // Construit un prompt compact mais structuré (1 seul appel LLM)
     let photos_count = produit.photos_urls.len();
-    let desc_len = produit.description.len();
+    let _desc_len = produit.description.len();
     let prompt = format!(
         "Tu es un classifieur produit e-commerce africain (FR principal). \
          Analyse ce produit YukpoShop et renvoie un JSON STRICT (aucun autre texte).\n\

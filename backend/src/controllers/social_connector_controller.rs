@@ -532,6 +532,7 @@ pub async fn whatsapp_oauth_callback(
 
     // ── Étape 1 : Échange code → token court ────────────────────────────────
     #[derive(serde::Deserialize)]
+    #[allow(dead_code)]
     struct FbToken {
         access_token: String,
         expires_in: Option<i64>,

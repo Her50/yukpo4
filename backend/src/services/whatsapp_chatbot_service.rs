@@ -40,6 +40,7 @@ use crate::services::whatsapp_session_service::{
 // ─── Intent de haut niveau ───────────────────────────────────────────────────
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum Intent {
     // Compte
     Aide,
@@ -247,7 +248,7 @@ impl WhatsAppChatbotService {
         image_url: Option<&str>,
         media_content_type: &str,
         location: Option<(f64, f64, String)>,
-        payload: &serde_json::Value,
+        _payload: &serde_json::Value,
     ) -> String {
         // ── Onboarding prioritaire ────────────────────────────────────────────
         match &session.state {
@@ -314,7 +315,7 @@ impl WhatsAppChatbotService {
             self.sessions.reset_to_menu(phone).await;
             return self.main_menu();
         }
-        let msg_lower = msg_lower.to_string();
+        let _msg_lower = msg_lower.to_string();
 
         // ── Image reçue → traitement spécifique selon état ────────────────────
         if let Some(url) = image_url {
@@ -352,7 +353,7 @@ impl WhatsAppChatbotService {
             ConversationState::AwaitingTokenPackChoice { action_context } => {
                 let context = action_context.clone();
                 if let Some(pack) = parse_pack_choice(message) {
-                    let reference = generate_payment_reference();
+                    let _reference = generate_payment_reference();
                     self.sessions
                         .save_state(
                             phone,
@@ -373,7 +374,7 @@ impl WhatsAppChatbotService {
                 amount_fcfa,
                 action_context,
             } => {
-                let (t, a, ctx) = (*tokens, *amount_fcfa, action_context.clone());
+                let (t, a, _ctx) = (*tokens, *amount_fcfa, action_context.clone());
                 let method = if msg.contains("1") || msg.contains("mtn") {
                     "mtn"
                 } else if msg.contains("2") || msg.contains("orange") {
@@ -556,7 +557,7 @@ impl WhatsAppChatbotService {
             ConversationState::AwaitingBusSeatConfirmation {
                 trip_id,
                 trip_name,
-                price_fcfa,
+                price_fcfa: _,
             } => {
                 if msg.contains("confirm")
                     || msg.contains("oui")
@@ -621,7 +622,7 @@ impl WhatsAppChatbotService {
                     let subscribers = self.sessions.get_alert_subscribers(&city).await;
                     let (icon, label) =
                         crate::services::whatsapp_alert_service::alert_icon_label(&at);
-                    let broadcast_msg = format!(
+                    let _broadcast_msg = format!(
                         "🚨 *ALERTE YUKPO — {}*\n\n{} *{}*\n📍 {}\n\nSignalé par la communauté. Restez prudents !",
                         city, icon, label, message
                     );
@@ -1034,7 +1035,7 @@ impl WhatsAppChatbotService {
                             Ok(_) => {
                                 // Générer le document
                                 let doc_type_str: &str = if dt == "pptx" { "pptx" } else { "docx" };
-                                let name = session.name.as_deref();
+                                let _name = session.name.as_deref();
                                 let generating_msg = format_document_generating(&t, doc_type_str);
                                 self.sessions
                                     .save_state(phone, &ConversationState::YukpoIAChat)
@@ -1043,7 +1044,7 @@ impl WhatsAppChatbotService {
                                 // Note: La génération réelle via Python subprocess nécessite AppState.
                                 // Pour WhatsApp, on génère via l'API publique du backend.
                                 // On retourne le message de génération + lien vers l'API.
-                                let api_url = std::env::var("BACKEND_URL").unwrap_or_else(|_| {
+                                let _api_url = std::env::var("BACKEND_URL").unwrap_or_else(|_| {
                                     "https://yukpo-backend-376093909298.europe-west1.run.app"
                                         .to_string()
                                 });
@@ -1534,7 +1535,7 @@ impl WhatsAppChatbotService {
             ConversationState::PartnerOrderAction {
                 order_id,
                 service_id,
-                status,
+                status: _,
             } => {
                 let (oid, sid) = (*order_id, *service_id);
                 let new_status = match message.trim() {
@@ -1558,7 +1559,7 @@ impl WhatsAppChatbotService {
                     }
                     _ => return Some("Tapez *1* à *5* pour choisir une action.".to_string()),
                 };
-                let updated = self.partner.update_order_status(oid, sid, new_status).await;
+                let _updated = self.partner.update_order_status(oid, sid, new_status).await;
                 let label = match new_status {
                     "confirmed" => "✅ Commande *confirmée* !",
                     "processing" => "🍳 Commande *en préparation* !",
@@ -2648,7 +2649,7 @@ impl WhatsAppChatbotService {
             || ct.contains("text/plain")
             || ct.contains("xlsx")
             || ct.contains("officedocument.spreadsheet");
-        let is_image = ct.contains("image") || ct.starts_with("image/");
+        let _is_image = ct.contains("image") || ct.starts_with("image/");
 
         // ── Fichier d'analyse de données ─────────────────────────────────────
         if is_document {
@@ -2757,7 +2758,7 @@ impl WhatsAppChatbotService {
             }
             // Verso reçu → analyser recto+verso ensemble
             ConversationState::AwaitingBookVerso { recto_url, books } => {
-                let (recto, mut books_updated) = (recto_url.clone(), books.clone());
+                let (_recto, mut books_updated) = (recto_url.clone(), books.clone());
                 // Analyser avec les deux images (on passe le verso, le recto est contexte)
                 let book = self.books.identify_book_from_image(media_url).await;
                 let index = books_updated.len() + 1;
@@ -3171,7 +3172,7 @@ impl WhatsAppChatbotService {
         session: &WhatsAppSession,
         phone: &str,
         intent: Intent,
-        raw_message: &str,
+        _raw_message: &str,
     ) -> String {
         match intent {
             Intent::Aide | Intent::Menu => {
@@ -4082,7 +4083,7 @@ fn extraire_villes_bus(trajet: &str) -> (String, Option<String>) {
     }
 }
 
-async fn handle_sang_search(pool: &Arc<PgPool>, groupe: Option<&str>) -> String {
+async fn handle_sang_search(_pool: &Arc<PgPool>, groupe: Option<&str>) -> String {
     // blood_donors non encore disponible — message informatif
     let g_str = groupe.map(|g| format!(" *{}*", g.to_uppercase())).unwrap_or_default();
     let rows: Vec<sqlx::postgres::PgRow> = vec![];

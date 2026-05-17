@@ -1057,8 +1057,6 @@ async fn load_trends_from_snapshots(
     period: &str,
     limit: usize,
 ) -> Option<Vec<TrendItem>> {
-    use sqlx::Row;
-
     // Filtre de région : si ALL → toutes les régions connues
     let rows = if region == "ALL" {
         sqlx::query(
@@ -1945,6 +1943,7 @@ fn parse_google_news_serpapi(
 }
 
 /// Parse la réponse SerpAPI pour extraire des topics sociaux (Facebook/Instagram)
+#[allow(dead_code)]
 fn parse_serpapi_social_trends(json_body: &str, region: &str, source: &str) -> Vec<TrendItem> {
     let Ok(v) = serde_json::from_str::<serde_json::Value>(json_body) else {
         return vec![];
