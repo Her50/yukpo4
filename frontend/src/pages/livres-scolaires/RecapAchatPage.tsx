@@ -1451,47 +1451,69 @@ const RecapAchatPage: React.FC = () => {
             Les 2 chips sont indépendants et tous les deux activés par défaut.
             L'utilisateur voit tout son panier en une liste unique ; il peut
             masquer un type s'il veut focus. Un seul bouton "Commander" en
-            bas valide TOUT le panier en un appel. */}
+            bas valide TOUT le panier en un appel.
+            Style : chips toggle avec ✓ quand actif, ✕ quand masqué — pour
+            bien distinguer ces filtres de simples onglets. */}
         {(countLivres > 0 || countFournitures > 0) && (
-          <div className="mb-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => setShowLivres(v => !v)}
-              disabled={countLivres === 0}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-colors border-2 disabled:opacity-40 disabled:cursor-not-allowed ${
-                showLivres && countLivres > 0
-                  ? 'bg-amber-500 text-white border-amber-500'
-                  : 'bg-white text-gray-700 border-gray-200 hover:border-amber-300'
-              }`}
-              aria-pressed={showLivres}
-            >
-              📚 {t('bourse.recap.tab_livres', { defaultValue: 'Livres scolaires' })}
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                showLivres && countLivres > 0
-                  ? 'bg-white/30 text-white'
-                  : 'bg-amber-100 text-amber-800'
-              }`}>
-                {countLivres}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
+                {t('bourse.recap.filter_label', { defaultValue: 'Filtrer' })}
               </span>
-            </button>
-            <button
-              onClick={() => setShowFournitures(v => !v)}
-              disabled={countFournitures === 0}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-colors border-2 disabled:opacity-40 disabled:cursor-not-allowed ${
-                showFournitures && countFournitures > 0
-                  ? 'bg-purple-500 text-white border-purple-500'
-                  : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'
-              }`}
-              aria-pressed={showFournitures}
-            >
-              ✏️ {t('bourse.recap.tab_fournitures', { defaultValue: 'Fournitures' })}
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                showFournitures && countFournitures > 0
-                  ? 'bg-white/30 text-white'
-                  : 'bg-purple-100 text-purple-800'
-              }`}>
-                {countFournitures}
+              <span className="text-[9px] text-gray-400 italic">
+                {t('bourse.recap.filter_hint', {
+                  defaultValue: 'tous affichés par défaut · cliquer pour masquer',
+                })}
               </span>
-            </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setShowLivres(v => !v)}
+                disabled={countLivres === 0}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-all border-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  showLivres && countLivres > 0
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-amber-300 line-through'
+                }`}
+                aria-pressed={showLivres}
+                title={showLivres ? 'Cliquer pour masquer les livres' : 'Cliquer pour réafficher'}
+              >
+                <span className="inline-block w-3 text-center leading-none">
+                  {showLivres && countLivres > 0 ? '✓' : '✕'}
+                </span>
+                📚 {t('bourse.recap.tab_livres', { defaultValue: 'Livres' })}
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  showLivres && countLivres > 0
+                    ? 'bg-white/30 text-white'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {countLivres}
+                </span>
+              </button>
+              <button
+                onClick={() => setShowFournitures(v => !v)}
+                disabled={countFournitures === 0}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 transition-all border-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  showFournitures && countFournitures > 0
+                    ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-purple-300 line-through'
+                }`}
+                aria-pressed={showFournitures}
+                title={showFournitures ? 'Cliquer pour masquer les fournitures' : 'Cliquer pour réafficher'}
+              >
+                <span className="inline-block w-3 text-center leading-none">
+                  {showFournitures && countFournitures > 0 ? '✓' : '✕'}
+                </span>
+                ✏️ {t('bourse.recap.tab_fournitures', { defaultValue: 'Fournitures' })}
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  showFournitures && countFournitures > 0
+                    ? 'bg-white/30 text-white'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {countFournitures}
+                </span>
+              </button>
+            </div>
           </div>
         )}
 
