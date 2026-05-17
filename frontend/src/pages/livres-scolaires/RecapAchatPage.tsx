@@ -816,6 +816,20 @@ const RecapAchatPage: React.FC = () => {
   const [activeEnfantId, setActiveEnfantId] = useState(
     enfants.find(e => countByEnfant(e.id) > 0)?.id || enfants[0]?.id || ''
   );
+  // ✅ 2026-05-17 — Auto-correction si activeEnfantId devient stale :
+  // si enfants se peuple APRÈS le mount (ex. race avec localStorage write
+  // depuis la page précédente), on sélectionne le premier enfant qui a
+  // des items dans le panier. Sans ce useEffect, activeEnfantId restait
+  // à '' et la liste paraissait vide alors que le panier était plein.
+  useEffect(() => {
+    if (activeEnfantId && enfants.some(e => e.id === activeEnfantId)) return;
+    const next =
+      enfants.find(e => countByEnfant(e.id) > 0)?.id ||
+      enfants[0]?.id ||
+      '';
+    if (next && next !== activeEnfantId) setActiveEnfantId(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enfants.length, panier.length]);
   /** 'classe' = vue par enfant (onglets de classes) ; 'rubrique' = vue agrégée
    *  toutes classes confondues (cumul des quantités d'un même article + gamme). */
   const [viewMode, setViewMode] = useState<'classe' | 'rubrique'>('classe');
