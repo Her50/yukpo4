@@ -13,7 +13,7 @@ captureRefFromUrl();
 // ✅ 2026-05-08 — Kill-switch : si l'app détecte une migration majeure (changement
 // de version), elle purge tous les Service Workers + caches + storage et recharge.
 // Bumper la constante BOURSE_APP_VERSION force la purge chez tous les clients.
-const BOURSE_APP_VERSION = 'v18-2026-05-17-16h';
+const BOURSE_APP_VERSION = 'v19-2026-05-17-17h';
 (async () => {
   try {
     const lastVersion = localStorage.getItem('bourse_app_version');

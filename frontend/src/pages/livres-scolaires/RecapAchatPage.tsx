@@ -1345,12 +1345,15 @@ const RecapAchatPage: React.FC = () => {
 
               const commandeId = data?.commande_id || data?.id || data?.data?.commande_id || data?.data?.id;
 
-              // ✅ 2026-05-17 — Validation budget immédiate après création.
-              // Sans cet appel, la commande reste au statut 'edition' (brouillon)
-              // et AUCUN workflow ne se déclenche : pas de broadcast aux
-              // librairies, pas de validation, pas de paiement, pas de
-              // notifications, rien dans l'admin. Le bouton "Confirmer la
-              // commande" doit donc enchaîner create → valider-budget.
+              // ✅ 2026-05-17 — Workflow complet 3 étapes après création :
+              //   1. POST /commandes                    (edition → DB)
+              //   2. POST /commandes/{id}/valider-budget (edition → validation_budget)
+              //   3. POST /commandes/{id}/broadcast      (validation_budget →
+              //      envoyee_super_librairie). C'est ce 3e appel qui rend
+              //      la commande visible dans Yukpo Librairie et déclenche
+              //      les notifs WhatsApp / paiement / commission.
+              // Sans ces 2 appels suivants, la commande reste un brouillon
+              // invisible côté libraire.
               if (commandeId) {
                 try {
                   await apiPost(
@@ -1358,9 +1361,17 @@ const RecapAchatPage: React.FC = () => {
                     {},
                   );
                 } catch (e) {
-                  // Non bloquant pour l'UX : la commande EST créée. On loggue
-                  // pour l'admin et on continue le flow.
                   console.warn('[valider-budget] échec, commande reste en edition', e);
+                }
+                // Broadcast = route la commande au super libraire (YukpoLibrairie)
+                // puis aux librairies proches en fallback. Nécessite gps_livraison.
+                try {
+                  await apiPost(
+                    `/api/librairie-network/commandes/${commandeId}/broadcast`,
+                    { commande_id: commandeId },
+                  );
+                } catch (e) {
+                  console.warn('[broadcast] échec, la commande n\'apparaîtra pas chez le libraire avant intervention manuelle admin', e);
                 }
               }
 
