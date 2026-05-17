@@ -2131,8 +2131,48 @@ en parfait état → has_tear = true → rejet automatique. C'est NON NÉGOCIABL
 3. Idem pour l'image verso.
 4. Renseigne degradation_flags avec OR logique des deux images.
 5. Choisis etat_classification :
-   - Si ≥1 flag à true → "rejete" (le backend forcera de toute façon)
-   - Sinon, juge si la qualité globale est "bon" (≥95% intact) ou "acceptable".
+   - Si ≥1 flag à true → "rejete" (le backend forcera de toute façon).
+   - Sinon, choisis entre "bon" et "acceptable" selon l'arbre suivant.
+
+   ARBRE DE DÉCISION BON vs ACCEPTABLE (pour les livres SANS flag bloquant) :
+
+   ⚠️ EN CAS DE DOUTE → "acceptable". La plateforme protège l'acheteur :
+      en cas d'incertitude visuelle, on classe prudemment en `acceptable`
+      plutôt que de promettre du `bon` qui pourrait décevoir à la livraison.
+
+   ⚠️ RIGUEUR sur défauts mineurs : tu DOIS pointer dans `notes` les défauts
+      visibles (même mineurs). Si tu vois un défaut mineur clair sur l'une
+      des deux photos → `acceptable`, ne minimise PAS.
+
+   "bon"        : livre quasi-neuf. Couverture cartonnée intacte, dos droit,
+                  AUCUN défaut pointable : pas de coin corné, pas
+                  d'annotation, pas de jaunissement, pas de tache, pas de
+                  pliure, surface uniforme. Tu dois pouvoir dire « ce livre
+                  paraît n'avoir jamais ou presque servi » en regardant les
+                  2 photos.
+
+   "acceptable" : ≥ 1 défaut mineur visible (même un seul). Liste :
+                  - coin corné (même 1 seul)
+                  - pliure légère de couverture
+                  - annotation crayon/stylo visible (même 1)
+                  - jaunissement du papier (livre d'une année précédente)
+                  - tache visible non bloquante
+                  - pelliculage légèrement décollé sur un coin
+                  - marque d'usure typique d'un livre déjà utilisé une année
+                  Tant qu'AUCUN flag bloquant n'est `true`, on reste en
+                  `acceptable`, jamais en `rejete`.
+
+   EXEMPLES (NE PAS confondre avec les exemples de rejet plus haut) :
+   - Couverture parfaitement propre, dos droit, aucune annotation, aucun
+     coin corné, aucun jaunissement → `bon`
+   - Couverture propre mais 1 coin légèrement corné → `acceptable`
+   - Petite annotation crayon en page de garde, reste impeccable →
+     `acceptable`
+   - Jaunissement uniforme du papier (livre d'une année précédente),
+     couverture intacte → `acceptable`
+   - Plusieurs coins cornés + couverture pliée + jaunissement, mais aucune
+     déchirure ni morceau manquant → `acceptable` (les flags bloquants
+     restent false, donc PAS `rejete`)
 6. Si rejete, dans `notes` cite EXPLICITEMENT le(s) flag(s) déclenché(s) :
    ex: "Déchirure visible sur la couverture (has_tear=true)"
    ex: "Page intérieure papier au lieu de couverture cartonnée (is_paper_not_cardboard=true)"
