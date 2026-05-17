@@ -215,7 +215,13 @@ const CahiersAccessoiresPage: React.FC = () => {
     // permettre l'ajout au panier. Avant ce fix, l'utilisateur recevait
     // "Ajoutez d'abord une classe via le bouton École ou Scan" alors qu'il
     // avait bien sélectionné une classe sur cette page (états séparés).
-    if (enfants.length === 0) {
+    //
+    // Important : `addEnfant` retourne directement l'enfant créé (avec son
+    // id), ce qui évite le problème de closure stale sur `enfants` (le
+    // setState est asynchrone donc `enfants` reste vide dans cette closure
+    // même après l'appel à `addEnfant`).
+    let targetEnfant: Enfant | undefined = enfants[0];
+    if (!targetEnfant) {
       if (classesSelected.length === 0) {
         toast({
           title: t('bourse.cahiers.no_enfant_warning', {
@@ -230,37 +236,14 @@ const CahiersAccessoiresPage: React.FC = () => {
         first.systemeId && first.systemeId.toLowerCase().endsWith('-en')
           ? 'anglophone'
           : 'francophone';
-      addEnfant({
+      targetEnfant = addEnfant({
         systeme,
         niveau: first.niveau || '',
         classe: first.classe,
         pays: first.pays,
         systemeId: first.systemeId,
       });
-      // Le hook met à jour `enfants` au prochain render. On évite la
-      // race en navigant après un micro-tick : `addEnfant` écrit dans
-      // localStorage immédiatement (sync) et /recap relit depuis là.
     }
-    // On rattache les fournitures au 1er enfant (workflow class-only :
-    // un seul panier consolidé par parent). Si l'user veut séparer par
-    // classe, il pourra le faire dans le Recap.
-    // Source des enfants : si on vient d'auto-créer ci-dessus, `enfants`
-    // est encore stale dans la closure → on relit localStorage juste pour
-    // récupérer l'id frais (le hook a déjà persisté via syncToStorage).
-    const targetEnfant: Enfant | undefined = (() => {
-      if (enfants.length > 0) return enfants[0];
-      try {
-        const raw = localStorage.getItem('yukpo_parent_shop_v4');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const list = (parsed?.enfants ?? []) as Enfant[];
-          if (list.length > 0) return list[0];
-        }
-      } catch {
-        /* fallback */
-      }
-      return undefined;
-    })();
     if (!targetEnfant) {
       toast({
         title: t('bourse.cahiers.no_items', { defaultValue: 'Aucune classe disponible.' }),
