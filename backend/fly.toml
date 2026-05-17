@@ -98,24 +98,27 @@ primary_region = "cdg"
   # Coût pic 10K tx (~2 h × 50 VM 2 GB shared) ≈ $20-30 ; idle 3 VM ≈ $30-45/mois.
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 3
+  # ✅ 2026-05-17 — Bumped 3 → 5 après load test du 17/05 qui révèle qu'à 100 VU
+  # depuis 1 IP, l'app dégrade fort (p99 10s). 5 VM warm absorbent mieux le burst
+  # initial sans cold-start cascade.
+  min_machines_running = 5
   # ✅ 2026-05-16 — Plafond 25 (au lieu de 50) avant campagne.
-  # Calcul : 25 VM × 600 hard = 15 000 conn HTTP max → couvre 10 000 conn
-  # simultanées avec marge. Worst-case facture = 25 × $3.89 ≈ $97/mois si
-  # toutes tournent 24/7 (impossible avec auto_stop). Si la campagne sature
-  # ce plafond, monter dynamiquement :
+  # Calcul : 25 VM × 200 hard = 5 000 conn HTTP max (post-tuning 2026-05-17).
+  # Worst-case facture = 25 × $3.89 ≈ $97/mois (impossible avec auto_stop).
+  # Si la campagne sature ce plafond, monter dynamiquement :
   #     fly scale count 50 -a yukpo-fly-backend
   max_machines_running = 25
 
-  # ✅ 2026-05-16 — Concurrence rehausse : soft 300 / hard 600 par VM.
-  # Soft déclenche le scale-up à 50 % de la capacité hard → laisse le temps
-  # à une nouvelle VM (cold-start ≈ 25 s) de devenir prête avant qu'on refuse
-  # des connexions au niveau proxy.
-  # 50 × 300 soft = 15 000 conn → scaling complet ; 50 × 600 hard = 30 000 max
+  # ✅ 2026-05-17 — Soft/hard divisés par 6 après load test : 300/600 ne
+  # déclenchait JAMAIS le scale-up (test à 200 VU = ~200 conn, sous le soft).
+  # Maintenant 50 soft → scale-up dès 50 conn/VM, bien avant la dégradation.
+  # 25 VM × 50 soft = 1 250 conn pour déclencher scale max ; 25 × 200 hard = 5 000.
+  # Pour vraiment supporter 10 000 conn : passer max_machines à 50+ ou upgrade VM
+  # (shared-cpu-2x:4096MB), à valider avec un test loader.io 10k VU.
   [http_service.concurrency]
     type = "connections"
-    soft_limit = 300
-    hard_limit = 600
+    soft_limit = 50
+    hard_limit = 200
 
   [http_service.http_options]
     response_timeout = 120         # 2 min — marge pour appels LLM lourds
