@@ -105,7 +105,13 @@ pub struct CreateCommandeMixteRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct LivreNeufRequest {
-    pub programme_scolaire_id: Option<Uuid>,
+    // ✅ FIX 2026-05-17 — La colonne `programme_scolaire_id` est INTEGER
+    // (SERIAL → i32) en base, car `programmes_scolaires.id SERIAL PRIMARY KEY`
+    // (migration 00000189). Le modèle Rust déclarait Option<Uuid>, ce qui
+    // causait l'erreur runtime "column is of type integer but expression
+    // is of type uuid" au INSERT dans commande_livres_neufs. Le frontend
+    // envoie déjà `number` (LibrairieBulkUploadPage), donc serde accepte.
+    pub programme_scolaire_id: Option<i32>,
     pub titre: String,
     pub auteur: Option<String>,
     pub editeur: Option<String>,
