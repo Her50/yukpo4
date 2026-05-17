@@ -190,38 +190,58 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
 5. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX — DÉCISION VISUELLE OBLIGATOIRE) :
    - Le champ JSON **`etat_classification` DOIT être exactement** l'un des trois mots ASCII, **en minuscules, sans accent** : `bon`, `acceptable`, `rejete` (pas « Bon », pas « bon_etat », pas « rejected »).
 
-   ⚠️ **RÈGLE PAR DÉFAUT** : la classification par défaut est `bon`. Tu ne descends à `acceptable` que si tu peux pointer ≥ 2 défauts visibles concrets sur les photos. Tu ne descends à `rejete` que si tu peux pointer ≥ 1 défaut bloquant.
-   ⚠️ **EN CAS DE DOUTE → `bon`**. Le doute profite TOUJOURS au vendeur.
+   ⚠️ **EN CAS DE DOUTE → `acceptable`**. La plateforme protège l'acheteur :
+   en cas d'incertitude visuelle, on classe prudemment en `acceptable` plutôt
+   que de promettre du `bon` qui pourrait décevoir à la livraison.
+   ⚠️ **RIGUEUR sur les défauts visibles** : tu DOIS pointer dans `notes`
+   les défauts que tu vois (même mineurs). Si tu vois un défaut mineur clair
+   sur l'une des deux photos → `acceptable`, ne minimise PAS.
 
    ARBRE DE DÉCISION (à suivre dans l'ordre) :
 
    a) Y a-t-il ≥ 1 défaut BLOQUANT visible sur les photos ?
-      Défauts bloquants : pages manquantes/détachées, grosse déchirure (>3 cm),
-      moisissure visible, texte illisible sur ≥1 page, couverture séparée du bloc,
-      reliure cassée, pelliculage entièrement arraché, inscription stylo permanent
-      partout, dégât d'eau (papier gondolé sur plusieurs pages).
+      Défauts bloquants : pages manquantes/détachées, déchirure visible
+      (couverture OU pages intérieures, même petite si nette), moisissure
+      visible, texte illisible sur ≥1 page, couverture séparée du bloc,
+      reliure cassée, pelliculage entièrement arraché, inscription stylo
+      permanent envahissante, dégât d'eau (papier gondolé sur plusieurs
+      pages), page de couverture non claire / illisible / abîmée au point
+      qu'on ne distingue plus titre/auteur/éditeur.
       → OUI : `rejete`
       → NON : passe en (b)
 
-   b) Y a-t-il ≥ 2 défauts MINEURS visibles sur les photos ?
-      Défauts mineurs : pliure de couverture nette, ≥3 coins cornés, ≥3 annotations
-      stylo/crayon visibles, jaunissement marqué sur le bloc papier, tache ≥2 cm,
-      pelliculage légèrement décollé sur un coin.
+   b) Y a-t-il ≥ 1 défaut MINEUR visible sur les photos ?
+      Défauts mineurs : pliure de couverture, coin corné, annotation
+      stylo/crayon visible (même 1 seule), jaunissement marqué du papier,
+      tache visible, pelliculage légèrement décollé, marque d'usure
+      typique d'un livre déjà utilisé une année.
       → OUI : `acceptable`
-      → NON : `bon`
+      → NON (couverture totalement propre, dos droit, AUCUN défaut
+         pointable) : `bon`
 
    EXEMPLES :
-   - Couverture propre, dos droit, 1 petit coin corné, pas d'annotations visibles → `bon`
-   - Petit jaunissement uniforme du papier (livre ancien), pas de tache, pas
-     d'annotation, couverture propre → `bon`
-   - Petite annotation stylo en page de garde, reste impeccable → `bon`
-   - Couverture pliée + 4 coins cornés + jaunissement → `acceptable`
-   - Page déchirée en deux, reste du livre propre → `rejete`
+   - Couverture intacte, dos droit, aucune annotation, aucun coin corné,
+     aucun jaunissement visible, livre quasi-neuf → `bon`
+   - Couverture propre mais 1 coin légèrement corné → `acceptable`
+   - Petite annotation au crayon, reste impeccable → `acceptable`
+   - Jaunissement uniforme du papier (livre d'une année précédente) →
+     `acceptable`
+   - Couverture pliée + 4 coins cornés + jaunissement marqué → `acceptable`
+     (toujours pas `rejete` tant que la couverture reste lisible)
+   - Petite déchirure NETTE de 1 cm sur la couverture → `rejete`
+   - Page de couverture déchirée, abîmée, ou texte couverture flou/effacé
+     → `rejete` (l'acheteur doit pouvoir identifier le livre)
+   - Page intérieure déchirée en deux → `rejete`
 
-   **NE PAS** descendre à `acceptable` pour : « j'ai un doute », « le livre paraît
-   un peu vieux », « peut-être un défaut hors champ ». Ces formulations
-   internes doivent toujours pencher vers `bon`. Tu juges sur ce que tu VOIS,
-   pas sur ce que tu imagines.
+   **ZÉRO TOLÉRANCE sur la couverture** : si la page de couverture présente
+   une déchirure (même 1 cm), une zone illisible, ou est abîmée au point
+   qu'on hésite à identifier le livre → `rejete`. Un livre dont la
+   couverture n'est pas claire ne peut pas circuler dans la bourse.
+
+   **NE PAS** classer `bon` un livre montrant la moindre marque d'usage
+   visible : même un seul coin corné, même un léger jaunissement, même 1
+   annotation crayon → c'est `acceptable`. Tu juges sur ce que tu VOIS,
+   pas sur ce que tu imagines, mais tu pointes TOUT ce qui est visible.
 
 6. VÉRIFICATION PROGRAMME SCOLAIRE :
    {programmes_disponibles}
