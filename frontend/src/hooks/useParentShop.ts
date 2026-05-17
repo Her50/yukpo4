@@ -173,11 +173,30 @@ export function useParentShop() {
 
   const addEnfant = useCallback((data: Omit<Enfant, 'id'>): Enfant => {
     const e: Enfant = { ...data, id: genId() };
-    setEnfants(prev => {
-      const next = [...prev, e];
-      syncToStorage(next, null);
-      return next;
-    });
+    // ✅ FIX 2026-05-17 — Écrit IMMÉDIATEMENT à localStorage (pas via
+    // setState updater), pour garantir que /recap puisse le lire à son
+    // mount même si la navigation se déclenche dans le même tick que
+    // l'addEnfant + addItems. Avant ce fix, la race entre flush React et
+    // mount de RecapAchatPage pouvait laisser le localStorage vide → panier
+    // affiché vide alors que les items étaient bien dans l'updater state.
+    let currentEnfants: Enfant[] = [];
+    let currentPanier: PanierItem[] = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        currentEnfants = parsed.enfants ?? [];
+        currentPanier = parsed.panier ?? [];
+      }
+    } catch { /* */ }
+    const nextEnfants = [...currentEnfants, e];
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ enfants: nextEnfants, panier: currentPanier }),
+      );
+    } catch { /* */ }
+    setEnfants(nextEnfants);
     return e;
   }, []);
 
@@ -215,17 +234,32 @@ export function useParentShop() {
   }, []);
 
   const addItems = useCallback((items: Omit<PanierItem, 'id'>[]) => {
-    setPanier(prev => {
-      const next = [...prev];
-      for (const item of items) {
-        const exists = next.some(p => p.enfantId === item.enfantId && p.titre === item.titre);
-        if (!exists) next.push({ ...item, id: genId() });
+    // ✅ FIX 2026-05-17 — Écrit IMMÉDIATEMENT à localStorage. Même raison
+    // que addEnfant : la navigation immédiate après addItems mountait
+    // RecapAchatPage AVANT que le batch React n'ait flush, et son
+    // useState initial trouvait un localStorage encore vide.
+    let currentEnfants: Enfant[] = [];
+    let currentPanier: PanierItem[] = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        currentEnfants = parsed.enfants ?? [];
+        currentPanier = parsed.panier ?? [];
       }
-      // ✅ FIX 2026-05-16 v2 : sync immédiat (merge depuis localStorage actuel
-      // pour éviter d'écraser des enfants/panier ajoutés en parallèle).
-      syncToStorage(null, next);
-      return next;
-    });
+    } catch { /* */ }
+    const nextPanier = [...currentPanier];
+    for (const item of items) {
+      const exists = nextPanier.some(p => p.enfantId === item.enfantId && p.titre === item.titre);
+      if (!exists) nextPanier.push({ ...item, id: genId() });
+    }
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ enfants: currentEnfants, panier: nextPanier }),
+      );
+    } catch { /* */ }
+    setPanier(nextPanier);
   }, []);
 
   const removeItem = useCallback((id: string) => {
