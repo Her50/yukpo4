@@ -606,8 +606,8 @@ export const EcoleListeScolairePage: React.FC = () => {
                 {(selected[a.id] || isAlreadyInPool) && <span className="text-white text-xs">✓</span>}
               </button>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{a.titre}</p>
-                {a.auteur && <p className="text-xs text-gray-500 mt-0.5">{a.auteur}</p>}
+                <p className="text-[13px] font-semibold text-gray-900">{a.titre}</p>
+                {a.auteur && <p className="text-xs text-gray-500 mt-1">{a.auteur}</p>}
                 {/* Badge cross-flow : informe le parent que ce livre est
                     déjà en cours d'échange dans son pool. */}
                 {isAlreadyInPool && (
@@ -616,7 +616,7 @@ export const EcoleListeScolairePage: React.FC = () => {
                     {trocMatch.valeur ? ` Crédit estimé : ${Math.round(Math.max(0, trocMatch.valeur * 0.75 - 40)).toLocaleString('fr-FR')} XAF.` : ''}
                   </p>
                 )}
-                <div className="flex flex-wrap gap-1.5 mt-1.5 text-xs">
+                <div className="flex flex-wrap gap-2 mt-2 text-xs">
                   {a.matiere && (
                     <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                       {a.matiere}

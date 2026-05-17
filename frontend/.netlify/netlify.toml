@@ -93,10 +93,15 @@ for = "/*"
 X-Frame-Options = "DENY"
 X-XSS-Protection = "1; mode=block"
 X-Content-Type-Options = "nosniff"
+Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Permissions-Policy = "geolocation=(self), camera=(self), microphone=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.yukpomnang.com wss://api.yukpomnang.com https://yukpo-fly-backend.fly.dev wss://yukpo-fly-backend.fly.dev https://yukpo-backend-376093909298.europe-west1.run.app wss://yukpo-backend-376093909298.europe-west1.run.app https://maps.googleapis.com https://*.tile.openstreetmap.org https://photon.komoot.io https://api.openai.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';"
 
 [[redirects]]
 from = "/api/*"
-to = "https://yukpo-fly-backend.fly.dev/api/:splat"
+to = "https://api.yukpomnang.com/api/:splat"
 status = 200.0
 force = false
 
@@ -108,7 +113,7 @@ force = false
 
 [[redirects]]
 from = "/auth/*"
-to = "https://yukpo-fly-backend.fly.dev/api/auth/:splat"
+to = "https://api.yukpomnang.com/api/auth/:splat"
 status = 200.0
 force = false
 
@@ -120,7 +125,7 @@ force = false
 
 [[redirects]]
 from = "/ai/*"
-to = "https://yukpo-fly-backend.fly.dev/ai/:splat"
+to = "https://api.yukpomnang.com/ai/:splat"
 status = 200.0
 force = false
 
@@ -132,7 +137,7 @@ force = false
 
 [[redirects]]
 from = "/ws/*"
-to = "https://yukpo-fly-backend.fly.dev/ws/:splat"
+to = "https://api.yukpomnang.com/ws/:splat"
 status = 200.0
 force = false
 
@@ -144,7 +149,7 @@ force = false
 
 [[redirects]]
 from = "/healthz"
-to = "https://yukpo-fly-backend.fly.dev/healthz"
+to = "https://api.yukpomnang.com/healthz"
 status = 200.0
 force = false
 
@@ -156,7 +161,7 @@ force = false
 
 [[redirects]]
 from = "/api/*"
-to = "https://yukpo-fly-backend.fly.dev/api/:splat"
+to = "https://api.yukpomnang.com/api/:splat"
 status = 200.0
 force = true
 
@@ -169,7 +174,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/auth/*"
-to = "https://yukpo-fly-backend.fly.dev/auth/:splat"
+to = "https://api.yukpomnang.com/auth/:splat"
 status = 200.0
 force = true
 
@@ -182,7 +187,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/services/*"
-to = "https://yukpo-fly-backend.fly.dev/services/:splat"
+to = "https://api.yukpomnang.com/services/:splat"
 status = 200.0
 force = true
 
@@ -195,7 +200,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/healthz"
-to = "https://yukpo-fly-backend.fly.dev/healthz"
+to = "https://api.yukpomnang.com/healthz"
 status = 200.0
 force = true
 
@@ -208,7 +213,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/prestataire/*"
-to = "https://yukpo-fly-backend.fly.dev/prestataire/:splat"
+to = "https://api.yukpomnang.com/prestataire/:splat"
 status = 200.0
 force = true
 
@@ -221,7 +226,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/user/*"
-to = "https://yukpo-fly-backend.fly.dev/user/:splat"
+to = "https://api.yukpomnang.com/user/:splat"
 status = 200.0
 force = true
 
@@ -234,7 +239,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/users/*"
-to = "https://yukpo-fly-backend.fly.dev/users/:splat"
+to = "https://api.yukpomnang.com/users/:splat"
 status = 200.0
 force = true
 
@@ -247,7 +252,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/ia/*"
-to = "https://yukpo-fly-backend.fly.dev/ia/:splat"
+to = "https://api.yukpomnang.com/ia/:splat"
 status = 200.0
 force = true
 
@@ -260,7 +265,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/ws/*"
-to = "wss://yukpo-fly-backend.fly.dev/ws/:splat"
+to = "wss://api.yukpomnang.com/ws/:splat"
 status = 200.0
 force = true
 
@@ -273,7 +278,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/fournitures/*"
-to = "https://yukpo-fly-backend.fly.dev/fournitures/:splat"
+to = "https://api.yukpomnang.com/fournitures/:splat"
 status = 200.0
 force = true
 
@@ -286,7 +291,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/echange/*"
-to = "https://yukpo-fly-backend.fly.dev/echange/:splat"
+to = "https://api.yukpomnang.com/echange/:splat"
 status = 200.0
 force = true
 

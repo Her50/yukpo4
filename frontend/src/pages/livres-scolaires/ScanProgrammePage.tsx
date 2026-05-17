@@ -1280,14 +1280,14 @@ const ScanProgrammePage: React.FC = () => {
                       const lockedByPool = !!trocMatch;
                       return (
                       <div key={i}
-                        className={`px-2.5 py-1.5 transition-colors ${
+                        className={`px-3 py-3 transition-colors ${
                           lockedByPool
                             ? 'bg-cyan-50/80'
                             : item.selected
                             ? 'bg-amber-50/60'
                             : 'bg-white hover:bg-gray-50'
                         }`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-3">
                           {/* Checkbox */}
                           <button
                             onClick={() => !lockedByPool && toggleItem(i)}
@@ -1386,7 +1386,7 @@ const ScanProgrammePage: React.FC = () => {
                         {/* Toggle Neuf ⇄ Occasion (livres) ou Gamme (fournitures) — sur ligne 2.
                             Les 2 segments toujours visibles → affordance claire */}
                         {(isOccasionableType(item.type) || isGammeableType(item.type)) && (
-                          <div className="flex items-center gap-2 mt-1 ml-7">
+                          <div className="flex items-center gap-3 mt-2 ml-7">
                             {isOccasionableType(item.type) && (
                               <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
                                 <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">{t('bourse.scan.state')}</span>

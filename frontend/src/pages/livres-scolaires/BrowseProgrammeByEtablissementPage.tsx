@@ -768,12 +768,12 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                       const lockedByPool = !!trocMatch;
                       return (
                       <div key={i}
-                        className={`px-2.5 py-1.5 transition-colors ${
+                        className={`px-3 py-3 transition-colors ${
                           lockedByPool
                             ? 'bg-cyan-50/60 opacity-70'
                             : item.selected ? 'bg-amber-50/60' : 'bg-white hover:bg-gray-50'
                         }`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-3">
                           <button
                             onClick={() => !lockedByPool && toggleItem(i)}
                             disabled={lockedByPool}
@@ -877,7 +877,7 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                         </div>
 
                         {(isOccasionableType(item.type) || (isGammeableType(item.type) && item.prix && item.prix > 0)) && (
-                          <div className="flex items-center gap-2 mt-1 ml-7">
+                          <div className="flex items-center gap-3 mt-2 ml-7">
                             {isOccasionableType(item.type) && (
                               <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
                                 <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">État</span>
@@ -988,20 +988,11 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
         )}
       </div>
 
-      {/* ✅ 2026-05-16 — CTA Ajouter à ma sélection.
-          Bouton TRÈS visible + bannière d'avertissement orange clignotante
-          au-dessus quand l'user a coché des articles. Évite que l'user
-          quitte la page sans valider et arrive sur un récap vide. */}
+      {/* CTA Ajouter à ma sélection. Bouton visible, sans bannière
+          avertissement (jugée intrusive — l'utilisateur a déjà le compteur
+          dans le label du bouton et l'effet ring lui suffit). */}
       {loaded && items.length > 0 && (
         <div className="fixed bottom-16 left-0 right-0 px-4 pb-2 z-40 max-w-2xl mx-auto">
-          {selectedCount > 0 && (
-            <div className="mb-1 bg-amber-100 border-2 border-amber-400 rounded-xl px-3 py-2 text-center animate-pulse">
-              <p className="text-[11px] font-bold text-amber-900">
-                ⚠️ Vous avez {selectedCount} article{selectedCount > 1 ? 's' : ''} sélectionné{selectedCount > 1 ? 's' : ''} —
-                cliquez le bouton ci-dessous pour les ajouter à votre commande
-              </p>
-            </div>
-          )}
           <button
             disabled={selectedCount === 0 || saving}
             onClick={handleAddToCart}
