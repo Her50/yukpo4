@@ -64,7 +64,7 @@ const CahiersAccessoiresPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { enfants, addItems } = useParentShop();
+  const { enfants, addItems, addEnfant } = useParentShop();
 
   // ──── Pré-remplissage des classes depuis les enfants connus en localStorage.
   // Dédoublonne par (classe, systemeId) — si plusieurs enfants ont la même
@@ -202,19 +202,72 @@ const CahiersAccessoiresPage: React.FC = () => {
 
   // ──── Actions panier ────
   const onAjouterAuPanier = () => {
-    if (itemsAffiches.length === 0 || enfants.length === 0) {
+    if (itemsAffiches.length === 0) {
       toast({
-        title: enfants.length === 0
-          ? t('bourse.cahiers.no_enfant_warning', { defaultValue: 'Ajoutez d\'abord une classe via le bouton École ou Scan.' })
-          : t('bourse.cahiers.no_items', { defaultValue: 'Aucun article à ajouter.' }),
+        title: t('bourse.cahiers.no_items', { defaultValue: 'Aucun article à ajouter.' }),
         variant: 'destructive',
       });
       return;
     }
+    // ✅ 2026-05-17 — Si pas encore d'enfant en useParentShop mais qu'on a
+    // bien des classes sélectionnées localement (via ClasseAutocomplete),
+    // on auto-crée un enfant à la volée à partir de la 1ère classe pour
+    // permettre l'ajout au panier. Avant ce fix, l'utilisateur recevait
+    // "Ajoutez d'abord une classe via le bouton École ou Scan" alors qu'il
+    // avait bien sélectionné une classe sur cette page (états séparés).
+    if (enfants.length === 0) {
+      if (classesSelected.length === 0) {
+        toast({
+          title: t('bourse.cahiers.no_enfant_warning', {
+            defaultValue: 'Sélectionnez d\'abord une classe.',
+          }),
+          variant: 'destructive',
+        });
+        return;
+      }
+      const first = classesSelected[0];
+      const systeme: 'francophone' | 'anglophone' =
+        first.systemeId && first.systemeId.toLowerCase().endsWith('-en')
+          ? 'anglophone'
+          : 'francophone';
+      addEnfant({
+        systeme,
+        niveau: first.niveau || '',
+        classe: first.classe,
+        pays: first.pays,
+        systemeId: first.systemeId,
+      });
+      // Le hook met à jour `enfants` au prochain render. On évite la
+      // race en navigant après un micro-tick : `addEnfant` écrit dans
+      // localStorage immédiatement (sync) et /recap relit depuis là.
+    }
     // On rattache les fournitures au 1er enfant (workflow class-only :
     // un seul panier consolidé par parent). Si l'user veut séparer par
     // classe, il pourra le faire dans le Recap.
-    const targetEnfant: Enfant = enfants[0];
+    // Source des enfants : si on vient d'auto-créer ci-dessus, `enfants`
+    // est encore stale dans la closure → on relit localStorage juste pour
+    // récupérer l'id frais (le hook a déjà persisté via syncToStorage).
+    const targetEnfant: Enfant | undefined = (() => {
+      if (enfants.length > 0) return enfants[0];
+      try {
+        const raw = localStorage.getItem('yukpo_parent_shop_v4');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const list = (parsed?.enfants ?? []) as Enfant[];
+          if (list.length > 0) return list[0];
+        }
+      } catch {
+        /* fallback */
+      }
+      return undefined;
+    })();
+    if (!targetEnfant) {
+      toast({
+        title: t('bourse.cahiers.no_items', { defaultValue: 'Aucune classe disponible.' }),
+        variant: 'destructive',
+      });
+      return;
+    }
     const toAdd = itemsAffiches.map(it => {
       const g = getGammeFor(it.nom_normalise);
       return {
@@ -370,23 +423,23 @@ const CahiersAccessoiresPage: React.FC = () => {
               <span className="text-[10px] text-gray-600 font-semibold">
                 {t('bourse.cahiers.gamme_label', { defaultValue: 'Gamme :' })}
               </span>
-              <div className="inline-flex bg-white rounded-md border border-amber-300 overflow-hidden shadow-sm">
+              <div className="inline-flex bg-white rounded-md border border-gray-300 overflow-hidden shadow-sm">
                 <button
                   onClick={() => { setGlobalGamme('standard'); setGammeOverrides({}); }}
                   className={`px-2.5 py-1 text-[11px] font-bold transition-colors ${
                     globalGamme === 'standard'
-                      ? 'bg-amber-500 text-white'
-                      : 'text-gray-600 hover:bg-amber-50'
+                      ? 'bg-emerald-500 text-white'
+                      : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   {t('bourse.cahiers.gamme_standard', { defaultValue: 'Standard' })}
                 </button>
                 <button
                   onClick={() => { setGlobalGamme('premium'); setGammeOverrides({}); }}
-                  className={`px-2.5 py-1 text-[11px] font-bold transition-colors border-l border-amber-300 ${
+                  className={`px-2.5 py-1 text-[11px] font-bold transition-colors border-l border-gray-300 ${
                     globalGamme === 'premium'
                       ? 'bg-gradient-to-r from-amber-600 to-yellow-600 text-white'
-                      : 'text-gray-600 hover:bg-amber-50'
+                      : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   ✨ {t('bourse.cahiers.gamme_premium', { defaultValue: 'Haut de gamme' })}
@@ -445,20 +498,6 @@ const CahiersAccessoiresPage: React.FC = () => {
                 const itemGamme = getGammeFor(it.nom_normalise);
                 const prixCourant = getPriceFor(it);
                 const isPremium = itemGamme === 'premium';
-                /** Toggle individuel sur le tag → bascule cet article uniquement. */
-                const toggleItemGamme = () => {
-                  setGammeOverrides(prev => {
-                    const next = { ...prev };
-                    const newG: Gamme = isPremium ? 'standard' : 'premium';
-                    if (newG === globalGamme) {
-                      // L'item revient à la gamme globale → on retire l'override
-                      delete next[it.nom_normalise];
-                    } else {
-                      next[it.nom_normalise] = newG;
-                    }
-                    return next;
-                  });
-                };
                 return (
                 <li key={it.nom_normalise} className="px-3 py-3">
                   <div className="flex items-start gap-2">
@@ -467,23 +506,55 @@ const CahiersAccessoiresPage: React.FC = () => {
                         <p className="font-semibold text-[13px] text-gray-900" title={it.nom}>
                           {it.nom}
                         </p>
-                        {/* ✅ 2026-05-15 : Tag gamme cliquable. Bascule Standard ⇄ Premium
-                            pour CET article uniquement. Couleur distincte :
-                            - Standard = gris/neutre
-                            - Haut de gamme = doré (gradient amber-yellow) */}
-                        <button
-                          onClick={toggleItemGamme}
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase leading-none transition-colors ${
-                            isPremium
-                              ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-sm'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                          title={t('bourse.cahiers.tag_toggle_hint', {
-                            defaultValue: 'Cliquer pour basculer Standard / Haut de gamme',
-                          })}
-                        >
-                          {isPremium ? '✨ Haut de gamme' : 'Standard'}
-                        </button>
+                        {/* ✅ 2026-05-17 : Toggle 2-boutons côte à côte (Standard | Haut
+                            de gamme) au lieu d'un seul tag qui bascule. L'utilisateur
+                            voit les 2 options et clique celle qu'il veut. Actif :
+                            - Standard → vert (par défaut)
+                            - Haut de gamme → doré */}
+                        <div className="inline-flex items-center rounded overflow-hidden border border-gray-200 leading-none text-[9px] font-bold uppercase">
+                          <button
+                            onClick={() => {
+                              if (!isPremium) return;
+                              setGammeOverrides(prev => {
+                                const next = { ...prev };
+                                if (globalGamme === 'standard') delete next[it.nom_normalise];
+                                else next[it.nom_normalise] = 'standard';
+                                return next;
+                              });
+                            }}
+                            className={`px-1.5 py-0.5 transition-colors ${
+                              !isPremium
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-white text-gray-500 hover:bg-gray-50'
+                            }`}
+                            title={t('bourse.cahiers.tag_toggle_standard', {
+                              defaultValue: 'Standard (par défaut)',
+                            })}
+                          >
+                            Standard
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (isPremium) return;
+                              setGammeOverrides(prev => {
+                                const next = { ...prev };
+                                if (globalGamme === 'premium') delete next[it.nom_normalise];
+                                else next[it.nom_normalise] = 'premium';
+                                return next;
+                              });
+                            }}
+                            className={`px-1.5 py-0.5 transition-colors border-l border-gray-200 ${
+                              isPremium
+                                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white'
+                                : 'bg-white text-gray-500 hover:bg-gray-50'
+                            }`}
+                            title={t('bourse.cahiers.tag_toggle_premium', {
+                              defaultValue: 'Haut de gamme',
+                            })}
+                          >
+                            ✨ Haut de gamme
+                          </button>
+                        </div>
                       </div>
                       {/* Détail par classe (transparence) */}
                       <p className="text-[10px] text-gray-500 leading-snug mt-0.5">
