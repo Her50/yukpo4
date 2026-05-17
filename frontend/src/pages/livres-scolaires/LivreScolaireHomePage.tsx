@@ -325,7 +325,9 @@ const LivreScolaireHomePage: React.FC = () => {
                     <ChevronRight className="w-3 h-3 opacity-60" />
                   </button>
                 )}
-                {user?.partnerType === 'etablissementscolaire' && (
+                {/* ✅ 2026-05-17 — admin a aussi accès au portail établissement
+                    (test/configuration). Symétrique avec le bouton Librairie. */}
+                {(user?.isAdmin || user?.partnerType === 'etablissementscolaire') && (
                   <button
                     onClick={() => navigate('/etablissement-portal')}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-xs font-semibold text-emerald-700"
