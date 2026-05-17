@@ -446,7 +446,7 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
       return;
     }
     setSaving(true);
-    addItems(selected.map(it => ({
+    const toAdd = selected.map(it => ({
       enfantId,
       titre: it.titre,
       auteur: it.auteur,
@@ -458,8 +458,14 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
       choix: it.choix,
       troc_intent: it.troc_intent || undefined,
       gamme: isGammeableType(it.type) ? (it.gamme || 'standard') : undefined,
-    })));
+    }));
+    addItems(toAdd);
     setSaving(false);
+    // ✅ 2026-05-17 — Diagnostique panier vide en prod.
+    try {
+      const snap = localStorage.getItem('yukpo_parent_shop_v4');
+      console.log('[Browse] toAdd=', toAdd.length, 'enfantId=', enfantId, 'localStorage=', snap);
+    } catch {}
     // Si au moins un item est en mode Échange → bascule sur /troc-prep
     // pour photographier le livre à donner. Sinon flow normal vers /recap.
     const trocCount = selected.filter(it => it.choix === 'occasion' && it.troc_intent).length;
@@ -472,7 +478,9 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
     if (trocCount > 0) {
       setTimeout(() => navigate('/troc-prep'), 200);
     } else {
-      navigate('/recap');
+      // setTimeout pour laisser React commiter les state updates + syncToStorage
+      // avant le mount de RecapAchatPage (sinon /recap lit un localStorage stale).
+      setTimeout(() => navigate('/recap'), 50);
     }
   };
 

@@ -265,13 +265,25 @@ const CahiersAccessoiresPage: React.FC = () => {
       };
     });
     addItems(toAdd);
+    // ✅ 2026-05-17 — Diagnostique panier vide : on log + on snapshot le
+    // localStorage juste avant la navigation. Si /recap voit un panier
+    // vide alors qu'on voit ici des items dans le snapshot, c'est un
+    // problème de timing de mount ; sinon c'est addItems qui n'a pas
+    // persisté.
+    try {
+      const snap = localStorage.getItem('yukpo_parent_shop_v4');
+      console.log('[CahiersAccessoires] toAdd=', toAdd.length, 'enfantId=', targetEnfant.id, 'localStorage=', snap);
+    } catch {}
     toast({
       title: t('bourse.cahiers.added_to_cart', {
         defaultValue: '{{count}} article(s) ajouté(s) au panier',
         count: toAdd.length,
       }),
     });
-    navigate('/recap');
+    // setTimeout pour laisser React commiter les updates + syncToStorage
+    // avant le mount de RecapAchatPage (workaround historique du race
+    // entre useState initializer et batched updates).
+    setTimeout(() => navigate('/recap'), 50);
   };
 
   return (

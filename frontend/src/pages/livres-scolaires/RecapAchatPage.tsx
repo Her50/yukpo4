@@ -801,6 +801,18 @@ const RecapAchatPage: React.FC = () => {
   const { user } = useAuth();
   const { enfants, panier, removeItem, updateChoix, updateQuantite, updateGamme, getItemsForEnfant, countByEnfant, clearPanierForEnfant, clearPanier, addItems, setTrocIntent } = useParentShop();
 
+  // ✅ 2026-05-17 — Diagnostique panier vide en prod : log au mount ce que
+  // useParentShop nous a donné + ce qu'il y a dans localStorage. Permet de
+  // distinguer un bug de timing (lS plein mais hook vide) d'un bug de
+  // persistance (lS vide alors qu'on vient d'ajouter).
+  useEffect(() => {
+    try {
+      const snap = localStorage.getItem('yukpo_parent_shop_v4');
+      console.log('[Recap] mount — hook: enfants=', enfants.length, 'panier=', panier.length, 'localStorage=', snap);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [activeEnfantId, setActiveEnfantId] = useState(
     enfants.find(e => countByEnfant(e.id) > 0)?.id || enfants[0]?.id || ''
   );
