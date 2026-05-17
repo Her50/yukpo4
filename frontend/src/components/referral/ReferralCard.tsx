@@ -69,9 +69,11 @@ const ReferralCard: React.FC = () => {
 
   const share = async () => {
     if (!data) return;
+    // ✅ 2026-05-17 — Pas besoin de citer le code : le lien (data.share_url)
+    // contient déjà ?ref=XXX qui est capturé automatiquement à l'ouverture
+    // (cf. captureRefFromUrl). Le message est purement promotionnel.
     const shareText = t('referral.share_message', {
-      defaultValue: 'Rejoins Yukpo et économise sur la rentrée scolaire ! Utilise mon code : {{code}}',
-      code: data.code,
+      defaultValue: 'Rejoins Yukpo et économise sur la rentrée scolaire !',
     });
     if (navigator.share) {
       try {
