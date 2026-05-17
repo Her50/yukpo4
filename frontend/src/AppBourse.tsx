@@ -33,6 +33,7 @@ import CahiersAccessoiresPage from './pages/livres-scolaires/CahiersAccessoiresP
 import DeliveryLocationOnboardingPage from './pages/livres-scolaires/DeliveryLocationOnboardingPage';
 import VendreLivresPage from './pages/livres-scolaires/VendreLivresPage';
 import MesCommandesPage from './pages/livres-scolaires/MesCommandesPage';
+import CommandeDetailPage from './pages/livres-scolaires/CommandeDetailPage';
 import { LibrairieDashboardPage, LibrairieCommandeDetailPage } from './pages/livres-scolaires/LibrairiePortalPage';
 import LibrairieMarcheBoursePage from './pages/livres-scolaires/LibrairieMarcheBoursePage';
 import EcoleSearchPage from './pages/livres-scolaires/EcoleSearchPage';
@@ -133,6 +134,7 @@ function AppBourse() {
                   désactivé silencieusement après un 401. */}
               <Route path="/vendre" element={<BourseLayout><RequireAuth><VendreLivresPage /></RequireAuth></BourseLayout>} />
               <Route path="/mes-commandes" element={<BourseLayout><MesCommandesPage /></BourseLayout>} />
+              <Route path="/mes-commandes/:id" element={<BourseLayout><RequireAuth><CommandeDetailPage /></RequireAuth></BourseLayout>} />
               <Route path="/recap" element={<BourseLayout><RecapAchatPage /></BourseLayout>} />
               {/* ✅ 2026-05-10 : Centre de Rentrée — UX unique parent-centric, classe tabs, école partenaire prioritaire, troc article-par-article */}
               <Route path="/rentree" element={<BourseLayout><RentreeCenterPage /></BourseLayout>} />

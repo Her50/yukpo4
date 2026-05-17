@@ -234,6 +234,11 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/admin/statistiques",
             get(crate::controllers::librairie_admin_controller::get_statistiques_reseau),
         )
+        // ✅ 2026-05-17 — Liste commandes mixtes pour admin Yukpo
+        .route(
+            "/api/librairie-network/admin/commandes",
+            get(crate::controllers::librairie_network_controller::admin_list_commandes_mixtes),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     // ========================================

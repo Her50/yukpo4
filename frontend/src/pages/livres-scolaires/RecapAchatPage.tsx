@@ -1343,6 +1343,27 @@ const RecapAchatPage: React.FC = () => {
                 );
               }
 
+              const commandeId = data?.commande_id || data?.id || data?.data?.commande_id || data?.data?.id;
+
+              // ✅ 2026-05-17 — Validation budget immédiate après création.
+              // Sans cet appel, la commande reste au statut 'edition' (brouillon)
+              // et AUCUN workflow ne se déclenche : pas de broadcast aux
+              // librairies, pas de validation, pas de paiement, pas de
+              // notifications, rien dans l'admin. Le bouton "Confirmer la
+              // commande" doit donc enchaîner create → valider-budget.
+              if (commandeId) {
+                try {
+                  await apiPost(
+                    `/api/librairie-network/commandes/${commandeId}/valider-budget`,
+                    {},
+                  );
+                } catch (e) {
+                  // Non bloquant pour l'UX : la commande EST créée. On loggue
+                  // pour l'admin et on continue le flow.
+                  console.warn('[valider-budget] échec, commande reste en edition', e);
+                }
+              }
+
               setShowDelivery(false);
               sessionStorage.removeItem(TROC_DECISION_KEY);
               // Vide le panier — la commande est désormais en base, le suivi se fait via /mes-commandes
@@ -1354,7 +1375,6 @@ const RecapAchatPage: React.FC = () => {
                   description: t(nbArticles > 1 ? 'bourse.recap.toast_order_desc_other' : 'bourse.recap.toast_order_desc_one', { count: nbArticles }),
                 });
               }
-              const commandeId = data?.commande_id || data?.id || data?.data?.commande_id || data?.data?.id;
               navigate(commandeId ? `/mes-commandes?focus=${commandeId}` : '/mes-commandes');
             } catch (e: any) {
               toast({

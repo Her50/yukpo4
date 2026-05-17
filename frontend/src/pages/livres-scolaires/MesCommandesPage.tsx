@@ -170,7 +170,16 @@ const MesCommandesPage: React.FC = () => {
               return (
                 <div
                   key={cmd.id}
-                  className={`bg-white rounded-2xl border p-3 ${isFocused ? 'border-amber-400 shadow-lg' : 'border-gray-100'}`}
+                  onClick={() => navigate(`/mes-commandes/${cmd.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/mes-commandes/${cmd.id}`);
+                    }
+                  }}
+                  className={`bg-white rounded-2xl border p-3 cursor-pointer transition-shadow active:scale-[0.99] hover:border-amber-200 hover:shadow-sm ${isFocused ? 'border-amber-400 shadow-lg' : 'border-gray-100'}`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${STATUT_COLOR[cmd.statut] || 'bg-gray-100 text-gray-600'}`}>

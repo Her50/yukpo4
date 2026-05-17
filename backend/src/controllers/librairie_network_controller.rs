@@ -4700,3 +4700,125 @@ pub struct TotauxCommande {
     pub commission_app: f64,
     pub montant_net_libraires: f64,
 }
+
+// ============================================================================
+// ✅ 2026-05-17 — ADMIN : Liste commandes mixtes
+// ============================================================================
+//
+// Permet à un admin Yukpo de consulter toutes les commandes mixtes (neufs +
+// occasion) pour suivi opérationnel (broadcast, validation libraire, retards
+// livraison, etc.). Avant cet endpoint, il n'existait AUCUN moyen côté admin
+// de voir les commandes passées par les parents → impossible d'orchestrer
+// l'opérationnel.
+//
+// Filtres optionnels : `statut` (un ou plusieurs séparés par virgule),
+// `limit` (défaut 100, max 500), `offset`. Tri DESC sur created_at.
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct AdminCommandesQuery {
+    pub statut: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+pub async fn admin_list_commandes_mixtes(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { role, .. }): Extension<AuthenticatedUser>,
+    Query(q): Query<AdminCommandesQuery>,
+) -> AppResult<impl IntoResponse> {
+    if role != "admin" && role != "super_admin" {
+        return Err(AppError::Forbidden(
+            "Réservé aux administrateurs Yukpo".to_string(),
+        ));
+    }
+
+    let limit = q.limit.unwrap_or(100).clamp(1, 500);
+    let offset = q.offset.unwrap_or(0).max(0);
+    let statuts: Option<Vec<String>> = q.statut.map(|s| {
+        s.split(',')
+            .map(|x| x.trim().to_string())
+            .filter(|x| !x.is_empty())
+            .collect()
+    });
+
+    use sqlx::Row;
+    let rows = if let Some(filter_statuts) = statuts.as_ref().filter(|v| !v.is_empty()) {
+        sqlx::query(
+            r#"
+            SELECT cm.id, cm.reference_commande, cm.user_id, cm.statut, cm.budget_total,
+                   cm.devise, cm.commission_app, cm.montant_net_libraires,
+                   cm.mode_livraison, cm.adresse_livraison, cm.gps_livraison,
+                   cm.notes_client, cm.created_at, cm.updated_at,
+                   u.email AS user_email, u.nom AS user_nom,
+                   (SELECT COUNT(*) FROM commande_livres_neufs WHERE commande_id = cm.id) AS livres_neufs_count,
+                   (SELECT COUNT(*) FROM commande_livres_occasion WHERE commande_id = cm.id) AS livres_occasion_count
+              FROM commandes_mixtes cm
+              LEFT JOIN users u ON u.id = cm.user_id
+             WHERE cm.statut = ANY($1::commande_statut[])
+             ORDER BY cm.created_at DESC
+             LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(filter_statuts)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pg)
+        .await
+    } else {
+        sqlx::query(
+            r#"
+            SELECT cm.id, cm.reference_commande, cm.user_id, cm.statut, cm.budget_total,
+                   cm.devise, cm.commission_app, cm.montant_net_libraires,
+                   cm.mode_livraison, cm.adresse_livraison, cm.gps_livraison,
+                   cm.notes_client, cm.created_at, cm.updated_at,
+                   u.email AS user_email, u.nom AS user_nom,
+                   (SELECT COUNT(*) FROM commande_livres_neufs WHERE commande_id = cm.id) AS livres_neufs_count,
+                   (SELECT COUNT(*) FROM commande_livres_occasion WHERE commande_id = cm.id) AS livres_occasion_count
+              FROM commandes_mixtes cm
+              LEFT JOIN users u ON u.id = cm.user_id
+             ORDER BY cm.created_at DESC
+             LIMIT $1 OFFSET $2
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pg)
+        .await
+    }
+    .map_err(|e| AppError::Internal(format!("Erreur liste commandes admin: {}", e)))?;
+
+    let commandes: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.try_get::<uuid::Uuid, _>("id").ok().map(|u| u.to_string()),
+                "reference_commande": r.try_get::<String, _>("reference_commande").ok(),
+                "user_id": r.try_get::<i32, _>("user_id").ok(),
+                "user_email": r.try_get::<Option<String>, _>("user_email").ok().flatten(),
+                "user_nom": r.try_get::<Option<String>, _>("user_nom").ok().flatten(),
+                "statut": r.try_get::<crate::models::librairie_network::CommandeStatut, _>("statut")
+                    .ok()
+                    .map(|s| s.as_db_str().to_string()),
+                "budget_total": r.try_get::<f64, _>("budget_total").ok(),
+                "devise": r.try_get::<String, _>("devise").ok(),
+                "commission_app": r.try_get::<Option<f64>, _>("commission_app").ok().flatten(),
+                "montant_net_libraires": r.try_get::<Option<f64>, _>("montant_net_libraires").ok().flatten(),
+                "mode_livraison": r.try_get::<Option<String>, _>("mode_livraison").ok().flatten(),
+                "adresse_livraison": r.try_get::<Option<String>, _>("adresse_livraison").ok().flatten(),
+                "notes_client": r.try_get::<Option<String>, _>("notes_client").ok().flatten(),
+                "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok(),
+                "updated_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at").ok(),
+                "livres_neufs_count": r.try_get::<i64, _>("livres_neufs_count").ok(),
+                "livres_occasion_count": r.try_get::<i64, _>("livres_occasion_count").ok(),
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "commandes": commandes,
+        "limit": limit,
+        "offset": offset,
+    })))
+}

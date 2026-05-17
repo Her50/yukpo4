@@ -15,6 +15,7 @@ import './config/axios';
 import { AuthProvider } from './contexts/AuthContext';
 import KYCVerificationPage from './pages/admin/KYCVerificationPage';
 import AdminUserRolesPage from './pages/admin/AdminUserRolesPage';
+import AdminCommandesPage from './pages/admin/AdminCommandesPage';
 import CourierAdminPage from './pages/admin/CourierAdminPage';
 import { ROUTES } from './routes/AppRoutesRegistry';
 // Pages essentielles
@@ -596,6 +597,7 @@ function App() {
                             <AdminUserRolesPage />
                           </RequireAdminPage>
                         } />
+                        <Route path="/admin/commandes" element={<AdminCommandesPage />} />
                         <Route path="/admin/courier-applications" element={
                           <RequireAdminPage>
                             <CourierAdminPage />
