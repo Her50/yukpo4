@@ -65,8 +65,13 @@ pub struct CommandeMixte {
     pub updated_at: DateTime<Utc>,
 }
 
+// ✅ 2026-05-17 — type_name doit matcher l'ENUM Postgres réel
+// (`commande_statut`), pas `varchar`. Sinon erreur runtime au decode :
+// "mismatched type ... as SQL type `varchar` is not compatible with
+// `commande_statut`". Le `rename_all = "snake_case"` mappe les variants
+// Rust (PascalCase) sur les valeurs SQL (snake_case).
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+#[sqlx(type_name = "commande_statut", rename_all = "snake_case")]
 pub enum CommandeStatut {
     Edition,           // Client édite sa commande
     ValidationBudget,  // Client valide budget
