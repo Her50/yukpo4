@@ -1,0 +1,93 @@
+# Configuration Fly.io — environnement STAGING-SIM dédié à la simulation
+# complète du système Bourse du Livre (troc + vente occasion + commandes neufs
+# + matching + chaînes + paquets coursier + parrainage + wallet).
+#
+# Isolé de la prod (yukpo-fly-backend) :
+#   - App distincte : yukpo-bourse-sim
+#   - DB distincte : yukpo-bourse-sim-db (fork point-in-time de yukpo-fly-postgres)
+#   - JWT_SECRET dédié (forgé côté script de simulation)
+#   - SMS_PROVIDER=stub (aucun envoi Twilio réel)
+#
+# Cycle de vie :
+#   1. fly deploy --config backend/fly.staging.toml -a yukpo-bourse-sim
+#   2. Simulation 1k livres + 200 users
+#   3. fly apps destroy yukpo-bourse-sim (+ destroy DB) à la fin = retour à 0 $
+
+app = "yukpo-bourse-sim"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile.fly"
+
+[env]
+  PORT = "8080"
+  HOST = "0.0.0.0"
+  RUST_LOG = "info,sqlx=warn"
+  APP_ENV = "staging-sim"
+  CLOUD_RUN = "false"
+
+  # Modules désactivés (idem prod)
+  GPU_ENABLED = "false"
+  ENABLE_AI_OPTIMIZATIONS = "true"
+
+  # Pool DB plus modeste pour staging (volume sim ~5k requêtes/h, pas besoin de 1000 conn)
+  DB_POOL_SIZE = "10"
+  DB_POOL_MIN_SIZE = "2"
+  DB_ACQUIRE_TIMEOUT_SECS = "8"
+  DB_STATEMENT_TIMEOUT_MS = "8000"
+  DB_LOCK_TIMEOUT_MS = "5000"
+  DB_IDLE_IN_TX_TIMEOUT_MS = "10000"
+  DATABASE_URL_RO = ""
+
+  # Billing désactivé pour la sim — tous comptes exemptés
+  YUKPO_IA_TOKEN_MULTIPLIER = "20"
+  YUKPO_SIGNUP_BONUS_TOKENS = "4000"
+  YUKPO_IA_EXEMPT_ALL_PARTNERS = "true"
+
+  # Admin librairie officielle : aucun par défaut. Les scripts seed
+  # désigneront un user_id admin et l'injecteront via fly secrets set.
+  YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS = ""
+
+  # Migrations : déjà appliquées dans le fork, on désactive pour ne pas
+  # retomber sur le seed MINESEC Technique cassé (cf. note fly.toml prod).
+  ENABLE_AUTO_MIGRATIONS = "false"
+
+  # Stubs externes — pas d'appels Twilio/MoMo réels en simulation
+  SMS_PROVIDER = "stub"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # Staging : 1 VM minimum (économie) → max 3 (1k livres + 200 users, charge faible)
+  min_machines_running = 1
+  max_machines_running = 3
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 50
+    hard_limit = 200
+
+  [http_service.http_options]
+    response_timeout = 120
+    idle_timeout = 30
+
+[[vm]]
+  # Même profil que prod pour fidélité du test
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[checks]
+  [checks.health]
+    grace_period = "45s"
+    interval = "10s"
+    method = "get"
+    path = "/health"
+    port = 8080
+    timeout = "5s"
+    type = "http"
+
+kill_signal = "SIGINT"
+kill_timeout = 30
