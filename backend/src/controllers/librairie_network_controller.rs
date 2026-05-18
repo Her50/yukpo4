@@ -559,8 +559,11 @@ pub async fn create_commande_mixte(
     //     qui causait une violation silencieuse côté SQL).
     //   - vendeur_id : NOT NULL en DB → idem, rejet explicite.
     for livre_req in payload.livres_occasion {
+        // ✅ FIX 2026-05-18 (bug G) — récupère aussi `niveau` pour appliquer
+        // le verrou métier : aucune commande en mode occasion/echange n'est
+        // autorisée sur des livres de maternelle ou de primaire.
         let livre_row = sqlx::query(
-            "SELECT titre, auteur, classe_actuelle AS classe, matiere, etat_livre,
+            "SELECT titre, auteur, classe_actuelle AS classe, matiere, etat_livre, niveau,
                     prix_detecte::DOUBLE PRECISION  AS prix_detecte,
                     valeur_calculee::DOUBLE PRECISION AS valeur_calculee,
                     user_id
@@ -570,6 +573,21 @@ pub async fn create_commande_mixte(
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération livre: {}", e)))?;
+
+        // ✅ FIX 2026-05-18 (bug G) — verrou maternelle/primaire.
+        // Règle métier : seul le SECONDAIRE accepte les modes occasion/troc/échange.
+        // Pour maternelle ou primaire, l'achat doit obligatoirement passer par
+        // les `livres_neufs[]` (commande NEUF), pas par les `livres_occasion[]`.
+        let l_niveau_check: Option<String> = livre_row.try_get("niveau").ok();
+        if let Some(niv) = l_niveau_check.as_deref() {
+            let niv_lc = niv.to_lowercase();
+            if niv_lc.contains("primaire") || niv_lc.contains("maternel") {
+                return Err(AppError::BadRequest(format!(
+                    "Le livre d'occasion #{} est de niveau {} : seul le secondaire est éligible au troc/vente occasion. Utilisez un achat neuf pour ce livre.",
+                    livre_req.livre_scolaire_id, niv
+                )));
+            }
+        }
 
         let l_valeur_calculee: Option<f64> = livre_row.try_get("valeur_calculee").ok();
         let l_prix_detecte: Option<f64> = livre_row.try_get("prix_detecte").ok();
@@ -1119,13 +1137,21 @@ pub async fn valider_budget_commande(
 
     // Créer transaction agrégée
     let reference_paiement = generate_reference("PAY");
+    // ✅ FIX 2026-05-18 (bug K) — `methode_paiement` est un ENUM Postgres
+    // custom. Sans cast explicite $4::methode_paiement, sqlx encode la String
+    // Rust en varchar et Postgres renvoie 500 :
+    //   "column methode_paiement is of type methode_paiement but expression
+    //    is of type character varying"
+    // Pattern identique aux fix C (LibrairieStatut). Cast SQL minimal —
+    // ne pas toucher au RETURNING pour ne pas casser le décodage des enums
+    // Rust (MethodePaiement, TransactionStatut) qui doivent rester typés.
     sqlx::query_as::<_, TransactionAgregee>(
         r#"
         INSERT INTO transactions_agregees (
             commande_id, user_id, montant_total, devise, methode_paiement,
             statut, reference_paiement, commission_app, montant_net
         )
-        VALUES ($1, $2, $3, 'XAF', $4, 'en_attente', $5, $6, $7)
+        VALUES ($1, $2, $3, 'XAF', $4::methode_paiement, 'en_attente', $5, $6, $7)
         RETURNING *
         "#,
     )
