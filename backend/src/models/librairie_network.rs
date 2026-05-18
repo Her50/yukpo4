@@ -389,11 +389,19 @@ impl ConfigurationSysteme {
 // PAYMENTS AGRÉGÉS
 // ========================================
 
+// ✅ FIX 2026-05-18 (bug L) — struct alignée sur le schéma DB
+// `transactions_agregees` :
+//   - user_id : INTEGER (i32), pas UUID  (REFERENCES users(id))
+//   - methode_paiement : ENUM Postgres `methode_paiement` (cf. fix C)
+//   - statut          : ENUM Postgres `transaction_statut` (cf. fix C)
+// Le décodage en mauvais type produisait une erreur sqlx confuse :
+//   "no column found for name: montant"
+// (effet collatéral du `FromRow` qui plante en cascade).
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct TransactionAgregee {
     pub id: Uuid,
     pub commande_id: Option<Uuid>,
-    pub user_id: Uuid,
+    pub user_id: i32,
     pub montant_total: f64,
     pub devise: String,
     pub methode_paiement: MethodePaiement,
@@ -407,8 +415,10 @@ pub struct TransactionAgregee {
     pub updated_at: DateTime<Utc>,
 }
 
+// ✅ FIX 2026-05-18 (bug L) — colonne DB = ENUM Postgres `methode_paiement`,
+// pas varchar. Pattern identique au fix C (LibrairieStatut → librairie_statut).
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+#[sqlx(type_name = "methode_paiement", rename_all = "snake_case")]
 pub enum MethodePaiement {
     Wallet,      // Wallet interne
     MobileMoney, // Orange, MTN, etc.
@@ -417,8 +427,9 @@ pub enum MethodePaiement {
     Espèces, // Pour paiement à la livraison
 }
 
+// ✅ FIX 2026-05-18 (bug L) — colonne DB = ENUM Postgres `transaction_statut`.
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+#[sqlx(type_name = "transaction_statut", rename_all = "snake_case")]
 pub enum TransactionStatut {
     EnAttente,
     Initiee,

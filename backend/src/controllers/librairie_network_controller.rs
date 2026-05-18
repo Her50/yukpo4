@@ -672,8 +672,21 @@ pub async fn create_commande_mixte(
         // `commande_mixte_id` permet de retrouver la demande au fulfillment
         // et de la marquer "satisfaite" à la livraison.
         //
-        // Best-effort : si l'insert échoue (table absente, etc.) on ignore —
-        // le flux principal (commande directe) reste fonctionnel.
+        // ✅ FIX 2026-05-18 (bug D) — SAVEPOINT défensif autour de l'insert
+        // best-effort. Auparavant, si la table `livres_scolaires_demandes`
+        // était absente (ou un autre check PG échouait), Postgres mettait la
+        // TX en état "aborted" silencieusement. Le `if let Err` log un warn
+        // côté Rust MAIS la TX reste empoisonnée → la query SELECT du livre
+        // suivant dans la boucle plante avec "current transaction is
+        // aborted, commands ignored". Cascade observée à 33 % des commandes
+        // mixtes occasion en sim itér 5/6.
+        // Avec SAVEPOINT : l'erreur reste circonscrite et la TX globale
+        // continue normalement.
+        let demande_sp = format!("sp_demande_shadow_{}", livre_req.livre_scolaire_id);
+        sqlx::query(&format!("SAVEPOINT {}", demande_sp))
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur savepoint shadow: {}", e)))?;
         let demande_insert_res = sqlx::query(
             r#"
             INSERT INTO livres_scolaires_demandes
@@ -692,12 +705,24 @@ pub async fn create_commande_mixte(
         .bind(commande.id)
         .execute(&mut *tx)
         .await;
-        if let Err(e) = demande_insert_res {
-            log::warn!(
-                "[create_commande_mixte] demande shadow non créée pour livre {} : {} (continue)",
-                livre_req.livre_scolaire_id,
-                e
-            );
+        match demande_insert_res {
+            Ok(_) => {
+                sqlx::query(&format!("RELEASE SAVEPOINT {}", demande_sp))
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Erreur release savepoint: {}", e)))?;
+            }
+            Err(e) => {
+                log::warn!(
+                    "[create_commande_mixte] demande shadow non créée pour livre {} : {} (rollback to savepoint, continue)",
+                    livre_req.livre_scolaire_id,
+                    e
+                );
+                sqlx::query(&format!("ROLLBACK TO SAVEPOINT {}", demande_sp))
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AppError::Internal(format!("Erreur rollback savepoint: {}", e)))?;
+            }
         }
     }
 
