@@ -270,34 +270,63 @@ export function useParentShop() {
     });
   }, []);
 
+  // ✅ FIX 2026-05-18 — syncToStorage sur toutes les mutations panier.
+  // L'`useEffect` qui persiste enfants/panier ne tourne qu'APRÈS commit ;
+  // si l'utilisateur déclenche une mutation puis navigue immédiatement, la
+  // nouvelle page peut lire un localStorage stale au mount. syncToStorage
+  // dans le setter garantit la persistance synchrone.
   const updateChoix = useCallback((id: string, choix: Choix) => {
-    setPanier(prev => prev.map(p => (p.id === id ? { ...p, choix } : p)));
+    setPanier(prev => {
+      const next = prev.map(p => (p.id === id ? { ...p, choix } : p));
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   /** Associe un livre proposé au troc (livres_scolaires.id) à un item du panier. */
   const updateTrocMatch = useCallback((id: string, trocLivreId: number | undefined) => {
-    setPanier(prev => prev.map(p => (p.id === id ? { ...p, trocLivreId } : p)));
+    setPanier(prev => {
+      const next = prev.map(p => (p.id === id ? { ...p, trocLivreId } : p));
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   /** Efface l'intention de troc — utilisé quand l'utilisateur abandonne ou
    *  rejette la capture photo : l'item reste en occasion mais n'est plus
    *  candidat à un échange. */
   const clearTrocIntent = useCallback((id: string) => {
-    setPanier(prev => prev.map(p => (p.id === id ? { ...p, troc_intent: false } : p)));
+    setPanier(prev => {
+      const next = prev.map(p => (p.id === id ? { ...p, troc_intent: false } : p));
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   /** ✅ 2026-05-16 — Toggle direct de l'intention troc (utilisé par le
    *  sélecteur 3-état Neuf/Occasion/Échange dans le récap). */
   const setTrocIntent = useCallback((id: string, intent: boolean) => {
-    setPanier(prev => prev.map(p => (p.id === id ? { ...p, troc_intent: intent } : p)));
+    setPanier(prev => {
+      const next = prev.map(p => (p.id === id ? { ...p, troc_intent: intent } : p));
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   const updateQuantite = useCallback((id: string, quantite: number) => {
-    setPanier(prev => prev.map(p => (p.id === id ? { ...p, quantite: Math.max(0, quantite) } : p)));
+    setPanier(prev => {
+      const next = prev.map(p => (p.id === id ? { ...p, quantite: Math.max(0, quantite) } : p));
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   const updateGamme = useCallback((id: string, gamme: 'entree' | 'standard' | 'premium') => {
-    setPanier(prev => prev.map(p => (p.id === id ? { ...p, gamme } : p)));
+    setPanier(prev => {
+      const next = prev.map(p => (p.id === id ? { ...p, gamme } : p));
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   const isInPanier = useCallback(
@@ -317,11 +346,24 @@ export function useParentShop() {
   );
 
   const clearPanierForEnfant = useCallback((enfantId: string) => {
-    setPanier(prev => prev.filter(p => p.enfantId !== enfantId));
+    // ✅ FIX 2026-05-18 — syncToStorage immédiat (comme addItems/removeItem)
+    // pour que la suppression soit persistée en localStorage AVANT le
+    // prochain mount. Sans ça, après "Confirmer la commande" → la page
+    // /mes-commandes voyait le panier vidé en mémoire, mais au reload
+    // localStorage restaurait les anciens items → risque de doublon de
+    // commande.
+    setPanier(prev => {
+      const next = prev.filter(p => p.enfantId !== enfantId);
+      syncToStorage(null, next);
+      return next;
+    });
   }, []);
 
   const clearPanier = useCallback(() => {
-    setPanier([]);
+    setPanier(() => {
+      syncToStorage(null, []);
+      return [];
+    });
   }, []);
 
   return {
