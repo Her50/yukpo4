@@ -80,6 +80,7 @@ const STATUT_ICON: Record<string, React.ComponentType<{ className?: string }>> =
 };
 
 const TIMELINE_STEPS: { key: string; label: string }[] = [
+  { key: 'edition', label: 'Brouillon créé' },
   { key: 'validation_budget', label: 'Budget validé' },
   { key: 'envoyee_librairies', label: 'Envoyée aux librairies' },
   { key: 'validee_complete', label: 'Validée' },

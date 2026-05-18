@@ -1356,20 +1356,32 @@ const RecapAchatPage: React.FC = () => {
               // invisible côté libraire.
               if (commandeId) {
                 try {
-                  await apiPost(
+                  // ✅ FIX 2026-05-18 — Payload requis : commande_id + methode_paiement.
+                  // Avant : `{}` → backend 400 → commande restait en 'edition' (timeline
+                  // de suivi vide). 'mobile_money' = défaut sûr (MoMo/OM, populaire CM).
+                  // L'utilisateur pourra changer la méthode au moment du règlement.
+                  const r = await apiPost(
                     `/api/librairie-network/commandes/${commandeId}/valider-budget`,
-                    {},
+                    { commande_id: commandeId, methode_paiement: 'mobile_money' },
                   );
+                  if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    console.warn('[valider-budget] HTTP', r.status, d);
+                  }
                 } catch (e) {
                   console.warn('[valider-budget] échec, commande reste en edition', e);
                 }
                 // Broadcast = route la commande au super libraire (YukpoLibrairie)
                 // puis aux librairies proches en fallback. Nécessite gps_livraison.
                 try {
-                  await apiPost(
+                  const r = await apiPost(
                     `/api/librairie-network/commandes/${commandeId}/broadcast`,
                     { commande_id: commandeId },
                   );
+                  if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    console.warn('[broadcast] HTTP', r.status, d);
+                  }
                 } catch (e) {
                   console.warn('[broadcast] échec, la commande n\'apparaîtra pas chez le libraire avant intervention manuelle admin', e);
                 }
