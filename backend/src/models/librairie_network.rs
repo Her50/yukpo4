@@ -32,7 +32,11 @@ pub struct LibrairiePartner {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+// La colonne `statut` de la table `librairies` est un type ENUM Postgres custom
+// (`librairie_statut`), pas un varchar. Le décodage en varchar échoue : sqlx
+// renvoie "mismatched types; Rust type LibrairieStatut (as SQL type varchar)
+// is not compatible with SQL type librairie_statut".
+#[sqlx(type_name = "librairie_statut", rename_all = "snake_case")]
 pub enum LibrairieStatut {
     Actif,
     Inactif,

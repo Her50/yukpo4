@@ -560,7 +560,7 @@ pub async fn create_commande_mixte(
     //   - vendeur_id : NOT NULL en DB → idem, rejet explicite.
     for livre_req in payload.livres_occasion {
         let livre_row = sqlx::query(
-            "SELECT titre, auteur, classe, matiere, etat_livre,
+            "SELECT titre, auteur, classe_actuelle AS classe, matiere, etat_livre,
                     prix_detecte::DOUBLE PRECISION  AS prix_detecte,
                     valeur_calculee::DOUBLE PRECISION AS valeur_calculee,
                     user_id
