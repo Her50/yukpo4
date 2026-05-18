@@ -55,6 +55,11 @@ primary_region = "cdg"
   # Stubs externes — pas d'appels Twilio/MoMo réels en simulation
   SMS_PROVIDER = "stub"
 
+  # Redis scaling : panic au boot si REDIS_SCALING_ENABLED=true sans GCP_PROJECT_ID.
+  # Défaut Rust = "true" si var absente (redis_scaling_service.rs:46-49) →
+  # il faut explicitement le mettre à false pour staging (pas de GCP en sim).
+  REDIS_SCALING_ENABLED = "false"
+
 [http_service]
   internal_port = 8080
   force_https = true
