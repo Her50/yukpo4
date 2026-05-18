@@ -51,6 +51,32 @@ const COMMANDES_MIXTES_PROJECTION: &str = "
     created_at, updated_at
 ";
 
+/// ✅ 2026-05-18 — Projection commande_livres_neufs avec casts NUMERIC →
+/// DOUBLE PRECISION. Le modèle `CommandeLivreNeuf` déclare les prix en `f64`,
+/// mais les colonnes sont NUMERIC en DB → `SELECT *` échouait à
+/// "mismatched types; Rust type f64 (as SQL type FLOAT8) is not compatible
+/// with SQL type NUMERIC".
+const COMMANDE_LIVRES_NEUFS_PROJECTION: &str = "
+    id, commande_id, programme_scolaire_id, titre, auteur, editeur, isbn,
+    classe, matiere, niveau,
+    prix_officiel::DOUBLE PRECISION AS prix_officiel,
+    prix_final::DOUBLE PRECISION AS prix_final,
+    quantite, est_au_programme,
+    librairie_validateur_id, statut_validation, prix_officiel_verrouille,
+    prix_plancher::DOUBLE PRECISION AS prix_plancher,
+    prix_plafond::DOUBLE PRECISION AS prix_plafond,
+    prix_suggere::DOUBLE PRECISION AS prix_suggere,
+    bornes_source,
+    created_at
+";
+
+/// Projection commande_livres_occasion (même problème NUMERIC vs f64).
+const COMMANDE_LIVRES_OCCASION_PROJECTION: &str = "
+    id, commande_id, livre_scolaire_id, titre, auteur, classe, matiere, etat_livre,
+    prix::DOUBLE PRECISION AS prix,
+    vendeur_id, quantite, statut, created_at
+";
+
 pub struct ConfigurationSysteme;
 impl ConfigurationSysteme {
     pub const COMMISSION_APP: f64 = 0.05;
@@ -3875,9 +3901,10 @@ pub async fn get_lignes_neufs_bornes_commande(
         ));
     }
 
-    let lignes = sqlx::query_as::<_, CommandeLivreNeuf>(
-        "SELECT * FROM commande_livres_neufs WHERE commande_id = $1 ORDER BY created_at",
-    )
+    let lignes = sqlx::query_as::<_, CommandeLivreNeuf>(&format!(
+        "SELECT {} FROM commande_livres_neufs WHERE commande_id = $1 ORDER BY created_at",
+        COMMANDE_LIVRES_NEUFS_PROJECTION
+    ))
     .bind(commande_id)
     .fetch_all(&state.pg)
     .await
@@ -3948,9 +3975,10 @@ pub async fn patch_ligne_neuf_prix(
         ));
     }
 
-    let ligne = sqlx::query_as::<_, CommandeLivreNeuf>(
-        "SELECT * FROM commande_livres_neufs WHERE id = $1 AND commande_id = $2",
-    )
+    let ligne = sqlx::query_as::<_, CommandeLivreNeuf>(&format!(
+        "SELECT {} FROM commande_livres_neufs WHERE id = $1 AND commande_id = $2",
+        COMMANDE_LIVRES_NEUFS_PROJECTION
+    ))
     .bind(ligne_id)
     .bind(commande_id)
     .fetch_optional(&state.pg)
@@ -4069,17 +4097,19 @@ async fn fetch_commande_details(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
-    let livres_neufs = sqlx::query_as::<_, CommandeLivreNeuf>(
-        "SELECT * FROM commande_livres_neufs WHERE commande_id = $1",
-    )
+    let livres_neufs = sqlx::query_as::<_, CommandeLivreNeuf>(&format!(
+        "SELECT {} FROM commande_livres_neufs WHERE commande_id = $1",
+        COMMANDE_LIVRES_NEUFS_PROJECTION
+    ))
     .bind(commande_id)
     .fetch_all(pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
-    let livres_occasion = sqlx::query_as::<_, CommandeLivreOccasion>(
-        "SELECT * FROM commande_livres_occasion WHERE commande_id = $1",
-    )
+    let livres_occasion = sqlx::query_as::<_, CommandeLivreOccasion>(&format!(
+        "SELECT {} FROM commande_livres_occasion WHERE commande_id = $1",
+        COMMANDE_LIVRES_OCCASION_PROJECTION
+    ))
     .bind(commande_id)
     .fetch_all(pg)
     .await

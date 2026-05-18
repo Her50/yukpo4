@@ -113,7 +113,10 @@ impl CommandeStatut {
 pub struct CommandeLivreNeuf {
     pub id: Uuid,
     pub commande_id: Uuid,
-    pub programme_scolaire_id: Option<Uuid>,
+    // ✅ FIX 2026-05-18 — colonne `programme_scolaire_id` est INTEGER en DB
+    // (référence à programmes_scolaires.id SERIAL). Le modèle déclarait
+    // Option<Uuid> ce qui faisait échouer le decode lors d'un SELECT.
+    pub programme_scolaire_id: Option<i32>,
     pub titre: String,
     pub auteur: Option<String>,
     pub editeur: Option<String>,
