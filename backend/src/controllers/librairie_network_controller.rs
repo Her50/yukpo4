@@ -4143,8 +4143,13 @@ async fn calculer_totaux_commande(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     commande_id: Uuid,
 ) -> Result<TotauxCommande, AppError> {
+    // ✅ FIX 2026-05-18 — `prix_final` (NUMERIC) × `quantite` (INTEGER) = NUMERIC.
+    // Le décodage en `Option<f64>` (FLOAT8) plantait au runtime avec :
+    // "Rust type Option<f64> (as SQL type FLOAT8) is not compatible with NUMERIC".
+    // Cast explicite ::DOUBLE PRECISION pour aligner sur le type Rust attendu.
+    // Bug révélé par sim E2E itér 4 : 100 % des POST /valider-budget tombaient en 500.
     let total_neufs: f64 = sqlx::query_scalar::<_, Option<f64>>(
-        "SELECT COALESCE(SUM(prix_final * quantite), 0) FROM commande_livres_neufs WHERE commande_id = $1",
+        "SELECT COALESCE(SUM(prix_final * quantite), 0)::DOUBLE PRECISION FROM commande_livres_neufs WHERE commande_id = $1",
     )
     .bind(commande_id)
     .fetch_one(&mut **tx)
@@ -4153,7 +4158,7 @@ async fn calculer_totaux_commande(
         .unwrap_or(0.0);
 
     let total_occasion: f64 = sqlx::query_scalar::<_, Option<f64>>(
-        "SELECT COALESCE(SUM(prix * quantite), 0) FROM commande_livres_occasion WHERE commande_id = $1",
+        "SELECT COALESCE(SUM(prix * quantite), 0)::DOUBLE PRECISION FROM commande_livres_occasion WHERE commande_id = $1",
     )
     .bind(commande_id)
     .fetch_one(&mut **tx)
