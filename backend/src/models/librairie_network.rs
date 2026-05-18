@@ -168,12 +168,16 @@ pub struct CommandeLivreOccasion {
     pub created_at: DateTime<Utc>,
 }
 
+// ✅ FIX 2026-05-18 — type_name doit matcher l'ENUM Postgres réel
+// (`livre_validation_statut`), pas `varchar`. Sinon erreur runtime au
+// decode : "mismatched type ... as SQL type varchar is not compatible
+// with livre_validation_statut". Même pattern que CommandeStatut.
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+#[sqlx(type_name = "livre_validation_statut", rename_all = "snake_case")]
 pub enum LivreValidationStatut {
     EnAttente,         // En attente de validation librairie
     Valide,            // Validé par librairie
-    Indisponible,      // Librairie n'a pas ce livre
+    Indisponible,      // Librairie n'a pas ce libre
     EnCoursValidation, // Librairie en train de valider
 }
 
@@ -188,8 +192,10 @@ impl LivreValidationStatut {
     }
 }
 
+// ✅ FIX 2026-05-18 — même bug : colonne `commande_livres_occasion.statut`
+// est l'ENUM Postgres `livre_occasion_statut`, pas varchar.
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+#[sqlx(type_name = "livre_occasion_statut", rename_all = "snake_case")]
 pub enum LivreOccasionStatut {
     Disponible,
     Reserve,
