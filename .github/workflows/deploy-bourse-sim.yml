@@ -21,7 +21,7 @@ on:
 env:
   FLY_APP: yukpo-bourse-sim
   FLY_REGION: cdg
-  FLY_CONFIG: backend/fly.staging.toml
+  FLY_CONFIG: fly.staging.toml
 
 concurrency:
   group: deploy-bourse-sim-${{ github.ref }}
@@ -77,11 +77,12 @@ jobs:
           NO_COLOR: "1"
         run: |
           set +e
+          cd backend
           flyctl deploy \
             --app "$FLY_APP" \
             --config "$FLY_CONFIG" \
             --local-only \
-            --dockerfile backend/Dockerfile.fly \
+            --dockerfile Dockerfile.fly \
             --strategy rolling \
             --wait-timeout 900 \
             --verbose > /tmp/deploy-output.log 2>&1
