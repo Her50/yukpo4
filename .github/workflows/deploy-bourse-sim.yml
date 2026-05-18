@@ -43,7 +43,7 @@ jobs:
 
       - name: Verify Fly auth + scope (refuse if FLY_APP=prod)
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_BOURSE_SIM }}
         run: |
           flyctl auth whoami
           if [ "$FLY_APP" = "yukpo-fly-backend" ]; then
@@ -73,7 +73,7 @@ jobs:
 
       - name: Deploy to Fly staging (capture log + upload to 0x0.st on failure)
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_BOURSE_SIM }}
           NO_COLOR: "1"
         run: |
           set +e
@@ -97,7 +97,7 @@ jobs:
 
       - name: Smoke test /health on staging
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_BOURSE_SIM }}
         run: |
           sleep 20
           HEALTH_URL="https://${FLY_APP}.fly.dev/health"
@@ -118,7 +118,7 @@ jobs:
       - name: Show staging app status
         if: always()
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_BOURSE_SIM }}
         run: |
           flyctl status --app "$FLY_APP" || true
           flyctl machine list --app "$FLY_APP" || true
