@@ -128,6 +128,10 @@ impl TrocIntelligentService {
         let classe_act_variants = classe_match_variants(&livre_offert.classe_souhaitee);
         let classe_souh_variants = classe_match_variants(&livre_offert.classe_actuelle);
         let matiere_canon = canonical(&livre_offert.matiere);
+        // ✅ FIX 2026-05-18 (bug G) — exclure maternelle et primaire :
+        // règle métier validée user. Seul le secondaire (général ou technique)
+        // est éligible au matching troc/vente occasion. Filtre côté SQL pour
+        // éviter de retourner des candidats illégaux à l'algorithme amont.
         let livres_candidates = sqlx::query_as::<_, LivreScolaire>(
             r#"
             SELECT * FROM livres_scolaires
@@ -140,6 +144,8 @@ impl TrocIntelligentService {
             AND LOWER(BTRIM(matiere)) = $5
             AND COALESCE(etat_classification, 'acceptable') != 'rejete'
             AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')
+            AND LOWER(COALESCE(niveau, '')) NOT LIKE '%primaire%'
+            AND LOWER(COALESCE(niveau, '')) NOT LIKE '%maternel%'
             ORDER BY created_at DESC
             LIMIT 50
             "#,

@@ -21442,10 +21442,14 @@ pub async fn ensure_commande_livres_neufs_bornes_columns(pool: &PgPool) -> Resul
 pub async fn ensure_libraire_team_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("📚 Vérification/création table libraire_team_members...");
 
+    // ✅ FIX 2026-05-18 (bug I) — librairie_id était INTEGER alors que
+    // librairie_partners.id est UUID → JOIN cassé avec
+    // "operator does not exist: integer = uuid" (sim itér 5).
+    // Le type doit être UUID + FK vers librairie_partners.id.
     sqlx::query(
         r#"CREATE TABLE IF NOT EXISTS libraire_team_members (
             id SERIAL PRIMARY KEY,
-            librairie_id INTEGER NOT NULL,
+            librairie_id UUID NOT NULL REFERENCES librairie_partners(id) ON DELETE CASCADE,
             user_id INTEGER NOT NULL REFERENCES users(id),
             role VARCHAR(20) NOT NULL DEFAULT 'preparer',
             nom_affiche VARCHAR(255),
