@@ -1318,7 +1318,6 @@ pub async fn broadcast_commande_librairies(
         // qui doublonnait la commande. Décision business : Yukpo gère à son
         // rythme.
         let _ = delai_s; // conservé pour compat audit log
-        let _ = timeout_at;
         let mut tx = state
             .pg
             .begin()
@@ -1384,10 +1383,12 @@ pub async fn broadcast_commande_librairies(
             "#,
         )
         .bind(payload.commande_id)
+        // ✅ FIX 2026-05-18 — timeout_at retiré (Yukpo Librairie priorité
+        // permanente, plus de délai). Audit log conserve `delai_s` historique.
         .bind(serde_json::json!({
             "gps_livraison": gps_livraison,
             "delai_s": delai_s,
-            "timeout_at": timeout_at.to_rfc3339(),
+            "timeout_at": serde_json::Value::Null,
         }))
         .execute(&mut *tx)
         .await
@@ -1407,7 +1408,8 @@ pub async fn broadcast_commande_librairies(
                 "type": "super_librairie_commande",
                 "commande_id": payload.commande_id.to_string(),
                 "gps_livraison": gps_livraison,
-                "timeout_at": timeout_at.to_rfc3339(),
+                // ✅ timeout_at retiré (priorité permanente Yukpo Librairie).
+                "timeout_at": serde_json::Value::Null,
             })),
         )
         .await;
