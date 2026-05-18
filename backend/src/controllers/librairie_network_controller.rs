@@ -3025,8 +3025,19 @@ pub async fn valider_livres_commande(
     // Vérifier que c'est un librairie OU un membre d'équipe avec rôle
     // autorisé à valider (manager / preparer). Le cashier (caisse) n'a pas
     // accès à la validation des prix — c'est le rôle du préparateur.
+    // SELECT explicite avec cast NUMERIC→DOUBLE PRECISION sur rating et
+    // commission_app : la struct Rust LibrairiePartner déclare ces deux champs
+    // en f64, mais la colonne DB est NUMERIC (sqlx refuse le decode direct).
     let mut librairie: Option<LibrairiePartner> = sqlx::query_as::<_, LibrairiePartner>(
-        "SELECT * FROM librairie_partners WHERE user_id = $1 AND est_actif = true AND statut = 'actif'",
+        r#"
+        SELECT id, user_id, nom, email, telephone, gps, ville, quartier,
+               rayon_service_km, statut,
+               rating::DOUBLE PRECISION AS rating,
+               temps_moyen_validation,
+               commission_app::DOUBLE PRECISION AS commission_app,
+               est_actif, horaires_ouverture, created_at, updated_at
+        FROM librairie_partners WHERE user_id = $1 AND est_actif = true AND statut = 'actif'
+        "#,
     )
     .bind(librairie_user_id)
     .fetch_optional(&state.pg)
@@ -3036,7 +3047,13 @@ pub async fn valider_livres_commande(
     if librairie.is_none() {
         librairie = sqlx::query_as::<_, LibrairiePartner>(
             r#"
-            SELECT lp.* FROM librairie_partners lp
+            SELECT lp.id, lp.user_id, lp.nom, lp.email, lp.telephone, lp.gps, lp.ville, lp.quartier,
+                   lp.rayon_service_km, lp.statut,
+                   lp.rating::DOUBLE PRECISION AS rating,
+                   lp.temps_moyen_validation,
+                   lp.commission_app::DOUBLE PRECISION AS commission_app,
+                   lp.est_actif, lp.horaires_ouverture, lp.created_at, lp.updated_at
+            FROM librairie_partners lp
             JOIN libraire_team_members tm ON tm.librairie_id = lp.id
             WHERE tm.user_id = $1
               AND tm.is_active = true

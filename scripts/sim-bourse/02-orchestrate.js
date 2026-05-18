@@ -306,7 +306,7 @@ async function phaseBroadcastCommandes(commandes, jwts) {
   for (const c of commandes) {
     const cli = client(jwts[c.user_id]);
     try {
-      const rv = await cli.post(`/api/librairie-network/commandes/${c.id}/valider-budget`, { methode_paiement: 'MobileMoney' });
+      const rv = await cli.post(`/api/librairie-network/commandes/${c.id}/valider-budget`, { commande_id: c.id, methode_paiement: 'MobileMoney' });
       if (rv.status >= 200 && rv.status < 300) validerOk++;
       else { validerErr++; trackErr(errDetailsValider, rv.status, rv.data); }
     } catch (e) {
