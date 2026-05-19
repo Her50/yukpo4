@@ -34,6 +34,7 @@ import CreationSmartService from '@/pages/CreationSmartService';
 import CourierDashboardPage from '@/pages/delivery/CourierDashboardPage';
 import CourierMyDeliveriesPage from '@/pages/delivery/CourierMyDeliveriesPage';
 import BookDeliveryFlowPage from '@/pages/delivery/BookDeliveryFlowPage';
+import SuperLibrairieOperationsPage from '@/pages/super-librairie/SuperLibrairieOperationsPage';
 import CourierRegistrationPage from '@/pages/delivery/CourierRegistrationPage';
 import DeliveryPartnersAdminPage from '@/pages/delivery/DeliveryPartnersAdminPage';
 import DeliveryHomePage from '@/pages/delivery/DeliveryHomePage';
@@ -307,6 +308,16 @@ function App() {
                             <RequireCourierValidated>
                               <BookDeliveryFlowPage />
                             </RequireCourierValidated>
+                          </RequireAuth>
+                        } />
+                        {/* ✅ 2026-05-19 MVP2 — Dashboard Yukpo Librairie : rupture
+                            grossiste batch (marquer + libérer aux libraires_proches)
+                            + assignation manuelle coursier sur paquets `constitue`.
+                            L'accès est implicitement vérifié côté backend (super-lib
+                            ou admin) ; le RequireAuth assure juste qu'on est connecté. */}
+                        <Route path="/super-librairie/operations" element={
+                          <RequireAuth>
+                            <SuperLibrairieOperationsPage />
                           </RequireAuth>
                         } />
                         <Route path={ROUTES.DELIVERY_HOME} element={
