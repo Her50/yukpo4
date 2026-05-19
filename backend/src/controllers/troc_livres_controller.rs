@@ -52,15 +52,26 @@ pub async fn find_matchings(
 
     let service = Service::new(Arc::new(state.pg.clone()));
 
-    // Rechercher les matchings directs
-    let matchings_direct = service.find_matching_direct(payload.livre_id).await.unwrap_or_default();
+    // ✅ 2026-05-19 DEBUG — Log les erreurs réelles au lieu de unwrap_or_default
+    let matchings_direct = match service.find_matching_direct(payload.livre_id).await {
+        Ok(v) => v,
+        Err(e) => {
+            log::warn!("[find_matchings] find_matching_direct({}) err: {:?}", payload.livre_id, e);
+            Vec::new()
+        }
+    };
 
-    // Rechercher les chaînes si demandé
     let matchings_chaine = if payload.include_chaines.unwrap_or(true) {
-        service
+        match service
             .find_matching_chaine(payload.livre_id, payload.max_participants)
             .await
-            .unwrap_or_default()
+        {
+            Ok(v) => v,
+            Err(e) => {
+                log::warn!("[find_matchings] find_matching_chaine({}) err: {:?}", payload.livre_id, e);
+                Vec::new()
+            }
+        }
     } else {
         Vec::new()
     };
@@ -302,9 +313,22 @@ pub async fn match_all_pending(
         // et stoppe dès qu'une chaîne valide est trouvée, donc augmenter la
         // borne supérieure n'augmente pas le coût de calcul tant qu'on trouve
         // tôt ; ça élargit juste l'espace pour les chaînes longues utiles).
-        let direct = service.find_matching_direct(livre_id).await.unwrap_or_default();
+        // ✅ 2026-05-19 DEBUG — Logue les erreurs au lieu de les avaler.
+        let direct = match service.find_matching_direct(livre_id).await {
+            Ok(v) => v,
+            Err(e) => {
+                log::warn!("[match_all_pending] find_matching_direct({}) err: {:?}", livre_id, e);
+                Vec::new()
+            }
+        };
         let chain = if direct.is_empty() {
-            service.find_matching_chaine(livre_id, Some(10)).await.unwrap_or_default()
+            match service.find_matching_chaine(livre_id, Some(10)).await {
+                Ok(v) => v,
+                Err(e) => {
+                    log::warn!("[match_all_pending] find_matching_chaine({}) err: {:?}", livre_id, e);
+                    Vec::new()
+                }
+            }
         } else {
             Vec::new()
         };
