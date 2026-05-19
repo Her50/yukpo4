@@ -13,7 +13,7 @@
 //   - 1 service "bourse-livre" par user vendeur
 //   - 1000 livres_scolaires (70% troc / 25% vente / 5% don, état 60% bon / 40% acceptable)
 //     uniquement classes secondaire général + technique
-//   - 500 livre_scolaire_demandes (cherche occasion secondaire)
+//   - 500 livres_scolaires_demandes (cherche occasion secondaire)
 //   - ~60 relations referrals
 //   - jwts.json   (ids → JWT pour 02-orchestrate.js)
 //   - users.json  (snapshot pour 02-orchestrate.js)
@@ -292,10 +292,153 @@ async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
   console.log(`    → ${inserted} livres DAG-friendly insérés (${nChains} chaînes 3-hop)`);
 }
 
+/**
+ * 2026-05-19 — Insère N chaînes MIXTES de 3 parents distincts jouant chacun
+ * un rôle différent dans la même chaîne. Validation que le DAG peut composer
+ * vendeur (source) + trocer (milieu) + acheteur (sink).
+ *
+ * Structure d'une chaîne mixte :
+ *   V (parent vendeur)  : livre Math 6e en mode='vente'           → SOURCE
+ *   T (parent trocer)   : livre Math 5e en mode='troc',
+ *                         cherche Math 6e (matche V)               → MILIEU
+ *   A (parent acheteur) : demande_occasion Math 5e via
+ *                         livre_scolaires_demandes (sink, cash)    → SINK
+ *
+ * Flux :
+ *   V → T : V donne son livre 6e à T (T paie V cash). V reçoit cash.
+ *   T → A : T donne son livre 5e à A (A paie T cash). T a maintenant
+ *           le livre 6e (qu'il a reçu de V) qui satisfait son besoin.
+ *           A reçoit le livre 5e qu'elle cherchait.
+ *
+ * 3 parents distincts, 3 rôles, 1 chaîne DAG ouverte (pas de cycle).
+ */
+async function insertMixedChainSeeds(client, parents, serviceIds, nChains) {
+  // Vérif que la table demandes existe (créée par bourse_prod_fixes wave 6)
+  const tableEx = await client.query(
+    `SELECT 1 FROM information_schema.tables WHERE table_name = 'livres_scolaires_demandes'`,
+  );
+  if (tableEx.rowCount === 0) {
+    console.warn('    ⚠ Table livres_scolaires_demandes absente — mixed seed skipped.');
+    return;
+  }
+
+  // 2 programmes Math distincts (classes différentes pour V et T)
+  const progR = await client.query(`
+    SELECT id, classe, matiere, titre_livre, niveau,
+           COALESCE(prix_officiel, 5000) AS prix_officiel
+    FROM programmes_scolaires
+    WHERE matiere IN ('Mathématiques', 'Mathematics', 'Math', 'Maths')
+      AND is_active = true
+      AND classe IN ('6ème','5ème','4ème','6e','5e','4e','Form 1','Form 2','Form 3')
+    ORDER BY classe
+    LIMIT 20
+  `);
+  if (progR.rows.length < 2) {
+    console.warn(`    ⚠ Pas assez de programmes Math distincts pour seed mixte — skipped.`);
+    return;
+  }
+  const classes = [...new Set(progR.rows.map(r => r.classe))].slice(0, 2);
+  if (classes.length < 2) {
+    console.warn(`    ⚠ Pas assez de classes Math distinctes — skipped.`);
+    return;
+  }
+  const progByClasse = {
+    [classes[0]]: progR.rows.find(r => r.classe === classes[0]),
+    [classes[1]]: progR.rows.find(r => r.classe === classes[1]),
+  };
+
+  const eligibleParents = parents.filter(p => p.role === 'user');
+  if (eligibleParents.length < nChains * 3) {
+    nChains = Math.floor(eligibleParents.length / 3);
+  }
+  const shuffled = [...eligibleParents].sort(() => Math.random() - 0.5);
+
+  let nLivres = 0;
+  let nDemandes = 0;
+  for (let i = 0; i < nChains; i++) {
+    const [vendeur, trocer, acheteur] = shuffled.slice(i * 3, i * 3 + 3);
+    if (!vendeur || !trocer || !acheteur) break;
+
+    const cV = classes[0]; // classe du livre du vendeur (= cherché par trocer)
+    const cT = classes[1]; // classe du livre du trocer (= cherché par acheteur)
+    const progV = progByClasse[cV];
+    const progT = progByClasse[cT];
+
+    // V : insère livre mode='vente' classe cV (SOURCE)
+    {
+      const prix = parseFloat(progV.prix_officiel ?? 5000) || 5000;
+      const valeur = Math.round(prix * 0.6);
+      const { gps, quartier } = randomGpsForVille(vendeur.ville);
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true)`,
+        [
+          serviceIds.get(vendeur.id), vendeur.id,
+          `[MIX-${i}-V] ${progV.titre_livre}`,
+          cV, cV /* vendeur ne cherche rien */, progV.matiere, progV.niveau,
+          valeur, valeur, progV.id, gps, vendeur.ville, quartier,
+        ],
+      );
+      nLivres++;
+    }
+
+    // T : insère livre mode='troc' classe cT (MILIEU — donne cT, cherche cV)
+    {
+      const prix = parseFloat(progT.prix_officiel ?? 5000) || 5000;
+      const valeur = Math.round(prix * 0.6);
+      const { gps, quartier } = randomGpsForVille(trocer.ville);
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true)`,
+        [
+          serviceIds.get(trocer.id), trocer.id,
+          `[MIX-${i}-T] ${progT.titre_livre}`,
+          cT, cV /* trocer cherche le livre du vendeur */, progT.matiere, progT.niveau,
+          valeur, progT.id, gps, trocer.ville, quartier,
+        ],
+      );
+      nLivres++;
+    }
+
+    // A : insère demande_occasion classe cT (SINK — cherche le livre du trocer)
+    {
+      const prix = parseFloat(progT.prix_officiel ?? 5000) || 5000;
+      const { gps, quartier } = randomGpsForVille(acheteur.ville);
+      await client.query(
+        `INSERT INTO livres_scolaires_demandes (
+          user_id, titre, matiere, classe_souhaitee, niveau,
+          budget_max_xaf, gps, ville, quartier, is_active, is_satisfied
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,false)`,
+        [
+          acheteur.id,
+          `[MIX-${i}-A] ${progT.titre_livre}`,
+          progT.matiere,
+          cT,
+          progT.niveau,
+          Math.round(prix * 0.7),
+          gps, acheteur.ville, quartier,
+        ],
+      );
+      nDemandes++;
+    }
+  }
+  console.log(
+    `    → ${nLivres} livres + ${nDemandes} demandes (mixed seed : ${nChains} chaînes V→T→A)`,
+  );
+}
+
 async function insertDemandes(client, parents, programmes) {
-  const exists = await client.query(`SELECT 1 FROM information_schema.tables WHERE table_name='livre_scolaire_demandes'`);
+  const exists = await client.query(`SELECT 1 FROM information_schema.tables WHERE table_name='livres_scolaires_demandes'`);
   if (exists.rowCount === 0) {
-    console.warn('⚠️  Table livre_scolaire_demandes absente — saut. Relancer après auto-migrate.');
+    console.warn('⚠️  Table livres_scolaires_demandes absente — saut. Relancer après auto-migrate.');
     return 0;
   }
   for (let i = 0; i < N_DEMANDES; i++) {
@@ -304,7 +447,7 @@ async function insertDemandes(client, parents, programmes) {
     const budget = randInt(1000, 5000);
     const { gps, quartier } = randomGpsForVille(user.ville);
     await client.query(`
-      INSERT INTO livre_scolaire_demandes (user_id, titre, matiere, classe_souhaitee, niveau, budget_max_xaf, gps, ville, quartier, is_active, is_satisfied)
+      INSERT INTO livres_scolaires_demandes (user_id, titre, matiere, classe_souhaitee, niveau, budget_max_xaf, gps, ville, quartier, is_active, is_satisfied)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, false)
     `, [user.id, prog.titre_livre, prog.matiere, prog.classe, prog.niveau, budget, gps, user.ville, quartier]);
   }
@@ -345,6 +488,15 @@ async function main() {
     if (N_FORCE_DAG > 0) {
       console.log(`  • Insertion ${N_FORCE_DAG} chaînes DAG forcées (3 parents × ${N_FORCE_DAG})…`);
       await insertDagChainSeeds(client, parents, serviceIds, N_FORCE_DAG);
+    }
+
+    // ✅ 2026-05-19 — Seed chaînes MIXTES Vendeur→Trocer→Acheteur (3 parents
+    // distincts, 3 rôles dans 1 même chaîne) pour exercer la richesse complète
+    // du DAG. Activable via SIM_FORCE_MIXED_CHAINS=N.
+    const N_FORCE_MIXED = parseInt(process.env.SIM_FORCE_MIXED_CHAINS ?? '0', 10);
+    if (N_FORCE_MIXED > 0) {
+      console.log(`  • Insertion ${N_FORCE_MIXED} chaînes mixtes V→T→A forcées…`);
+      await insertMixedChainSeeds(client, parents, serviceIds, N_FORCE_MIXED);
     }
 
     console.log(`  • Insertion ${N_DEMANDES} demandes occasion…`);

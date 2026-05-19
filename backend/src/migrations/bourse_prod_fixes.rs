@@ -71,10 +71,15 @@ pub async fn ensure_bourse_prod_ready(pool: &PgPool) {
             r#"CREATE INDEX IF NOT EXISTS idx_audit_logs_user_action ON audit_logs(user_id, action, created_at DESC)"#,
         ),
 
-        // ─── Migration 20260516_004 partielle : livre_scolaire_demandes ─
+        // ─── Migration 20260516_004 : livres_scolaires_demandes ──────────
+        // ✅ FIX 2026-05-19 (bug nommage) — le code prod utilise le PLURIEL
+        // `livres_scolaires_demandes` (cf. troc_intelligent_service.rs:311
+        // et autres). Mon précédent CREATE TABLE en singulier était invisible
+        // pour l'algo DAG. + colonnes matched_chaine_id et expires_at
+        // requises par find_matching_chaine pour matcher les acheteurs sinks.
         (
-            "livre_scolaire_demandes table",
-            r#"CREATE TABLE IF NOT EXISTS livre_scolaire_demandes (
+            "livres_scolaires_demandes table",
+            r#"CREATE TABLE IF NOT EXISTS livres_scolaires_demandes (
                 id BIGSERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 titre TEXT NOT NULL,
@@ -89,13 +94,15 @@ pub async fn ensure_bourse_prod_ready(pool: &PgPool) {
                 is_active BOOLEAN NOT NULL DEFAULT TRUE,
                 is_satisfied BOOLEAN NOT NULL DEFAULT FALSE,
                 satisfied_at TIMESTAMPTZ,
+                matched_chaine_id INTEGER,
+                expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '60 days'),
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )"#,
         ),
         (
-            "livre_scolaire_demandes idx active",
-            r#"CREATE INDEX IF NOT EXISTS idx_lsd_active ON livre_scolaire_demandes(is_active, classe_souhaitee) WHERE is_active = TRUE AND is_satisfied = FALSE"#,
+            "livres_scolaires_demandes idx active",
+            r#"CREATE INDEX IF NOT EXISTS idx_lssd_active ON livres_scolaires_demandes(is_active, classe_souhaitee) WHERE is_active = TRUE AND is_satisfied = FALSE"#,
         ),
 
         // ─── Migration 20260519_001 (re-affirmation) : is_packaged ─────
