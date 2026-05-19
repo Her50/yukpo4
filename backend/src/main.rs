@@ -2747,6 +2747,14 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // que YL oublie de traiter reste éternellement bloquée silencieusement.
     yukpomnang_backend::services::commande_stale_watchdog::spawn_worker(app_state.clone());
 
+    // ✅ 2026-05-19 MVP4 — Worker auto-suggestion clusters paquets → coursier.
+    // Cron 1h. Détecte les paquets `constitue` sans coursier, les groupe par
+    // bucket GPS, trouve le coursier `active` le plus proche du centre cluster
+    // (rayon 20 km max), et envoie une notif aux super-libraires : "X paquets
+    // groupés → coursier Y à Z km, valider la tournée ?". YL clique 1 fois sur
+    // /packages/assign-batch pour finaliser. Désactivable via YUKPO_LIB_OPT_ENABLED.
+    yukpomnang_backend::services::courier_assignment_optimizer::spawn_worker(app_state.clone());
+
     // ✅ 2026-05-19 MVP1 — Worker expirer-libraires-proches. Cron 1h.
     // Quand Yukpo Lib libère un article rupture vers les libraires_proches
     // (POST /super-librairie/liberer-articles) avec expire_at = NOW() + 48h,

@@ -6641,6 +6641,139 @@ pub async fn list_unassigned_packages(
     })))
 }
 
+/// POST /api/bourse-livre/v2/packages/assign-batch
+///
+/// 2026-05-19 MVP4 — Assignation batch d'un coursier à N paquets en 1 appel.
+/// Indispensable pour le workflow auto-suggestion clusters géographiques :
+/// quand un cluster de 10 paquets est suggéré, YL clique 1 fois → tous
+/// les paquets passent à coursier_id en TX atomique.
+///
+/// Body : `{ package_ids: [i32], coursier_user_id: i32 }`
+///
+/// Auth : admin ou super-libraire actif.
+/// Réponse : `{ assigned: N, skipped: M (déjà pris ou statut!=constitue), errors }`
+#[derive(Debug, serde::Deserialize)]
+pub struct AssignBatchPayload {
+    pub package_ids: Vec<i32>,
+    pub coursier_user_id: i32,
+}
+
+pub async fn admin_assign_courier_batch(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<AssignBatchPayload>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+
+    // Auth : admin direct, sinon super-libraire actif.
+    let is_admin = ensure_admin_role(&user).is_ok();
+    if !is_admin {
+        let row = sqlx::query(
+            "SELECT 1 FROM librairie_partners WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true LIMIT 1",
+        )
+        .bind(user.id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+        if row.is_none() {
+            return Err(AppError::Forbidden("Réservé admin ou super-libraire".into()));
+        }
+    }
+
+    if payload.package_ids.is_empty() {
+        return Err(AppError::BadRequest("package_ids vide".into()));
+    }
+
+    // Coursier actif ?
+    let courier_check = sqlx::query("SELECT id FROM couriers WHERE user_id = $1 AND status = 'active' LIMIT 1")
+        .bind(payload.coursier_user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lookup coursier: {}", e)))?;
+    if courier_check.is_none() {
+        return Err(AppError::BadRequest(
+            "Coursier introuvable ou non actif".into(),
+        ));
+    }
+
+    // Tx atomique : pour chaque package_id, UPDATE conditionnel.
+    let mut tx = state.pg.begin().await.map_err(|e| AppError::Internal(format!("Erreur tx: {}", e)))?;
+
+    let mut assigned = 0i32;
+    let mut skipped: Vec<i32> = Vec::new();
+    let mut destinataires_notif: Vec<i32> = Vec::new();
+
+    for pkg_id in &payload.package_ids {
+        let r = sqlx::query(
+            r#"
+            UPDATE book_delivery_packages
+            SET coursier_id = $1, matching_status = 'matched', updated_at = NOW()
+            WHERE id = $2 AND statut = 'constitue' AND coursier_id IS NULL
+            RETURNING id, destinataire_id
+            "#,
+        )
+        .bind(payload.coursier_user_id)
+        .bind(pkg_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update {}: {}", pkg_id, e)))?;
+
+        if let Some(row) = r {
+            assigned += 1;
+            if let Ok(d) = row.try_get::<Option<i32>, _>("destinataire_id") {
+                if let Some(did) = d {
+                    destinataires_notif.push(did);
+                }
+            }
+        } else {
+            skipped.push(*pkg_id);
+        }
+    }
+
+    tx.commit().await.map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
+
+    info!(
+        "[admin_assign_courier_batch] user {} → coursier {} : {} assignés, {} skipped",
+        user.id, payload.coursier_user_id, assigned, skipped.len()
+    );
+
+    // Notifs hors tx
+    if assigned > 0 {
+        let _ = sqlx::query(
+            "INSERT INTO push_notifications (user_id, title, body, data, created_at) VALUES ($1, 'Tournée attribuée', $2, $3, NOW())",
+        )
+        .bind(payload.coursier_user_id)
+        .bind(format!(
+            "{} paquet(s) à livrer — Yukpo Librairie t'a confié cette tournée.",
+            assigned
+        ))
+        .bind(json!({
+            "type": "book_courier_batch_assigned",
+            "package_ids": payload.package_ids,
+            "nb_assigned": assigned,
+        }))
+        .execute(&state.pg)
+        .await;
+
+        for did in destinataires_notif.iter().take(20) {
+            let _ = sqlx::query(
+                "INSERT INTO push_notifications (user_id, title, body, data, created_at) VALUES ($1, 'Coursier assigné', 'Un coursier va venir te livrer tes livres.', $2, NOW())",
+            )
+            .bind(did)
+            .bind(json!({"type": "book_courier_matched", "coursier_user_id": payload.coursier_user_id}))
+            .execute(&state.pg)
+            .await;
+        }
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "assigned": assigned,
+        "skipped": skipped,
+        "coursier_user_id": payload.coursier_user_id,
+    })))
+}
+
 /// POST /api/bourse-livre/v2/packages/{id}/parent-refuse-article
 ///
 /// 2026-05-19 MVP3 — Le parent (destinataire) refuse un livre NEUF à la
