@@ -3051,10 +3051,30 @@ impl TrocIntelligentService {
         let ts = chrono::Utc::now().format("%Y%m%d%H%M%S");
         let mut created_packages = Vec::new();
 
+        // ✅ 2026-05-19 (fix business) — Quand l'expéditeur est la
+        // super-librairie Yukpo elle-même, la marge YL est déjà incluse
+        // dans le markup grossiste → prix_final. Prélever 5% par dessus
+        // reviendrait à se taxer soi-même. On identifie la super-lib
+        // pour mettre commission = 0 dans ce cas.
+        let super_lib_user_id: Option<i32> = sqlx::query_scalar(
+            "SELECT user_id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1",
+        )
+        .fetch_optional(&*self.pool)
+        .await
+        .ok()
+        .flatten();
+
         for (lib_id, (lib_user_id, _lib_nom, lib_gps, lib_adresse, dest_gps, dest_adresse, livre_ids, livres_json, valeur_totale)) in groups {
             let nombre_livres = livres_json.len() as i32;
             let reference = format!("BL-NEUF-{}-{}-{}", destinataire_id, lib_user_id, ts);
-            let commission = valeur_totale * crate::models::livre_scolaire::TAUX_COMMISSION_APP;
+            // Commission = 0 si expéditeur = super-lib YL (marge dans markup),
+            // sinon 5% pour les libraires tiers.
+            let est_super_lib = super_lib_user_id == Some(lib_user_id);
+            let commission = if est_super_lib {
+                0.0
+            } else {
+                valeur_totale * crate::models::livre_scolaire::TAUX_COMMISSION_APP
+            };
 
             // Tx : insert package + UPDATE is_packaged sur les livres en un bloc atomique.
             let mut tx = self.pool.begin().await.map_err(|e| {

@@ -974,6 +974,12 @@ pub async fn valider_budget_commande(
     }
 
     // Mettre à jour les montants
+    // ✅ 2026-05-19 (fix business) — Commission estimée à 5% pour l'engagement
+    // budget. Le calcul réel sera ré-affiné au moment de la validation finale
+    // (`build_neuf_packages_for_user`) en fonction du validateur réel :
+    //   - libraire tiers → 5% (la lib reçoit 95%)
+    //   - super-librairie YL → 0% (la marge YL est déjà dans le markup grossiste)
+    // À ce stade on prend l'estimation max (5%) pour réserver côté wallet/MoMo.
     let commission_app = totaux.total_commande * ConfigurationSysteme::COMMISSION_APP;
     let montant_net_libraires = totaux.total_commande - commission_app;
 
