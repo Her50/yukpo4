@@ -285,6 +285,11 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/packages/unassigned",
             get(bourse_livre_v2_controller::list_unassigned_packages),
         )
+        // ✅ 2026-05-19 MVP4 — Assign batch d'un coursier à N paquets (1 click YL).
+        .route(
+            "/api/bourse-livre/v2/packages/assign-batch",
+            post(bourse_livre_v2_controller::admin_assign_courier_batch),
+        )
         // ✅ 2026-05-19 MVP3 — Parent refuse un livre neuf à la réception
         // (cf. ARCHITECTURE §5 source C). Met le livre en `refuse_parent`,
         // retire du paquet, ajuste montant_a_encaisser, notifie coursier

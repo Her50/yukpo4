@@ -355,5 +355,6 @@ pub mod yukpo_ia_session_store; // YukpoIA — sessions chat persistées (Postgr
 pub mod yukpo_lib_auto_validator; // ✅ 2026-05-19 — Worker auto-validation Yukpo Librairie (débloque envoyee_super_librairie)
 pub mod expirer_libraires_proches_worker; // ✅ 2026-05-19 — Worker cron 1h : annule_rupture pour articles libérés > 48h sans preneur
 pub mod commande_stale_watchdog; // ✅ 2026-05-19 — Worker cron 6h : alerte YL si commande validee_complete > 48h sans paquet
+pub mod courier_assignment_optimizer; // ✅ 2026-05-19 MVP4 — Worker cron 1h : clusters paquets + suggestion coursier proche
 pub mod yukpo_openai_outbound; // YukpoIA — client OpenAI partagé, concurrence, retries 429
 pub mod yukposhop_distribution_worker; // ✅ 2026-05-14 Piste 4 Phase B — worker queue distribution sociale // ✅ 2026-05-15 Phase B2.2 — worker rappels prise médicament
