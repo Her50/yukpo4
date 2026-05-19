@@ -1162,14 +1162,14 @@ pub async fn valider_budget_commande(
 
     // Créer transaction agrégée
     let reference_paiement = generate_reference("PAY");
-    // ✅ FIX 2026-05-18 (bug K) — `methode_paiement` est un ENUM Postgres
-    // custom. Sans cast explicite $4::methode_paiement, sqlx encode la String
-    // Rust en varchar et Postgres renvoie 500 :
-    //   "column methode_paiement is of type methode_paiement but expression
-    //    is of type character varying"
-    // Pattern identique aux fix C (LibrairieStatut). Cast SQL minimal —
-    // ne pas toucher au RETURNING pour ne pas casser le décodage des enums
-    // Rust (MethodePaiement, TransactionStatut) qui doivent rester typés.
+    // ✅ FIX 2026-05-18 (bug K + L v2) — 2 problèmes cumulés à fixer :
+    // (K) `methode_paiement` ENUM Postgres custom : cast $4::methode_paiement.
+    // (L) Les 3 colonnes NUMERIC (montant_total, commission_app, montant_net)
+    //     ne se décodent pas en f64 via RETURNING *. sqlx renvoie l'erreur
+    //     opaque "no column found for name: montant". RETURNING explicite
+    //     avec cast ::DOUBLE PRECISION nécessaire (les ENUMs methode_paiement
+    //     et statut restent NON castés pour décoder en MethodePaiement/
+    //     TransactionStatut via #[sqlx(type_name=...)]).
     sqlx::query_as::<_, TransactionAgregee>(
         r#"
         INSERT INTO transactions_agregees (
@@ -1177,7 +1177,13 @@ pub async fn valider_budget_commande(
             statut, reference_paiement, commission_app, montant_net
         )
         VALUES ($1, $2, $3, 'XAF', $4::methode_paiement, 'en_attente', $5, $6, $7)
-        RETURNING *
+        RETURNING id, commande_id, user_id,
+                  montant_total::DOUBLE PRECISION AS montant_total,
+                  devise, methode_paiement, statut,
+                  reference_paiement, provider_transaction_id,
+                  commission_app::DOUBLE PRECISION AS commission_app,
+                  montant_net::DOUBLE PRECISION AS montant_net,
+                  details_repartition, created_at, updated_at
         "#,
     )
     .bind(payload.commande_id)
