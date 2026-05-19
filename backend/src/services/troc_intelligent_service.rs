@@ -2889,10 +2889,257 @@ impl TrocIntelligentService {
             }
         }
 
+        // ✅ 2026-05-19 — Branche livres neufs : depuis le routage Yukpo
+        // Librairie + auto-validation, les commande_livres_neufs validés
+        // doivent aussi être regroupés en paquets (1 paquet par librairie
+        // expéditrice → 1 destinataire parent), sinon la chaîne livraison
+        // reste vide (cf. sim itér 13 : 922 livres validés → 0 paquet).
+        let neuf_user_ids: Vec<i32> = sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cm.user_id
+            FROM commande_livres_neufs cln
+            JOIN commandes_mixtes cm ON cm.id = cln.commande_id
+            WHERE cln.statut_validation = 'valide'
+              AND cln.is_packaged = false
+              AND cln.librairie_validateur_id IS NOT NULL
+            "#,
+        )
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur listing users neuf: {}", e)))?;
+
+        for user_id in neuf_user_ids {
+            match self.build_neuf_packages_for_user(user_id).await {
+                Ok(pkgs) => all_packages.extend(pkgs),
+                Err(e) => log::error!(
+                    "[TROC_INTELLIGENT] Erreur constitution paquets neuf user {}: {:?}",
+                    user_id,
+                    e
+                ),
+            }
+        }
+
         info!(
             "[TROC_INTELLIGENT] ✅ Constitution batch terminée: {} paquets total",
             all_packages.len()
         );
         Ok(all_packages)
+    }
+
+    /// Constitue les paquets de livres NEUFS validés pour un destinataire (parent).
+    /// 1 paquet = 1 librairie expéditrice → 1 destinataire (pour qu'un coursier
+    /// passe collecter chez la librairie puis livre chez le parent).
+    /// Idempotent : marque chaque livre `is_packaged = true` une fois inséré.
+    pub async fn build_neuf_packages_for_user(
+        &self,
+        destinataire_id: i32,
+    ) -> AppResult<Vec<serde_json::Value>> {
+        info!(
+            "[TROC_INTELLIGENT/NEUF] Constitution paquets livres neufs pour user {}",
+            destinataire_id
+        );
+
+        // 1. Récupérer tous les livres neufs validés non-packagés du destinataire,
+        //    avec les infos librairie (expéditeur) et l'adresse de livraison parent.
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                cln.id AS livre_id,
+                cln.titre,
+                cln.auteur,
+                cln.classe,
+                cln.matiere,
+                cln.prix_final::float8 AS prix_final,
+                cln.librairie_validateur_id,
+                lp.user_id AS librairie_user_id,
+                lp.nom AS librairie_nom,
+                lp.gps AS librairie_gps,
+                CASE
+                    WHEN lp.quartier IS NOT NULL THEN lp.ville || ', ' || lp.quartier
+                    ELSE lp.ville
+                END AS librairie_adresse,
+                cm.id AS commande_id,
+                cm.gps_livraison,
+                cm.adresse_livraison
+            FROM commande_livres_neufs cln
+            JOIN commandes_mixtes cm ON cm.id = cln.commande_id
+            JOIN librairie_partners lp ON lp.id = cln.librairie_validateur_id
+            WHERE cm.user_id = $1
+              AND cln.statut_validation = 'valide'
+              AND cln.is_packaged = false
+              AND cln.librairie_validateur_id IS NOT NULL
+            ORDER BY cln.librairie_validateur_id, cln.created_at ASC
+            "#,
+        )
+        .bind(destinataire_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération livres neufs: {}", e)))?;
+
+        if rows.is_empty() {
+            info!(
+                "[TROC_INTELLIGENT/NEUF] Aucun livre neuf en attente pour user {}",
+                destinataire_id
+            );
+            return Ok(vec![]);
+        }
+
+        use sqlx::Row;
+        // Group par librairie expéditrice (UUID).
+        let mut groups: std::collections::HashMap<
+            uuid::Uuid,
+            (
+                i32,                  // librairie_user_id (expediteur_id INTEGER)
+                String,               // librairie_nom
+                Option<String>,       // librairie_gps
+                Option<String>,       // librairie_adresse
+                Option<String>,       // destinataire_gps
+                Option<String>,       // destinataire_adresse
+                Vec<uuid::Uuid>,      // livre_ids (commande_livres_neufs)
+                Vec<serde_json::Value>, // livres_json pour le paquet
+                f64,                  // valeur_totale
+            ),
+        > = std::collections::HashMap::new();
+
+        for row in &rows {
+            let lib_id: uuid::Uuid = row.get("librairie_validateur_id");
+            let lib_user_id: i32 = row.get("librairie_user_id");
+            let lib_nom: String = row.get("librairie_nom");
+            let lib_gps: Option<String> = row.try_get("librairie_gps").ok();
+            let lib_adresse: Option<String> = row.try_get("librairie_adresse").ok();
+            let dest_gps: Option<String> = row.try_get("gps_livraison").ok();
+            let dest_adresse: Option<String> = row.try_get("adresse_livraison").ok();
+            let livre_id: uuid::Uuid = row.get("livre_id");
+            let titre: String = row.get("titre");
+            let auteur: Option<String> = row.try_get("auteur").ok();
+            let classe: String = row.get("classe");
+            let matiere: String = row.get("matiere");
+            let prix_final: f64 = row.get::<f64, _>("prix_final");
+
+            let entry = groups.entry(lib_id).or_insert_with(|| {
+                (
+                    lib_user_id,
+                    lib_nom.clone(),
+                    lib_gps.clone(),
+                    lib_adresse.clone(),
+                    dest_gps.clone(),
+                    dest_adresse.clone(),
+                    Vec::new(),
+                    Vec::new(),
+                    0.0,
+                )
+            });
+
+            entry.6.push(livre_id);
+            entry.7.push(serde_json::json!({
+                "commande_livre_neuf_id": livre_id.to_string(),
+                "titre": titre,
+                "auteur": auteur,
+                "classe": classe,
+                "matiere": matiere,
+                "mode": "neuf",
+                "valeur": prix_final,
+                "prix": prix_final,
+                "vendeur_id": lib_user_id,
+                "vendeur_nom": lib_nom,
+                "vendeur_gps": lib_gps,
+                "statut": "à_collecter",
+            }));
+            entry.8 += prix_final;
+        }
+
+        let ts = chrono::Utc::now().format("%Y%m%d%H%M%S");
+        let mut created_packages = Vec::new();
+
+        for (lib_id, (lib_user_id, _lib_nom, lib_gps, lib_adresse, dest_gps, dest_adresse, livre_ids, livres_json, valeur_totale)) in groups {
+            let nombre_livres = livres_json.len() as i32;
+            let reference = format!("BL-NEUF-{}-{}-{}", destinataire_id, lib_user_id, ts);
+            let commission = valeur_totale * crate::models::livre_scolaire::TAUX_COMMISSION_APP;
+
+            // Tx : insert package + UPDATE is_packaged sur les livres en un bloc atomique.
+            let mut tx = self.pool.begin().await.map_err(|e| {
+                AppError::Internal(format!("Erreur tx paquet neuf: {}", e))
+            })?;
+
+            let insert_res = sqlx::query(
+                r#"
+                INSERT INTO book_delivery_packages (
+                    reference, expediteur_id, expediteur_gps, expediteur_adresse,
+                    destinataire_id, destinataire_gps, destinataire_adresse,
+                    livres, nombre_livres, troc_ids,
+                    valeur_totale, commission_app, statut
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'constitue')
+                "#,
+            )
+            .bind(&reference)
+            .bind(lib_user_id)
+            .bind(&lib_gps)
+            .bind(&lib_adresse)
+            .bind(destinataire_id)
+            .bind(&dest_gps)
+            .bind(&dest_adresse)
+            .bind(serde_json::json!(livres_json))
+            .bind(nombre_livres)
+            // troc_ids : on stocke les UUIDs des commande_livres_neufs en string,
+            // pour pouvoir retrouver les lignes plus tard (refusal, reversement…).
+            .bind(serde_json::json!(
+                livre_ids.iter().map(|u| u.to_string()).collect::<Vec<_>>()
+            ))
+            .bind(rust_decimal::Decimal::from_f64_retain(valeur_totale).unwrap_or_default())
+            .bind(rust_decimal::Decimal::from_f64_retain(commission).unwrap_or_default())
+            .execute(&mut *tx)
+            .await;
+
+            match insert_res {
+                Ok(_) => {
+                    // Marque tous les livres comme packagés
+                    if let Err(e) = sqlx::query(
+                        "UPDATE commande_livres_neufs SET is_packaged = true WHERE id = ANY($1)",
+                    )
+                    .bind(&livre_ids)
+                    .execute(&mut *tx)
+                    .await
+                    {
+                        let _ = tx.rollback().await;
+                        log::error!(
+                            "[TROC_INTELLIGENT/NEUF] ❌ Erreur marquage livres packagés (lib {} → user {}): {}",
+                            lib_id, destinataire_id, e
+                        );
+                        continue;
+                    }
+
+                    if let Err(e) = tx.commit().await {
+                        log::error!(
+                            "[TROC_INTELLIGENT/NEUF] ❌ Commit paquet neuf échoué (lib {} → user {}): {}",
+                            lib_id, destinataire_id, e
+                        );
+                        continue;
+                    }
+
+                    info!(
+                        "[TROC_INTELLIGENT/NEUF] ✅ Paquet neuf créé: {} (lib_user {} → user {}, {} livres, {:.0} XAF)",
+                        reference, lib_user_id, destinataire_id, nombre_livres, valeur_totale
+                    );
+                    created_packages.push(serde_json::json!({
+                        "reference": reference,
+                        "expediteur_id": lib_user_id,
+                        "destinataire_id": destinataire_id,
+                        "nombre_livres": nombre_livres,
+                        "valeur_totale": valeur_totale,
+                        "source": "commande_livres_neufs",
+                    }));
+                }
+                Err(e) => {
+                    let _ = tx.rollback().await;
+                    log::error!(
+                        "[TROC_INTELLIGENT/NEUF] ❌ Erreur création paquet neuf (lib {} → user {}): {}",
+                        lib_id, destinataire_id, e
+                    );
+                }
+            }
+        }
+
+        Ok(created_packages)
     }
 }
