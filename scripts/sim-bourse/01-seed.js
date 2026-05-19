@@ -198,6 +198,100 @@ async function insertLivres(client, parents, serviceIds, programmes) {
   return livres.length;
 }
 
+/**
+ * 2026-05-19 — Insère N triplets de parents avec connectivité 3-hop forcée
+ * en troc. Garantit que find_matching_chaine peut construire ≥ N chaînes
+ * valides (cycles équilibrés A→B→C→A multi-parents — l'essence du troc DAG).
+ *
+ * Pour chaque triplet (P0, P1, P2) on choisit :
+ *   - Matière commune (Mathématiques)
+ *   - 3 classes différentes (ex: 6e, 5e, 4e)
+ *   - P0 : livre classe[0], cherche classe[1]
+ *   - P1 : livre classe[1], cherche classe[2]
+ *   - P2 : livre classe[2], cherche classe[0]
+ *
+ * Résultat matching : livre(P0) ↦ besoin(P1), livre(P1) ↦ besoin(P2),
+ * livre(P2) ↦ besoin(P0). Cycle 3-hop équilibré valide.
+ */
+async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
+  // Récupère 3 programmes Math distincts (3 classes différentes) actifs
+  const progR = await client.query(`
+    SELECT id, classe, matiere, titre_livre, niveau,
+           COALESCE(prix_officiel, 5000) AS prix_officiel
+    FROM programmes_scolaires
+    WHERE matiere IN ('Mathématiques', 'Mathematics', 'Math', 'Maths')
+      AND is_active = true
+      AND classe IN ('6ème','5ème','4ème','6e','5e','4e','Form 1','Form 2','Form 3')
+    ORDER BY classe
+    LIMIT 30
+  `);
+  if (progR.rows.length < 3) {
+    console.warn(`    ⚠ Pas assez de programmes Math distincts (${progR.rows.length}) — DAG seed skipped.`);
+    return;
+  }
+  // On garde 3 classes les + différentes
+  const classes = [...new Set(progR.rows.map(r => r.classe))].slice(0, 3);
+  if (classes.length < 3) {
+    console.warn(`    ⚠ Pas assez de classes Math distinctes (${classes.length}) — DAG seed skipped.`);
+    return;
+  }
+  const progByClasse = {};
+  for (const c of classes) {
+    progByClasse[c] = progR.rows.find(r => r.classe === c);
+  }
+
+  // Sélectionne 3 × nChains parents distincts (skip ceux qui ne sont pas 'user')
+  const eligibleParents = parents.filter(p => p.role === 'user');
+  if (eligibleParents.length < nChains * 3) {
+    console.warn(
+      `    ⚠ Pas assez de parents (${eligibleParents.length}) pour ${nChains} chaînes — réduit.`,
+    );
+    nChains = Math.floor(eligibleParents.length / 3);
+  }
+  const shuffled = [...eligibleParents].sort(() => Math.random() - 0.5);
+
+  let inserted = 0;
+  for (let i = 0; i < nChains; i++) {
+    const triplet = shuffled.slice(i * 3, i * 3 + 3);
+    for (let k = 0; k < 3; k++) {
+      const p = triplet[k];
+      const classeActuelle = classes[k];
+      const classeSouhaitee = classes[(k + 1) % 3]; // cycle
+      const prog = progByClasse[classeActuelle];
+      const prixOfficiel = parseFloat(prog.prix_officiel ?? 5000) || 5000;
+      const valeurCalculee = Math.round(prixOfficiel * 0.6);
+      const { gps, quartier } = randomGpsForVille(p.ville);
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,
+          'offre_demande','pending',$10,$11,$12,true
+        )`,
+        [
+          serviceIds.get(p.id),
+          p.id,
+          `[DAG-${i}] ${prog.titre_livre}`,
+          classeActuelle,
+          classeSouhaitee,
+          prog.matiere,
+          prog.niveau,
+          valeurCalculee,
+          prog.id,
+          gps,
+          p.ville,
+          quartier,
+        ],
+      );
+      inserted++;
+    }
+  }
+  console.log(`    → ${inserted} livres DAG-friendly insérés (${nChains} chaînes 3-hop)`);
+}
+
 async function insertDemandes(client, parents, programmes) {
   const exists = await client.query(`SELECT 1 FROM information_schema.tables WHERE table_name='livre_scolaire_demandes'`);
   if (exists.rowCount === 0) {
@@ -240,6 +334,18 @@ async function main() {
 
     console.log(`  • Insertion ${N_LIVRES} livres_scolaires…`);
     const nLivres = await insertLivres(client, parents, serviceIds, programmes);
+
+    // ✅ 2026-05-19 — Seed DAG-friendly OPTIONNEL pour tester find_matching_chaine.
+    // Sans connectivité forcée, le seed aléatoire produit ~0 chaînes valides
+    // (probabilité ≈ 0 de matcher classe + matière à 3 hops). Cette phase
+    // crée N triplets de parents avec connectivité 3-hop garantie en troc.
+    //
+    // Activable via env SIM_FORCE_DAG_CHAINS=10 (default 0 = pas de seed forcé).
+    const N_FORCE_DAG = parseInt(process.env.SIM_FORCE_DAG_CHAINS ?? '0', 10);
+    if (N_FORCE_DAG > 0) {
+      console.log(`  • Insertion ${N_FORCE_DAG} chaînes DAG forcées (3 parents × ${N_FORCE_DAG})…`);
+      await insertDagChainSeeds(client, parents, serviceIds, N_FORCE_DAG);
+    }
 
     console.log(`  • Insertion ${N_DEMANDES} demandes occasion…`);
     const nDemandes = await insertDemandes(client, parents, programmes);
