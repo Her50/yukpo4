@@ -157,7 +157,7 @@ const RupturesTab: React.FC = () => {
       {/* Liste */}
       <div className="lg:col-span-2">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-slate-900">Commandes</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{t('yukpoLib.ops.commandes', 'Commandes')}</h2>
           <Button variant="outline" size="sm" onClick={loadCommandes}>
             <RefreshCw className="w-4 h-4 mr-1" /> Refresh
           </Button>
