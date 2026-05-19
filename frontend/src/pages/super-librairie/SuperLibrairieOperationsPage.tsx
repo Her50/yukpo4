@@ -39,7 +39,7 @@ import {
 } from '@/services/superLibrairieOpsApi';
 import formatCurrency from '@/utils/formatCurrency';
 
-type Tab = 'ruptures' | 'coursiers';
+type Tab = 'ruptures' | 'coursiers' | 'invite';
 
 const STATUT_LABEL: Record<string, string> = {
   en_attente: 'En attente',
@@ -89,10 +89,14 @@ const SuperLibrairieOperationsPage: React.FC = () => {
           <TabButton current={tab} value="coursiers" onClick={() => setTab('coursiers')}>
             <User className="w-4 h-4" /> {t('yukpoLib.ops.tabCoursiers', 'Assigner coursier')}
           </TabButton>
+          <TabButton current={tab} value="invite" onClick={() => setTab('invite')}>
+            <User className="w-4 h-4" /> {t('yukpoLib.ops.tabInvite', 'Inviter coursier')}
+          </TabButton>
         </nav>
 
         {tab === 'ruptures' && <RupturesTab />}
         {tab === 'coursiers' && <CoursiersTab />}
+        {tab === 'invite' && <InviteCoursierTab />}
       </div>
     </AppLayout>
   );
@@ -651,6 +655,108 @@ const CoursiersTab: React.FC = () => {
             </table>
           </div>
         )}
+      </section>
+    </div>
+  );
+};
+
+// =============================================================================
+// TAB 3 — Inviter coursier (2026-05-19)
+// =============================================================================
+// YL admin partage le lien /become-courier à un utilisateur Yukpo existant via
+// WhatsApp / SMS / email. L'utilisateur clique, est redirigé vers la page
+// CourierRegistrationPage et soumet sa candidature. YL super-lib (rôle manager)
+// peut ensuite valider directement via /admin/courier-applications.
+
+const InviteCoursierTab: React.FC = () => {
+  const [copied, setCopied] = useState(false);
+  const inviteUrl = `${window.location.origin}/become-courier`;
+  const waMessage = encodeURIComponent(
+    `Salut 👋,\n\nYukpo Librairie t'invite à rejoindre l'équipe coursiers Bourse du Livre ! ` +
+      `Tu pourras livrer des paquets de livres scolaires aux familles pendant la rentrée 2026 et ` +
+      `gagner des revenus complémentaires.\n\nClique ici pour t'inscrire :\n${inviteUrl}\n\n` +
+      `Tu auras besoin de :\n• Une pièce d'identité (CNI)\n• Permis de conduire\n• Une moto/voiture\n• ` +
+      `5 minutes pour remplir ton profil`,
+  );
+  const waLink = `https://wa.me/?text=${waMessage}`;
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Impossible de copier le lien');
+    }
+  };
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <section className="rounded-lg border border-slate-200 bg-white p-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-2">
+          Lien d'invitation coursier
+        </h3>
+        <p className="text-sm text-slate-600 mb-4">
+          Partage ce lien à tout utilisateur Yukpo (existant ou nouveau) qui souhaite
+          devenir coursier Bourse du Livre. Une fois sa candidature soumise, tu peux la
+          valider dans <strong>/admin/courier-applications</strong>.
+        </p>
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={inviteUrl}
+            readOnly
+            className="flex-1 px-3 py-2 border border-slate-300 rounded text-sm bg-slate-50"
+          />
+          <Button onClick={copyLink} variant="outline">
+            {copied ? '✅ Copié' : 'Copier'}
+          </Button>
+        </div>
+        <a
+          href={waLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 font-medium text-sm"
+        >
+          📱 Partager via WhatsApp
+        </a>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-2">
+          Validation des candidatures
+        </h3>
+        <p className="text-sm text-slate-600 mb-4">
+          Les candidatures soumises apparaissent dans la page admin
+          <code className="px-1 py-0.5 bg-slate-100 rounded text-xs ml-1">
+            /admin/courier-applications
+          </code>
+          . Tu peux les valider ou rejeter (cette autorisation a été étendue à YL
+          super-libraire manager en plus de l'admin Yukpo platform).
+        </p>
+        <a
+          href="/admin/courier-applications"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 font-medium text-sm"
+        >
+          📋 Aller à la page d'approbation
+        </a>
+      </section>
+
+      <section className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <p className="text-xs text-blue-900">
+          💡 <strong>Workflow complet</strong> :
+        </p>
+        <ol className="text-xs text-blue-900 mt-2 space-y-1 list-decimal list-inside">
+          <li>Tu partages le lien d'invitation (WhatsApp/SMS/email)</li>
+          <li>L'utilisateur clique → s'inscrit sur /become-courier</li>
+          <li>Il soumet ses documents (CNI, permis, immatriculation, assurance)</li>
+          <li>Tu valides sa candidature (page /admin/courier-applications)</li>
+          <li>Backend crée la row couriers.status = 'active'</li>
+          <li>
+            Le coursier se connecte à la Bourse du Livre et voit l'icône{' '}
+            <strong>Espace Coursier</strong> en pied de page d'accueil — accès direct
+            à <code>/courier/bourse-livre</code> pour gérer ses paquets.
+          </li>
+        </ol>
       </section>
     </div>
   );
