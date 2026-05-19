@@ -633,13 +633,50 @@ impl TrocIntelligentService {
         let mut used_livre_ids: HashSet<i32> = HashSet::new();
         let mut chain_users: HashSet<i32> = HashSet::new();
         let mut senders_in_chain: HashSet<i32> = HashSet::new(); // Users qui envoient dans cette chaîne
+        // ✅ FIX 2026-05-19 (anomalie DAG cycles multi-hop) — adjacency list
+        // pour détecter les cycles indirects A→B→C→A. directed_pairs ne
+        // bloque que les 2-cycles directs ; les cycles 3+ hops passaient.
+        let mut adjacency: HashMap<i32, HashSet<i32>> = HashMap::new();
+
+        // Helper local : peut-on atteindre `target` depuis `start` dans le DAG actuel ?
+        // BFS borné par chain_users.len() pour rester O(n²) max.
+        fn reachable_in_dag(
+            adjacency: &HashMap<i32, HashSet<i32>>,
+            start: i32,
+            target: i32,
+        ) -> bool {
+            let mut queue: Vec<i32> = vec![start];
+            let mut visited: HashSet<i32> = HashSet::new();
+            while let Some(u) = queue.pop() {
+                if u == target {
+                    return true;
+                }
+                if !visited.insert(u) {
+                    continue;
+                }
+                if let Some(succs) = adjacency.get(&u) {
+                    for &v in succs {
+                        if !visited.contains(&v) {
+                            queue.push(v);
+                        }
+                    }
+                }
+            }
+            false
+        }
 
         // L'initiateur est toujours dans la chaîne
         chain_users.insert(initiateur_id);
 
         for edge in &edges {
-            // Anti-réciprocité: si (receiver→sender) existe, skip
+            // Anti-réciprocité directe (2-cycle): si (receiver→sender) existe, skip
             if directed_pairs.contains(&(edge.receiver_id, edge.sender_id)) {
+                continue;
+            }
+            // ✅ FIX DAG : anti-cycle multi-hop. Si depuis le receiver on peut
+            // déjà atteindre le sender dans le DAG actuel, ajouter sender→receiver
+            // créerait un cycle (sender → receiver → ... → sender). Skip.
+            if reachable_in_dag(&adjacency, edge.receiver_id, edge.sender_id) {
                 continue;
             }
             // Livre déjà utilisé ?
@@ -719,6 +756,10 @@ impl TrocIntelligentService {
             chain_users.insert(edge.sender_id);
             chain_users.insert(edge.receiver_id);
             senders_in_chain.insert(edge.sender_id);
+            adjacency
+                .entry(edge.sender_id)
+                .or_default()
+                .insert(edge.receiver_id);
             dag_edges.push(edge);
         }
 
