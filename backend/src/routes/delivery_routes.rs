@@ -3562,8 +3562,20 @@ async fn approve_courier_application_endpoint(
     Extension(user): Extension<AuthenticatedUser>,
     Path(application_id): Path<Uuid>,
 ) -> AppResult<Json<Value>> {
-    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-    ensure_admin_role(&user)?;
+    // ✅ 2026-05-19 — Autorise admin platform OU super-libraire YL (manager+).
+    // YL est le partenaire principal qui pilote la logistique livraison, il
+    // doit pouvoir valider ses propres candidats coursiers sans dépendre de
+    // l'admin Yukpo. Helper team-aware partagé pour cohérence avec le reste.
+    if ensure_admin_role(&user).is_err() {
+        if crate::utils::role_helpers::ensure_super_lib_role(&state.pg, &user, "manager")
+            .await
+            .is_err()
+        {
+            return Err(AppError::Forbidden(
+                "Réservé admin Yukpo ou super-libraire YL (rôle manager+)".into(),
+            ));
+        }
+    }
 
     let service = delivery_service(&state)?;
 
@@ -3734,8 +3746,17 @@ async fn reject_courier_application_endpoint(
     Path(application_id): Path<Uuid>,
     Json(payload): Json<ApproveRejectPayload>,
 ) -> AppResult<Json<Value>> {
-    // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-    ensure_admin_role(&user)?;
+    // ✅ 2026-05-19 — Autorise admin platform OU super-libraire YL (manager+).
+    if ensure_admin_role(&user).is_err() {
+        if crate::utils::role_helpers::ensure_super_lib_role(&state.pg, &user, "manager")
+            .await
+            .is_err()
+        {
+            return Err(AppError::Forbidden(
+                "Réservé admin Yukpo ou super-libraire YL (rôle manager+)".into(),
+            ));
+        }
+    }
 
     let service = delivery_service(&state)?;
 
