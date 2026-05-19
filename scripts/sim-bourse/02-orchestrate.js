@@ -330,21 +330,34 @@ async function phaseBroadcastCommandes(commandes, jwts) {
 // ===========================================================================
 // PHASE 9 — Validation compétitive par libraires (premier qui répond gagne)
 // ===========================================================================
+// ✅ 2026-05-19 (sim chaînes livraison) — exerce le flux validation libraire
+// bout-en-bout : récupère les vrais commande_livres_neufs.id depuis la DB
+// et les passe en `livres_valides`. Le libraire utilise son JWT manager
+// (seedé dans libraire_team_members par 01b-seed).
 async function phaseValidationLibraires(commandes, users, jwts) {
+  const pool = getPool();
   const libraires = users.filter(u => u.partner_type === 'libraire');
+  if (libraires.length === 0) { log.phases.validation = { skipped: 'aucun libraire' }; return; }
   let ok = 0, err = 0, locked = 0;
+  let livres_total_valides = 0;
   const errDetails = {};
-  for (const c of commandes.slice(0, Math.min(commandes.length, 100))) {
+  const N = Math.min(commandes.length, 200);
+  for (let i = 0; i < N; i++) {
+    const c = commandes[i];
+    const livresR = await pool.query(`SELECT id FROM commande_livres_neufs WHERE commande_id = $1`, [c.id]);
+    const livre_ids = livresR.rows.map(r => r.id);
+    if (livre_ids.length === 0) continue;
     const shuffled = [...libraires].sort(() => Math.random() - 0.5).slice(0, 3);
     const tries = await Promise.all(shuffled.map(l =>
       client(jwts[l.id]).post('/api/librairie-network/validation/valider', {
         commande_id: c.id,
-        livres_valides: [],
-        notes_validation: `libraire ${l.id}`,
+        livres_valides: livre_ids,
+        livres_indisponibles: [],
+        notes_validation: `sim-validate-all-${l.id}`,
       }).catch(e => ({ status: 599, error: e.message }))
     ));
     const winners = tries.filter(r => r.status >= 200 && r.status < 300);
-    if (winners.length >= 1) ok++;
+    if (winners.length >= 1) { ok++; livres_total_valides += livre_ids.length; }
     if (winners.length > 1) locked++;
     for (const t of tries) {
       if (t.status >= 400 && t.status !== 409) {
@@ -352,9 +365,57 @@ async function phaseValidationLibraires(commandes, users, jwts) {
         trackErr(errDetails, t.status, t.data ?? t.error);
       }
     }
+    if ((i + 1) % 50 === 0) console.log(`    validation ${i + 1}/${N}  (ok=${ok} err=${err} verrous_simultanés=${locked})`);
   }
-  log.phases.validation = { ok, err, simultane_winners_anomalies: locked, total: Math.min(commandes.length, 100), errors: errDetails };
-  console.log(`  Validation compétitive: ${ok} OK / ${err} err / ${locked} anomalies`);
+  log.phases.validation = { ok, err, simultane_winners_anomalies: locked, total: N, livres_total_valides, errors: errDetails };
+  console.log(`  Validation compétitive: ${ok} OK / ${err} err / ${locked} anomalies / ${livres_total_valides} livres validés`);
+}
+
+// ===========================================================================
+// PHASE 9b — Admin déclenche /packages/build-all après validations
+// ===========================================================================
+async function phaseBuildPaquetsPostValidation(users, jwts) {
+  const admin = users.find(u => u.role === 'admin');
+  if (!admin) { log.phases.build_paquets_post = { skipped: 'aucun admin' }; return; }
+  const t0 = Date.now();
+  const r = await client(jwts[admin.id]).post('/api/bourse-livre/v2/packages/build-all', {});
+  log.phases.build_paquets_post = {
+    status: r.status,
+    latency_ms: Date.now() - t0,
+    packages_crees: r.data?.packages_crees ?? 0,
+    sample: Array.isArray(r.data?.packages) ? r.data.packages.slice(0, 3) : null,
+  };
+  console.log(`  /packages/build-all (admin) : status=${r.status}, packages créés=${r.data?.packages_crees ?? 0}`);
+}
+
+// ===========================================================================
+// PHASE 9c — Observation des chaînes de livraison (cœur du test)
+// ===========================================================================
+async function phaseObserveDeliveryChains(users, jwts) {
+  const pool = getPool();
+  const chainesR = await pool.query(`SELECT COUNT(*)::int AS n FROM chaines_livraison_unifiees`);
+  const paquetsR = await pool.query(`SELECT COUNT(*)::int AS n FROM book_delivery_packages`);
+  const commandesValidR = await pool.query(`SELECT statut, COUNT(*)::int AS n FROM commandes_mixtes GROUP BY statut ORDER BY 2 DESC`);
+  const livresValidR = await pool.query(`SELECT statut_validation, COUNT(*)::int AS n FROM commande_livres_neufs GROUP BY statut_validation`);
+  const librairies = loadJson('librairies.json');
+  const superLibUserId = Object.keys(librairies).find(uid => librairies[uid].est_super);
+  let routes = null;
+  if (superLibUserId) {
+    const r = await client(jwts[superLibUserId]).get('/api/librairie-network/super-librairie/delivery-routes');
+    routes = { status: r.status, n_routes: r.data?.routes?.length ?? 0, sample: (r.data?.routes ?? []).slice(0, 2) };
+  }
+  log.phases.observe_delivery_chains = {
+    chaines_livraison_db: chainesR.rows[0].n,
+    book_delivery_packages_db: paquetsR.rows[0].n,
+    commandes_par_statut: commandesValidR.rows,
+    livres_neufs_par_statut: livresValidR.rows,
+    delivery_routes: routes,
+  };
+  console.log(`  Chaînes livraison DB : ${chainesR.rows[0].n}`);
+  console.log(`  Paquets DB : ${paquetsR.rows[0].n}`);
+  console.log(`  Statuts commandes : ${commandesValidR.rows.map(r => `${r.statut}=${r.n}`).join(', ')}`);
+  console.log(`  Statuts livres neufs : ${livresValidR.rows.map(r => `${r.statut_validation}=${r.n}`).join(', ')}`);
+  if (routes) console.log(`  /delivery-routes : status=${routes.status}, ${routes.n_routes} routes`);
 }
 
 // ===========================================================================
@@ -476,6 +537,8 @@ async function main() {
     console.log('— Phase Commandes Mixtes —');       commandes = await safe('commandes_mixtes', () => phaseCommandesMixtes(users, jwts)) ?? [];
     console.log('— Phase Broadcast —');              await safe('broadcast',       () => phaseBroadcastCommandes(commandes, jwts));
     console.log('— Phase Validation compétitive —'); await safe('validation',      () => phaseValidationLibraires(commandes, users, jwts));
+    console.log('— Phase Build Paquets (post-validation) —'); await safe('build_paquets_post', () => phaseBuildPaquetsPostValidation(users, jwts));
+    console.log('— Phase Observe Delivery Chains —'); await safe('observe_delivery_chains', () => phaseObserveDeliveryChains(users, jwts));
     console.log('— Phase Wholesale Order —');        await safe('wholesale_order', () => phaseWholesaleOrder(users, jwts));
     console.log('— Phase Delivery Routes —');        await safe('delivery_routes', () => phaseDeliveryRoutes(jwts));
     console.log('— Phase Parents Contacts —');       await safe('parents_contacts',() => phaseParentsContacts(jwts));
