@@ -32,6 +32,7 @@ import CreationService from "@/pages/CreationService";
 import CreationSmartService from '@/pages/CreationSmartService';
 import CourierDashboardPage from '@/pages/delivery/CourierDashboardPage';
 import CourierMyDeliveriesPage from '@/pages/delivery/CourierMyDeliveriesPage';
+import BookDeliveryFlowPage from '@/pages/delivery/BookDeliveryFlowPage';
 import CourierRegistrationPage from '@/pages/delivery/CourierRegistrationPage';
 import DeliveryPartnersAdminPage from '@/pages/delivery/DeliveryPartnersAdminPage';
 import DeliveryHomePage from '@/pages/delivery/DeliveryHomePage';
@@ -291,6 +292,15 @@ function App() {
                         <Route path="/courier/my-deliveries" element={
                           <RequireAuth>
                             <CourierMyDeliveriesPage />
+                          </RequireAuth>
+                        } />
+                        {/* ✅ FIX 2026-05-19 (architecture Yukpo Lib) — écran coursier
+                            Bourse du Livre : voit ses paquets assignés par YL, refuse
+                            les livres trop dégradés (cancel-book), transitionne le
+                            statut paquet (constitue → en_route → livre → confirme). */}
+                        <Route path="/courier/bourse-livre" element={
+                          <RequireAuth>
+                            <BookDeliveryFlowPage />
                           </RequireAuth>
                         } />
                         <Route path={ROUTES.DELIVERY_HOME} element={

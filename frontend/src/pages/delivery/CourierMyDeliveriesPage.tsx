@@ -91,9 +91,20 @@ const CourierMyDeliveriesPage: React.FC = () => {
     return (
         <AppLayout>
             <div className="mx-auto max-w-6xl px-4 py-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">Suivre mes courses</h1>
-                    <p className="text-slate-600">Tableau de bord coursier - Gérez vos livraisons et suivez vos performances</p>
+                <div className="mb-8 flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 mb-2">Suivre mes courses</h1>
+                        <p className="text-slate-600">Tableau de bord coursier - Gérez vos livraisons et suivez vos performances</p>
+                    </div>
+                    {/* ✅ FIX 2026-05-19 — accès rapide au flow Bourse du Livre
+                        (paquets assignés par Yukpo Librairie, refus livre dégradé). */}
+                    <Link
+                        to="/courier/bourse-livre"
+                        className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-emerald-500 bg-emerald-50 px-4 py-2 text-emerald-700 hover:bg-emerald-100 font-medium"
+                    >
+                        <Package className="h-4 w-4" />
+                        Paquets Bourse du Livre
+                    </Link>
                 </div>
 
                 {/* Statistiques */}
