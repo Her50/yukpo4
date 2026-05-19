@@ -111,6 +111,36 @@ export function detectCycle(niveauNom: string): CycleId | null {
   return null;
 }
 
+// ✅ FIX 2026-05-19 (bug G frontend) — règle métier validée user :
+// les modes Occasion et Échange sont RÉSERVÉS au cycle secondaire. La maternelle
+// et le primaire ne supportent que l'achat NEUF (peu de marché occasion, livres
+// souvent annotés, et le backend rejette en 400 BadRequest si on tente).
+//
+// Helper qui accepte SOIT un nom de niveau (« Maternelle », « Primaire »…)
+// SOIT un nom de classe (« CP », « CE1 », « PS »…) — les 2 cas se présentent
+// selon la page (BrowseProgramme a niveauNom, EcolePublic a la classe).
+const CLASSES_MATERNELLE_PRIMAIRE = new Set([
+  // Maternelle francophone
+  'PS', 'MS', 'GS', 'Petite Section', 'Moyenne Section', 'Grande Section',
+  // Primaire francophone
+  'SIL', 'CP', 'CE1', 'CE2', 'CM1', 'CM2',
+  // Maternelle anglophone
+  'Nursery 1', 'Nursery 2', 'KG 1', 'KG 2',
+  // Primaire anglophone
+  'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6',
+  'Standard 1', 'Standard 2', 'Standard 3', 'Standard 4', 'Standard 5', 'Standard 6',
+].map(c => c.toLowerCase().trim()));
+
+export function isMaternelleOuPrimaire(niveauOuClasse: string | undefined | null): boolean {
+  if (!niveauOuClasse) return false;
+  const n = norm(niveauOuClasse);
+  // Test direct par classe
+  if (CLASSES_MATERNELLE_PRIMAIRE.has(n)) return true;
+  // Test via détection de cycle (« maternelle », « primary », etc.)
+  const cycle = detectCycle(niveauOuClasse);
+  return cycle === 'maternelle' || cycle === 'primaire';
+}
+
 /**
  * Retourne les SystemeScolaire applicables à un établissement.
  * - 'francophone' : tous les systèmes `langue=='fr'` du pays

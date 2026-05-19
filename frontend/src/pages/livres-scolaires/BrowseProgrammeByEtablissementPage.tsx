@@ -11,6 +11,7 @@ import ManualAddInline, { type ManualAddItem } from '../../components/livres-sco
 import {
   getSystemeById, getSystemesForPays, type PaysCode,
 } from '../../data/schoolSystems';
+import { isMaternelleOuPrimaire } from '../../data/etablissementSetup';
 import { apiGet } from '../../services/apiService';
 import { useToast } from '../../hooks/use-toast';
 import {
@@ -209,6 +210,16 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
   const hasClasseSeries = (currentClasseObj?.series?.length ?? 0) > 0;
   const classe = serieCode ? `${classeNom} ${serieCode}` : classeNom;
   const systeme: Systeme = currentSystemeObj?.langue === 'en' ? 'anglophone' : 'francophone';
+
+  // ✅ FIX 2026-05-19 (bug G frontend) — verrou métier validé user :
+  // les modes Occasion et Échange sont RÉSERVÉS au secondaire. Pour les
+  // livres de maternelle/primaire, seul l'achat Neuf est autorisé.
+  // Le backend rejette de toute façon en 400 si un livre primaire est envoyé
+  // en occasion (cf. fix G backend dans librairie_network_controller.rs),
+  // donc on s'aligne côté UI pour ne pas proposer une option qui plantera.
+  const isOccasionableNiveau = useMemo(() => {
+    return !isMaternelleOuPrimaire(niveauNom);
+  }, [niveauNom]);
 
   // ✅ 2026-05-14 : Pré-remplissage depuis query string (?classe=&mode=neuf|occasion).
   // Utilisé par le fallback rejet de VendreLivresPage : quand le livre du parent
@@ -908,20 +919,27 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                                   }`}
                                   title="Achat neuf — plein tarif, livraison rapide"
                                 >Neuf</button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setTrocIntent(i, false); }}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                    item.choix === 'occasion' && !item.troc_intent ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
-                                  }`}
-                                  title="Achat d'occasion — moins cher, sans rien donner en échange"
-                                >Occasion</button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setTrocIntent(i, true); }}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                    item.choix === 'occasion' && item.troc_intent ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
-                                  }`}
-                                  title="Échange — vous donnez votre ancien livre contre crédit"
-                                >Échange</button>
+                                {/* ✅ FIX 2026-05-19 (bug G) — Occasion/Échange réservés au secondaire.
+                                    Pour maternelle/primaire, seul Neuf est proposé (backend rejette
+                                    les autres modes en 400 BadRequest, donc on aligne l'UI). */}
+                                {isOccasionableNiveau && (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setTrocIntent(i, false); }}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                        item.choix === 'occasion' && !item.troc_intent ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                                      }`}
+                                      title="Achat d'occasion — moins cher, sans rien donner en échange"
+                                    >Occasion</button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setTrocIntent(i, true); }}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                        item.choix === 'occasion' && item.troc_intent ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                                      }`}
+                                      title="Échange — vous donnez votre ancien livre contre crédit"
+                                    >Échange</button>
+                                  </>
+                                )}
                               </div>
                             )}
                             {/* Mini-descriptif contextuel selon le mode actif */}

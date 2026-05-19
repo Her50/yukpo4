@@ -18,6 +18,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import { useParentShop } from '../../hooks/useParentShop';
 import { useUserTrocPool } from '../../hooks/useUserTrocPool';
+import { isMaternelleOuPrimaire } from '../../data/etablissementSetup';
 import { apiGet } from '../../services/apiService';
 
 interface EcolePagePublic {
@@ -391,6 +392,10 @@ export const EcoleListeScolairePage: React.FC = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { addItems, addEnfant, enfants } = useParentShop();
+  // ✅ FIX 2026-05-19 (bug G frontend) — Occasion/Échange interdits en
+  // maternelle/primaire (le backend rejette en 400). On masque l'UI pour
+  // ne proposer que Neuf sur ces niveaux.
+  const isOccasionableClasse = useMemo(() => !isMaternelleOuPrimaire(classe), [classe]);
   // ✅ 2026-05-11 : pool troc du parent pour détecter les livres qu'il
   // a déjà déposés en échange. Permet d'afficher un badge + bloquer
   // la sélection (éviter d'acheter ce qu'on a déjà troqué).
@@ -659,19 +664,25 @@ export const EcoleListeScolairePage: React.FC = () => {
                         c === 'neuf' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500'
                       }`}
                     >Neuf</button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setItemTrocIntent(a.id, false); }}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                        c === 'occasion' && !trocIntent[a.id] ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500'
-                      }`}
-                    >Occasion</button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setItemTrocIntent(a.id, true); }}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                        c === 'occasion' && trocIntent[a.id] ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-500'
-                      }`}
-                      title="Troquer mon ancien livre — Yukpo l'évalue et le crédit est appliqué à la commande."
-                    >Échange</button>
+                    {/* ✅ FIX 2026-05-19 (bug G) — Occasion/Échange masqués
+                        pour les classes maternelle/primaire (verrou métier). */}
+                    {isOccasionableClasse && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setItemTrocIntent(a.id, false); }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                            c === 'occasion' && !trocIntent[a.id] ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500'
+                          }`}
+                        >Occasion</button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setItemTrocIntent(a.id, true); }}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                            c === 'occasion' && trocIntent[a.id] ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-500'
+                          }`}
+                          title="Troquer mon ancien livre — Yukpo l'évalue et le crédit est appliqué à la commande."
+                        >Échange</button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
