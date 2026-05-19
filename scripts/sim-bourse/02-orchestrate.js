@@ -137,14 +137,17 @@ async function phaseMatching(users, jwts) {
             // n_matchings_chaines > 0.
             const chains = [];
             for (const m of matches) {
+              // ✅ FIX 2026-05-19 — Route exacte est /api/troc-livres/match
+              // (singulier), pas /matchings (pluriel). Wave 17 avait le mauvais
+              // path → 405 Method Not Allowed → chaînes jamais récupérées.
               if ((m.n_matchings_chaines ?? 0) > 0) {
                 try {
                   const r2 = await client(jwts[u.id]).post(
-                    '/api/troc-livres/matchings',
+                    '/api/troc-livres/match',
                     { livre_id: m.id, max_participants: 10 },
                   );
                   if (r2.status === 200) {
-                    const c = r2.data?.chaines ?? r2.data?.chains ?? [];
+                    const c = r2.data?.chaines ?? r2.data?.chains ?? r2.data?.matchings ?? [];
                     for (const chain of c) {
                       chains.push({ proposed_by_user: u.id, livre_id: m.id, chain });
                     }

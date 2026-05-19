@@ -586,6 +586,38 @@ impl TrocIntelligentService {
             livres_par_user.len()
         );
 
+        // ✅ 2026-05-19 DEBUG — Trace les bundles + premières arêtes pour
+        // diagnostiquer 0 chaînes retournées en sim.
+        info!(
+            "[TROC_INTELLIGENT/DEBUG] livre_offert={}, initiateur={}, tous_livres={}, demandes={}, bundles={}, edges_total={}",
+            livre_offert_id,
+            initiateur_id,
+            tous_livres.len(),
+            demandes_ouvertes.len(),
+            bundles_par_user.len(),
+            edges.len()
+        );
+        if edges.is_empty() {
+            log::warn!(
+                "[TROC_INTELLIGENT/DEBUG] ❌ 0 arête potentielle — aucun matching classe+matière+distance trouvé"
+            );
+        } else {
+            // Liste les 5 premières arêtes pour comprendre le tri
+            for (i, e) in edges.iter().take(5).enumerate() {
+                info!(
+                    "[TROC_INTELLIGENT/DEBUG] edge[{}] sender={} receiver={} livre_id={} mode={:?} dist={:.1}km classe={}→{}",
+                    i,
+                    e.sender_id,
+                    e.receiver_id,
+                    e.livre.id,
+                    e.livre.mode_listing,
+                    e.distance_km,
+                    e.livre.classe_actuelle,
+                    e.livre.classe_souhaitee
+                );
+            }
+        }
+
         // Pré-calculer le GPS de l'initiateur (centroïde initial de la chaîne)
         let initiateur_gps = Self::parse_gps(&livre_offert.gps);
 
@@ -796,7 +828,17 @@ impl TrocIntelligentService {
             }
         }
 
+        info!(
+            "[TROC_INTELLIGENT/DEBUG] DAG après greedy : {} arêtes dans la chaîne, {} users",
+            dag_edges.len(),
+            chain_users.len()
+        );
+
         if dag_edges.len() < 2 {
+            log::warn!(
+                "[TROC_INTELLIGENT/DEBUG] ❌ DAG trop court ({} arêtes < 2) — chaîne abandonnée",
+                dag_edges.len()
+            );
             // Pas assez d'arêtes pour former une chaîne intéressante
             return Ok(vec![]);
         }
