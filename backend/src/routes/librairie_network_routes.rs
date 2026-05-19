@@ -203,6 +203,15 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/super-librairie/wholesale-order",
             get(crate::controllers::librairie_network_controller::super_librairie_wholesale_order),
         )
+        // ✅ 2026-05-19 MVP1 — Cascade rupture grossiste (cf. ARCHITECTURE_WORKFLOW_YUKPO_LIBRAIRIE.md §5)
+        .route(
+            "/api/librairie-network/super-librairie/marquer-rupture-articles",
+            post(crate::controllers::librairie_network_controller::super_librairie_marquer_rupture_articles),
+        )
+        .route(
+            "/api/librairie-network/super-librairie/liberer-articles",
+            post(crate::controllers::librairie_network_controller::super_librairie_liberer_articles),
+        )
         // ========================================
         // ADMINISTRATION
         // ========================================

@@ -273,6 +273,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/courier/accept/{id}",
             post(bourse_livre_v2_controller::courier_accept_book_package),
         )
+        // ✅ 2026-05-19 MVP1 — Yukpo Lib (super-libraire ou admin) assigne
+        // manuellement un coursier validé à un paquet `constitue`.
+        .route(
+            "/api/bourse-livre/v2/packages/{id}/assign-courier",
+            post(bourse_livre_v2_controller::admin_assign_courier_to_package),
+        )
         .route(
             "/api/bourse-livre/v2/user/book-dashboard",
             get(bourse_livre_v2_controller::user_book_dashboard),

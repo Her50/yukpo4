@@ -6026,6 +6026,169 @@ pub async fn courier_accept_book_package(
     }
 }
 
+/// POST /api/bourse-livre/v2/packages/{id}/assign-courier
+///
+/// 2026-05-19 — MVP1 Yukpo Lib. Permet à un admin OU à un super-libraire
+/// d'assigner manuellement un coursier validé (statut `active`) à un paquet
+/// constitué. L'auto-assignation par le coursier reste possible via
+/// `POST /api/bourse-livre/v2/courier/accept/{id}` ; ce nouvel endpoint
+/// couvre le cas où Yukpo Librairie veut choisir le coursier (proximité,
+/// fiabilité…).
+///
+/// Body : `{ "coursier_user_id": <i32> }`
+///
+/// Erreurs :
+///   - 403 si pas admin ni super-lib
+///   - 404 si le paquet n'existe pas ou n'est pas en `constitue`
+///   - 400 si le coursier n'a pas de profil `active` dans `couriers`
+///   - 409 si le paquet est déjà assigné à un autre coursier
+#[derive(Debug, serde::Deserialize)]
+pub struct AssignCourierPayload {
+    pub coursier_user_id: i32,
+}
+
+pub async fn admin_assign_courier_to_package(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(package_id): Path<i32>,
+    Json(payload): Json<AssignCourierPayload>,
+) -> AppResult<impl IntoResponse> {
+    // Auth : admin direct OK, sinon doit être super-libraire actif.
+    let is_admin = ensure_admin_role(&user).is_ok();
+    if !is_admin {
+        let row = sqlx::query(
+            r#"
+            SELECT 1 AS ok FROM librairie_partners
+            WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
+            LIMIT 1
+            "#,
+        )
+        .bind(user.id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+        if row.is_none() {
+            return Err(AppError::Forbidden(
+                "Réservé admin ou super-libraire".to_string(),
+            ));
+        }
+    }
+
+    // Vérifier que le coursier cible est actif.
+    let courier_check = sqlx::query(
+        r#"
+        SELECT id FROM couriers
+        WHERE user_id = $1 AND status = 'active'
+        LIMIT 1
+        "#,
+    )
+    .bind(payload.coursier_user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lookup coursier: {}", e)))?;
+
+    if courier_check.is_none() {
+        return Err(AppError::BadRequest(
+            "Coursier introuvable ou non actif (statut != 'active')".to_string(),
+        ));
+    }
+
+    // Assignation atomique : refuse si déjà pris ou si pas en `constitue`.
+    let assigned = sqlx::query_scalar::<_, i32>(
+        r#"
+        UPDATE book_delivery_packages
+        SET coursier_id = $1,
+            matching_status = 'matched',
+            updated_at = NOW()
+        WHERE id = $2
+          AND statut = 'constitue'
+          AND coursier_id IS NULL
+        RETURNING id
+        "#,
+    )
+    .bind(payload.coursier_user_id)
+    .bind(package_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur assignation: {}", e)))?;
+
+    if assigned.is_none() {
+        // Distinguer "pas trouvé" vs "déjà assigné" pour message d'erreur clair.
+        let existing = sqlx::query(
+            "SELECT coursier_id, statut FROM book_delivery_packages WHERE id = $1",
+        )
+        .bind(package_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+        match existing {
+            None => return Err(AppError::NotFound("Paquet introuvable".to_string())),
+            Some(row) => {
+                let existing_courier: Option<i32> = row.try_get("coursier_id").ok();
+                let statut: Option<String> = row.try_get("statut").ok();
+                if existing_courier.is_some() {
+                    return Err(AppError::Conflict(format!(
+                        "Paquet déjà assigné (coursier {})",
+                        existing_courier.unwrap()
+                    )));
+                }
+                return Err(AppError::BadRequest(format!(
+                    "Paquet en statut '{}' (requis: 'constitue')",
+                    statut.unwrap_or_default()
+                )));
+            }
+        }
+    }
+
+    info!(
+        "[admin_assign_courier] user {} a assigné coursier {} au paquet {}",
+        user.id, payload.coursier_user_id, package_id
+    );
+
+    // Récup paquet pour notif + retour.
+    let package = sqlx::query_as::<_, BookDeliveryPackage>(
+        "SELECT * FROM book_delivery_packages WHERE id = $1",
+    )
+    .bind(package_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+
+    // Push notifs : coursier (mission attribuée) + destinataire (livraison en route).
+    if let Some(pkg) = &package {
+        let _ = sqlx::query(
+            "INSERT INTO push_notifications (user_id, title, body, data, created_at) VALUES ($1, 'Mission attribuée', 'Yukpo Librairie t''a assigné un paquet de livres à livrer.', $2, NOW())",
+        )
+        .bind(payload.coursier_user_id)
+        .bind(json!({
+            "type": "book_courier_assigned",
+            "package_id": package_id,
+            "nb_livres": pkg.nombre_livres,
+            "assigne_par_user": user.id,
+        }))
+        .execute(&state.pg)
+        .await;
+
+        let _ = sqlx::query(
+            "INSERT INTO push_notifications (user_id, title, body, data, created_at) VALUES ($1, 'Coursier assigné', 'Un coursier va venir chercher vos livres.', $2, NOW())",
+        )
+        .bind(pkg.destinataire_id)
+        .bind(json!({
+            "type": "book_courier_matched",
+            "package_id": package_id,
+        }))
+        .execute(&state.pg)
+        .await;
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "package": package,
+        "coursier_user_id": payload.coursier_user_id,
+    })))
+}
+
 /// GET /api/bourse-livre/v2/user/book-dashboard
 /// Dashboard utilisateur pour ses livres (à envoyer, à recevoir, achats)
 pub async fn user_book_dashboard(
