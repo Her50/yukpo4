@@ -2702,6 +2702,15 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         degraded_mode, // ✅ CORRIGÉ 2026-03-23: Passer le flag de mode dégradé
     ));
 
+    // ✅ 2026-05-19 — Fixes DB idempotents Bourse du Livre garantis au boot.
+    // Indépendant de sqlx::migrate!() qui peut être bloqué par une migration
+    // ancienne en erreur (pharmacy_order_qr_codes, shopping_status enum).
+    // Garantit que les tables/colonnes/enums/fonctions nécessaires au flux
+    // commande→validation→paquet→livraison→refus existent même si l'auto-
+    // migration globale est partiellement cassée. Idempotent, désactivable
+    // via BOURSE_PROD_FIXES_ENABLED=false.
+    yukpomnang_backend::migrations::bourse_prod_fixes::ensure_bourse_prod_ready(&app_state.pg).await;
+
     // ✅ 2026-05-16 — Initialise le pool Postgres pour le middleware audit_log
     // (sans cet appel, le middleware tourne mais n'insère rien dans audit_logs).
     yukpomnang_backend::middlewares::audit_log::init_from_state(&app_state).await;
