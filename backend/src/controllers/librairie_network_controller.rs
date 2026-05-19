@@ -5121,3 +5121,352 @@ pub async fn admin_list_commandes_mixtes(
         "offset": offset,
     })))
 }
+
+// ============================================================================
+// 2026-05-19 — MVP1 Yukpo Librairie : cascade rupture grossiste
+// ============================================================================
+
+/// Helper : vérifie que l'utilisateur est super-libraire actif.
+/// Retourne l'UUID de la super-librairie. Refuse sinon avec 403.
+async fn ensure_super_librairie(state: &Arc<AppState>, user_id: i32) -> AppResult<Uuid> {
+    let row = sqlx::query(
+        r#"
+        SELECT id FROM librairie_partners
+        WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::Forbidden("Accès réservé au super libraire".to_string()))?;
+    Ok(row.get::<Uuid, _>("id"))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarquerRuptureItem {
+    pub commande_id: Uuid,
+    pub livre_neuf_id: Uuid,
+    #[serde(default)]
+    pub motif: Option<String>,
+    #[serde(default)]
+    pub grossiste_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarquerRupturePayload {
+    pub ruptures: Vec<MarquerRuptureItem>,
+}
+
+/// POST /api/librairie-network/super-librairie/marquer-rupture-articles
+///
+/// Yukpo Lib (super-libraire) marque en batch des articles comme indisponibles
+/// chez le grossiste. UPDATE `commande_livres_neufs.statut_validation =
+/// 'rupture_grossiste'`. Idempotent : un livre déjà en rupture est ignoré
+/// silencieusement (counted comme `skipped`).
+///
+/// La libération vers les libraires_proches est gérée par l'endpoint
+/// `liberer-articles` qui suit, pour séparer clairement les deux étapes.
+pub async fn super_librairie_marquer_rupture_articles(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<MarquerRupturePayload>,
+) -> AppResult<impl IntoResponse> {
+    let sl_id = ensure_super_librairie(&state, user_id).await?;
+
+    if payload.ruptures.is_empty() {
+        return Err(AppError::BadRequest("ruptures vide".to_string()));
+    }
+
+    let mut marked = 0usize;
+    let mut skipped = 0usize;
+    let mut errors: Vec<serde_json::Value> = Vec::new();
+
+    for item in &payload.ruptures {
+        // Une rupture qui plante ne doit pas casser le batch entier.
+        let res = sqlx::query(
+            r#"
+            UPDATE commande_livres_neufs
+            SET statut_validation = 'rupture_grossiste',
+                grossiste_assigne_id = COALESCE($3, grossiste_assigne_id)
+            WHERE id = $1
+              AND commande_id = $2
+              AND statut_validation IN ('en_attente', 'valide')
+            RETURNING id
+            "#,
+        )
+        .bind(item.livre_neuf_id)
+        .bind(item.commande_id)
+        .bind(item.grossiste_id)
+        .fetch_optional(&state.pg)
+        .await;
+
+        match res {
+            Ok(Some(_)) => {
+                marked += 1;
+                // Log audit (silencieux si la table n'existe pas, pas critique)
+                let _ = sqlx::query(
+                    r#"
+                    INSERT INTO super_librairie_audit_log (commande_id, evenement, details)
+                    VALUES ($1, 'rupture_grossiste', $2)
+                    "#,
+                )
+                .bind(item.commande_id)
+                .bind(serde_json::json!({
+                    "livre_neuf_id": item.livre_neuf_id.to_string(),
+                    "motif": item.motif.clone().unwrap_or_else(|| "rupture_grossiste".into()),
+                    "grossiste_id": item.grossiste_id.map(|u| u.to_string()),
+                    "marque_par_user": user_id,
+                    "super_librairie_id": sl_id.to_string(),
+                }))
+                .execute(&state.pg)
+                .await;
+            }
+            Ok(None) => {
+                // Livre déjà en rupture/annulé/refusé → idempotent
+                skipped += 1;
+            }
+            Err(e) => {
+                errors.push(serde_json::json!({
+                    "livre_neuf_id": item.livre_neuf_id.to_string(),
+                    "error": e.to_string(),
+                }));
+            }
+        }
+    }
+
+    info!(
+        "[marquer_rupture_articles] super-lib {} : {} marqués, {} skipped, {} erreurs",
+        sl_id,
+        marked,
+        skipped,
+        errors.len()
+    );
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "marked": marked,
+        "skipped": skipped,
+        "errors": errors,
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LibererArticlesPayload {
+    /// IDs des livres neufs à libérer (doivent être en statut_validation = 'rupture_grossiste').
+    pub livre_neuf_ids: Vec<Uuid>,
+    /// Rayon de recherche libraires_proches en km (défaut : 20 km).
+    #[serde(default)]
+    pub rayon_km: Option<f64>,
+    /// Durée de la libération en heures avant expiration → annule_rupture (défaut : 48h).
+    #[serde(default)]
+    pub duree_heures: Option<i64>,
+}
+
+/// POST /api/librairie-network/super-librairie/liberer-articles
+///
+/// Libère vers les libraires_proches (rayon 20 km du GPS de livraison du
+/// parent) les articles préalablement marqués `rupture_grossiste`. Pour
+/// chaque article, on UPDATE en `libere_libraires` puis on INSERT/UPSERT
+/// une row `commande_validations` par libraire éligible avec
+/// `articles_libere` et `expire_at = NOW() + 48h`. Push notif aux libraires.
+///
+/// Idempotent : un livre qui n'est PAS en `rupture_grossiste` est ignoré.
+pub async fn super_librairie_liberer_articles(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<LibererArticlesPayload>,
+) -> AppResult<impl IntoResponse> {
+    let sl_id = ensure_super_librairie(&state, user_id).await?;
+
+    if payload.livre_neuf_ids.is_empty() {
+        return Err(AppError::BadRequest("livre_neuf_ids vide".to_string()));
+    }
+
+    let rayon_km = payload.rayon_km.unwrap_or(ConfigurationSysteme::RAYON_RECHERCHE_LIBRAIRIE);
+    let duree_heures = payload.duree_heures.unwrap_or(48);
+
+    // 1. Récupérer pour chaque livre : commande_id, gps_livraison, infos commande.
+    let livres_info = sqlx::query(
+        r#"
+        SELECT cln.id AS livre_id,
+               cln.commande_id,
+               cm.gps_livraison,
+               cm.reference_commande,
+               cln.statut_validation::text AS statut
+        FROM commande_livres_neufs cln
+        JOIN commandes_mixtes cm ON cm.id = cln.commande_id
+        WHERE cln.id = ANY($1)
+        "#,
+    )
+    .bind(&payload.livre_neuf_ids)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lookup livres: {}", e)))?;
+
+    let mut libere_count = 0usize;
+    let mut skipped = 0usize;
+    let mut notifications_par_user: HashMap<i32, Vec<(String, Uuid)>> = HashMap::new();
+
+    for row in &livres_info {
+        let livre_id: Uuid = row.get("livre_id");
+        let commande_id: Uuid = row.get("commande_id");
+        let gps_opt: Option<String> = row.try_get("gps_livraison").ok();
+        let reference: String = row.try_get("reference_commande").unwrap_or_default();
+        let statut: String = row.try_get("statut").unwrap_or_default();
+
+        if statut != "rupture_grossiste" {
+            skipped += 1;
+            continue;
+        }
+
+        let gps = match gps_opt.as_deref() {
+            Some(g) if !g.is_empty() => g,
+            _ => {
+                skipped += 1;
+                continue;
+            }
+        };
+
+        let (lat, lng) = match parse_gps(gps) {
+            Ok(v) => v,
+            Err(_) => {
+                skipped += 1;
+                continue;
+            }
+        };
+
+        // 2. Trouver les libraires_proches (NON super-lib).
+        let libraires = sqlx::query(
+            r#"
+            SELECT id, user_id, nom FROM librairie_partners
+            WHERE est_actif = true
+              AND statut = 'actif'
+              AND est_super_librairie = false
+              AND distance_gps($1, $2,
+                               SPLIT_PART(gps, ',', 1)::FLOAT,
+                               SPLIT_PART(gps, ',', 2)::FLOAT) <= $3
+            ORDER BY distance_gps($1, $2,
+                                 SPLIT_PART(gps, ',', 1)::FLOAT,
+                                 SPLIT_PART(gps, ',', 2)::FLOAT)
+            LIMIT 20
+            "#,
+        )
+        .bind(lat)
+        .bind(lng)
+        .bind(rayon_km)
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur recherche libraires: {}", e)))?;
+
+        if libraires.is_empty() {
+            // Pas de libraire éligible : on garde en rupture, le worker
+            // expire et fera annule_rupture après 48h sans preneur.
+            skipped += 1;
+            continue;
+        }
+
+        // 3. Tx atomique : UPDATE livre → libere_libraires + UPSERT validations.
+        let mut tx = state.pg.begin().await.map_err(|e| {
+            AppError::Internal(format!("Erreur tx libération: {}", e))
+        })?;
+
+        let updated = sqlx::query(
+            r#"
+            UPDATE commande_livres_neufs
+            SET statut_validation = 'libere_libraires'
+            WHERE id = $1 AND statut_validation = 'rupture_grossiste'
+            RETURNING id
+            "#,
+        )
+        .bind(livre_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur update livre: {}", e)))?;
+
+        if updated.is_none() {
+            tx.rollback().await.ok();
+            skipped += 1;
+            continue;
+        }
+
+        for lib_row in &libraires {
+            let lib_id: Uuid = lib_row.get("id");
+            let lib_user_id: i32 = lib_row.get("user_id");
+
+            // UPSERT-like : si une row (commande_id, librairie_id) existe en
+            // 'en_cours', on append livre_id à articles_libere ; sinon INSERT.
+            sqlx::query(
+                r#"
+                INSERT INTO commande_validations (
+                    commande_id, librairie_id, statut, verrou_exclusif,
+                    articles_libere, timestamp_libere, expire_at
+                )
+                VALUES ($1, $2, 'en_cours', false, ARRAY[$3]::uuid[], NOW(), NOW() + ($4 || ' hours')::interval)
+                ON CONFLICT (commande_id, librairie_id) WHERE statut IN ('en_cours', 'valide_partiel', 'valide_complet')
+                DO UPDATE SET
+                    articles_libere = array_append(commande_validations.articles_libere, $3),
+                    timestamp_libere = COALESCE(commande_validations.timestamp_libere, NOW()),
+                    expire_at = GREATEST(commande_validations.expire_at, NOW() + ($4 || ' hours')::interval)
+                "#,
+            )
+            .bind(commande_id)
+            .bind(lib_id)
+            .bind(livre_id)
+            .bind(duree_heures.to_string())
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur upsert validation: {}", e)))?;
+
+            notifications_par_user
+                .entry(lib_user_id)
+                .or_default()
+                .push((reference.clone(), livre_id));
+        }
+
+        tx.commit().await.map_err(|e| {
+            AppError::Internal(format!("Erreur commit libération: {}", e))
+        })?;
+
+        libere_count += 1;
+    }
+
+    // 4. Push notif aux libraires (hors tx).
+    for (lib_user_id, articles) in &notifications_par_user {
+        let count = articles.len();
+        let msg = format!(
+            "{} article(s) disponible(s) à valider (rupture grossiste) — 48h pour répondre",
+            count
+        );
+        let _ = send_notification(
+            &state,
+            *lib_user_id,
+            "Articles libérés à valider",
+            &msg,
+            Some(serde_json::json!({
+                "type": "librairie_articles_liberes",
+                "nb_articles": count,
+                "expire_in_hours": duree_heures,
+            })),
+        )
+        .await;
+    }
+
+    info!(
+        "[liberer_articles] super-lib {} : {} libérés, {} skipped, {} libraires notifiés",
+        sl_id,
+        libere_count,
+        skipped,
+        notifications_par_user.len()
+    );
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "libere_count": libere_count,
+        "skipped": skipped,
+        "libraires_notifies": notifications_par_user.len(),
+        "rayon_km": rayon_km,
+        "expire_in_hours": duree_heures,
+    })))
+}

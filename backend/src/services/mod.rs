@@ -353,5 +353,6 @@ pub mod yukpo_ia_metrics_service; // YukpoIA — métriques par route / tenant
 pub mod yukpo_ia_preprocess; // YukpoIA — Whisper + extraction PDF/office avant le prompt
 pub mod yukpo_ia_session_store; // YukpoIA — sessions chat persistées (PostgreSQL)
 pub mod yukpo_lib_auto_validator; // ✅ 2026-05-19 — Worker auto-validation Yukpo Librairie (débloque envoyee_super_librairie)
+pub mod expirer_libraires_proches_worker; // ✅ 2026-05-19 — Worker cron 1h : annule_rupture pour articles libérés > 48h sans preneur
 pub mod yukpo_openai_outbound; // YukpoIA — client OpenAI partagé, concurrence, retries 429
 pub mod yukposhop_distribution_worker; // ✅ 2026-05-14 Piste 4 Phase B — worker queue distribution sociale // ✅ 2026-05-15 Phase B2.2 — worker rappels prise médicament

@@ -1,0 +1,9 @@
+.env
+jwts.json
+users.json
+librairies.json
+sim-run.json
+deploy.log
+backend-runtime.err
+pending-migrations-errors.json
+node_modules/

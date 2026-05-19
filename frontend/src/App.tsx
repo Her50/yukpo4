@@ -6,6 +6,7 @@ import { DeliveryProvider } from '@/context/DeliveryContext';
 import { ShoppingProvider } from '@/context/ShoppingContext';
 import { Toaster } from 'react-hot-toast';
 import RequireAuth from './components/auth/RequireAuth';
+import RequireCourierValidated from './components/auth/RequireCourierValidated';
 import GPSManager from './components/GPSManager';
 import { GlobalIAStatsProvider } from './components/intelligence/GlobalIAStats';
 import { IntelligentLanguageProvider } from './components/IntelligentLanguageProvider';
@@ -289,18 +290,23 @@ function App() {
                             <CourierRegistrationPage />
                           </RequireAuth>
                         } />
+                        {/* ✅ FIX 2026-05-19 — RequireCourierValidated vérifie
+                            via GET /courier/me que l'utilisateur a bien un profil
+                            `couriers.status = 'active'`. Sinon redirige vers
+                            /become-courier. Empêche un user lambda d'accéder à
+                            l'espace coursier (et de voir des paquets vides). */}
                         <Route path="/courier/my-deliveries" element={
                           <RequireAuth>
-                            <CourierMyDeliveriesPage />
+                            <RequireCourierValidated>
+                              <CourierMyDeliveriesPage />
+                            </RequireCourierValidated>
                           </RequireAuth>
                         } />
-                        {/* ✅ FIX 2026-05-19 (architecture Yukpo Lib) — écran coursier
-                            Bourse du Livre : voit ses paquets assignés par YL, refuse
-                            les livres trop dégradés (cancel-book), transitionne le
-                            statut paquet (constitue → en_route → livre → confirme). */}
                         <Route path="/courier/bourse-livre" element={
                           <RequireAuth>
-                            <BookDeliveryFlowPage />
+                            <RequireCourierValidated>
+                              <BookDeliveryFlowPage />
+                            </RequireCourierValidated>
                           </RequireAuth>
                         } />
                         <Route path={ROUTES.DELIVERY_HOME} element={

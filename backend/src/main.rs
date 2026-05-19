@@ -2731,6 +2731,14 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // YUKPO_LIB_AUTO_VAL_INTERVAL_S.
     yukpomnang_backend::services::yukpo_lib_auto_validator::spawn_worker(app_state.clone());
 
+    // ✅ 2026-05-19 MVP1 — Worker expirer-libraires-proches. Cron 1h.
+    // Quand Yukpo Lib libère un article rupture vers les libraires_proches
+    // (POST /super-librairie/liberer-articles) avec expire_at = NOW() + 48h,
+    // ce worker bascule en annule_rupture les articles encore libere_libraires
+    // après expiration et notifie le parent. Désactivable via
+    // YUKPO_LIB_EXPIRE_ENABLED=false.
+    yukpomnang_backend::services::expirer_libraires_proches_worker::spawn_worker(app_state.clone());
+
     // ✅ OPTIMISÉ Cloud Run 2026-02-14: Lancer toutes les migrations SQLx en arrière-plan pour Cloud Run
     // ✅ CORRIGÉ 2026-04-01: Réutiliser pg_pool (déjà configuré avec PgConnectOptions + attente socket)
     //    au lieu de créer un nouveau pool avec connect_lazy(URL) qui échoue pour les Unix sockets Cloud SQL
