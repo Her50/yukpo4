@@ -4963,6 +4963,74 @@ async fn ensure_super_librairie(state: &Arc<AppState>, user_id: i32) -> AppResul
     Ok(row.get::<Uuid, _>("id"))
 }
 
+/// 2026-05-19 — Variante avec contrôle de rôle équipe granulaire.
+/// Autorise :
+///   - l'owner direct (librairie_partners.user_id = $user)
+///   - les membres de `libraire_team_members` avec rôle ≥ min_role
+///
+/// `min_role` ∈ {"manager", "cashier", "preparer"} (hiérarchie décroissante).
+/// `manager` = peut tout (rupture, libération, assign coursier).
+/// `cashier`  = transactions argent.
+/// `preparer` = lecture seule + statuts opérationnels.
+async fn ensure_super_lib_role(
+    state: &Arc<AppState>,
+    user_id: i32,
+    min_role: &str,
+) -> AppResult<Uuid> {
+    let sl_row = sqlx::query(
+        r#"
+        SELECT id, user_id FROM librairie_partners
+        WHERE est_super_librairie = true AND est_actif = true
+        LIMIT 1
+        "#,
+    )
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Aucune super-librairie active".to_string()))?;
+
+    let sl_id: Uuid = sl_row.get("id");
+    let sl_owner_id: i32 = sl_row.get("user_id");
+
+    if user_id == sl_owner_id {
+        return Ok(sl_id);
+    }
+
+    let rank = |r: &str| -> i32 {
+        match r {
+            "manager" => 3,
+            "cashier" => 2,
+            "preparer" => 1,
+            _ => 0,
+        }
+    };
+    let min_rank = rank(min_role);
+
+    let team_role: Option<String> = sqlx::query_scalar(
+        r#"
+        SELECT role FROM libraire_team_members
+        WHERE librairie_id = $1 AND accepted_user_id = $2
+        LIMIT 1
+        "#,
+    )
+    .bind(sl_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur team: {}", e)))?;
+
+    let user_role = team_role.unwrap_or_default();
+    if rank(&user_role) >= min_rank && min_rank > 0 {
+        return Ok(sl_id);
+    }
+
+    Err(AppError::Forbidden(format!(
+        "Rôle '{}' requis sur la super-librairie (rôle actuel: '{}')",
+        min_role,
+        if user_role.is_empty() { "aucun" } else { &user_role }
+    )))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct MarquerRuptureItem {
     pub commande_id: Uuid,
@@ -4992,7 +5060,8 @@ pub async fn super_librairie_marquer_rupture_articles(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<MarquerRupturePayload>,
 ) -> AppResult<impl IntoResponse> {
-    let sl_id = ensure_super_librairie(&state, user_id).await?;
+    // ✅ MVP4 — exige rôle 'manager' (owner OU team manager) pour mutation
+    let sl_id = ensure_super_lib_role(&state, user_id, "manager").await?;
 
     if payload.ruptures.is_empty() {
         return Err(AppError::BadRequest("ruptures vide".to_string()));
@@ -5097,7 +5166,8 @@ pub async fn super_librairie_liberer_articles(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<LibererArticlesPayload>,
 ) -> AppResult<impl IntoResponse> {
-    let sl_id = ensure_super_librairie(&state, user_id).await?;
+    // ✅ MVP4 — exige rôle 'manager' (owner OU team manager) pour mutation
+    let sl_id = ensure_super_lib_role(&state, user_id, "manager").await?;
 
     if payload.livre_neuf_ids.is_empty() {
         return Err(AppError::BadRequest("livre_neuf_ids vide".to_string()));
