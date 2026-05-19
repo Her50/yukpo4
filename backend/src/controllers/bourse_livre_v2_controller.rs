@@ -6554,6 +6554,93 @@ pub async fn cancel_book_on_site(
     })))
 }
 
+/// GET /api/bourse-livre/v2/packages/unassigned
+///
+/// 2026-05-19 — Liste les paquets `constitue` SANS coursier assigné. Utilisé
+/// par le dashboard Yukpo Librairie pour repérer ce qui attend une
+/// assignation manuelle (puis appel `POST /packages/{id}/assign-courier`).
+///
+/// Auth : admin OU super-libraire actif.
+/// Query params : `limit` (défaut 100, max 500).
+pub async fn list_unassigned_packages(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Query(params): Query<HashMap<String, String>>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+
+    let is_admin = ensure_admin_role(&user).is_ok();
+    if !is_admin {
+        let row = sqlx::query(
+            r#"
+            SELECT 1 FROM librairie_partners
+            WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
+            LIMIT 1
+            "#,
+        )
+        .bind(user.id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+        if row.is_none() {
+            return Err(AppError::Forbidden(
+                "Réservé admin ou super-libraire".to_string(),
+            ));
+        }
+    }
+
+    let limit: i64 = params
+        .get("limit")
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(100)
+        .clamp(1, 500);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT id, reference, expediteur_id, destinataire_id,
+               expediteur_gps, destinataire_gps, destinataire_adresse,
+               nombre_livres,
+               valeur_totale::float8 AS valeur_totale,
+               montant_net_a_payer::float8 AS montant_net_a_payer,
+               created_at, updated_at
+        FROM book_delivery_packages
+        WHERE statut = 'constitue' AND coursier_id IS NULL
+        ORDER BY created_at ASC
+        LIMIT $1
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur listing paquets: {}", e)))?;
+
+    let items: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i32, _>("id").ok(),
+                "reference": r.try_get::<String, _>("reference").ok(),
+                "expediteur_id": r.try_get::<Option<i32>, _>("expediteur_id").ok().flatten(),
+                "destinataire_id": r.try_get::<Option<i32>, _>("destinataire_id").ok().flatten(),
+                "expediteur_gps": r.try_get::<Option<String>, _>("expediteur_gps").ok().flatten(),
+                "destinataire_gps": r.try_get::<Option<String>, _>("destinataire_gps").ok().flatten(),
+                "destinataire_adresse": r.try_get::<Option<String>, _>("destinataire_adresse").ok().flatten(),
+                "nombre_livres": r.try_get::<Option<i32>, _>("nombre_livres").ok().flatten(),
+                "valeur_totale": r.try_get::<Option<f64>, _>("valeur_totale").ok().flatten(),
+                "montant_net_a_payer": r.try_get::<Option<f64>, _>("montant_net_a_payer").ok().flatten(),
+                "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok(),
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "packages": items,
+        "total": items.len(),
+        "limit": limit,
+    })))
+}
+
 /// POST /api/bourse-livre/v2/packages/{id}/parent-refuse-article
 ///
 /// 2026-05-19 MVP3 — Le parent (destinataire) refuse un livre NEUF à la

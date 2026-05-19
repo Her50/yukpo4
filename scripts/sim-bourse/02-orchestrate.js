@@ -489,6 +489,254 @@ async function phaseObserveDeliveryChains(users, jwts) {
 // ===========================================================================
 // PHASE 10 — Wholesale Order (super-librairie sim)
 // ===========================================================================
+// ===========================================================================
+// PHASE 11a — Sim 15 : ensure courier rows active (le seed crée
+// partnerType='coursier' mais pas les rows dans la table `couriers`).
+// Sans `couriers.status='active'`, mon endpoint assign-courier refusera tout.
+// Idempotent (ON CONFLICT DO NOTHING).
+// ===========================================================================
+async function phaseEnsureCouriersActive(users) {
+  const pool = getPool();
+  const coursierUsers = users.filter(u => u.role === 'partenaire' && (u.partner_type === 'coursier' || u.partnerType === 'coursier'));
+  if (coursierUsers.length === 0) {
+    log.phases.couriers_active = { skipped: 'aucun coursier seed' };
+    return;
+  }
+  let ok = 0;
+  for (const u of coursierUsers) {
+    try {
+      await pool.query(
+        `INSERT INTO couriers (user_id, status, rating_average, rating_count, hired_at)
+         VALUES ($1, 'active', 4.5, 10, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET status = 'active'`,
+        [u.id],
+      );
+      ok++;
+    } catch (_) { /* swallow */ }
+  }
+  log.phases.couriers_active = { total: coursierUsers.length, activated: ok };
+  console.log(`  Coursiers actifs seed : ${ok}/${coursierUsers.length}`);
+}
+
+// ===========================================================================
+// PHASE 11b — Sim 15 : Yukpo Lib marque rupture grossiste sur sample
+// (5 commandes × 2 livres chacune). Test POST /super-librairie/marquer-rupture-articles.
+// ===========================================================================
+async function phaseRuptureGrossiste(jwts) {
+  const pool = getPool();
+  const librairies = loadJson('librairies.json');
+  const superLibUserIdStr = Object.keys(librairies).find(uid => librairies[uid].est_super);
+  if (!superLibUserIdStr) {
+    log.phases.rupture_grossiste = { skipped: 'pas de super-lib' };
+    return;
+  }
+  const jwt = jwts[parseInt(superLibUserIdStr, 10)];
+  if (!jwt) {
+    log.phases.rupture_grossiste = { skipped: 'pas de JWT super-lib' };
+    return;
+  }
+
+  // Sample : 5 commandes validee_complete + leurs 2 premiers livres valide chacune.
+  const r = await pool.query(`
+    SELECT cln.id AS livre_id, cln.commande_id
+    FROM commande_livres_neufs cln
+    JOIN commandes_mixtes cm ON cm.id = cln.commande_id
+    WHERE cln.statut_validation = 'valide'
+      AND cm.statut IN ('validee_complete', 'validee_partielle')
+    ORDER BY cm.created_at ASC, cln.created_at ASC
+    LIMIT 10
+  `);
+  if (r.rows.length === 0) {
+    log.phases.rupture_grossiste = { skipped: 'aucun livre valide a marquer' };
+    return;
+  }
+  const ruptures = r.rows.map(row => ({
+    commande_id: row.commande_id,
+    livre_neuf_id: row.livre_id,
+    motif: 'rupture_grossiste',
+  }));
+
+  try {
+    const resp = await client(jwt).post(
+      '/api/librairie-network/super-librairie/marquer-rupture-articles',
+      { ruptures },
+    );
+    log.phases.rupture_grossiste = {
+      status: resp.status, marked: resp.data?.marked, skipped: resp.data?.skipped,
+      total_attempted: ruptures.length,
+    };
+    console.log(`  Rupture grossiste : ${resp.data?.marked} marqués / ${ruptures.length} tentés`);
+  } catch (e) {
+    log.phases.rupture_grossiste = { error: e.message, status: e.response?.status };
+    console.log(`  ❌ Rupture grossiste : ${e.message}`);
+  }
+}
+
+// ===========================================================================
+// PHASE 11c — Sim 15 : libérer les articles rupture_grossiste aux
+// libraires_proches (POST /super-librairie/liberer-articles).
+// ===========================================================================
+async function phaseLibererArticles(jwts) {
+  const pool = getPool();
+  const librairies = loadJson('librairies.json');
+  const superLibUserIdStr = Object.keys(librairies).find(uid => librairies[uid].est_super);
+  if (!superLibUserIdStr) { log.phases.liberer_articles = { skipped: 'no super-lib' }; return; }
+  const jwt = jwts[parseInt(superLibUserIdStr, 10)];
+  if (!jwt) { log.phases.liberer_articles = { skipped: 'no jwt' }; return; }
+
+  const r = await pool.query(`
+    SELECT id FROM commande_livres_neufs
+    WHERE statut_validation = 'rupture_grossiste'
+    LIMIT 20
+  `);
+  if (r.rows.length === 0) {
+    log.phases.liberer_articles = { skipped: 'aucun livre rupture' };
+    return;
+  }
+  const livre_neuf_ids = r.rows.map(x => x.id);
+  try {
+    const resp = await client(jwt).post(
+      '/api/librairie-network/super-librairie/liberer-articles',
+      { livre_neuf_ids, rayon_km: 50, duree_heures: 48 },
+    );
+    log.phases.liberer_articles = {
+      status: resp.status,
+      libere_count: resp.data?.libere_count,
+      skipped: resp.data?.skipped,
+      libraires_notifies: resp.data?.libraires_notifies,
+      total_attempted: livre_neuf_ids.length,
+    };
+    console.log(`  Libération : ${resp.data?.libere_count} libérés, ${resp.data?.libraires_notifies} libraires notifiés`);
+  } catch (e) {
+    log.phases.liberer_articles = { error: e.message, status: e.response?.status };
+    console.log(`  ❌ Libération : ${e.message}`);
+  }
+}
+
+// ===========================================================================
+// PHASE 11d — Sim 15 : test GET /packages/unassigned + assign-courier sur 10
+// ===========================================================================
+async function phaseAssignCourier(users, jwts) {
+  const pool = getPool();
+  const admin = users.find(u => u.role === 'admin');
+  if (!admin) { log.phases.assign_courier = { skipped: 'no admin' }; return; }
+  const jwt = jwts[admin.id];
+  if (!jwt) { log.phases.assign_courier = { skipped: 'no admin jwt' }; return; }
+
+  // 1. GET liste unassigned
+  let unassigned = [];
+  try {
+    const r = await client(jwt).get('/api/bourse-livre/v2/packages/unassigned?limit=20');
+    unassigned = r.data?.packages ?? [];
+  } catch (e) {
+    log.phases.assign_courier = { error_list: e.message };
+    console.log(`  ❌ GET unassigned : ${e.message}`);
+    return;
+  }
+  if (unassigned.length === 0) {
+    log.phases.assign_courier = { skipped: 'aucun paquet unassigned' };
+    return;
+  }
+
+  // 2. Sélectionner coursiers actifs
+  const coursiers = users.filter(u => u.role === 'partenaire' && (u.partner_type === 'coursier' || u.partnerType === 'coursier'));
+  if (coursiers.length === 0) {
+    log.phases.assign_courier = { skipped: 'aucun coursier' };
+    return;
+  }
+
+  // 3. Assigner 10 paquets (round-robin coursiers)
+  let ok = 0, err = 0;
+  const errDetails = {};
+  const sample = unassigned.slice(0, 10);
+  for (let i = 0; i < sample.length; i++) {
+    const pkg = sample[i];
+    const c = coursiers[i % coursiers.length];
+    try {
+      const r = await client(jwt).post(
+        `/api/bourse-livre/v2/packages/${pkg.id}/assign-courier`,
+        { coursier_user_id: c.id },
+      );
+      if (r.status >= 200 && r.status < 300) ok++;
+      else { err++; trackErr(errDetails, r.status, r.data); }
+    } catch (e) {
+      err++;
+      trackErr(errDetails, e.response?.status || e.code, e.response?.data || e.message);
+    }
+  }
+  log.phases.assign_courier = {
+    unassigned_listed: unassigned.length,
+    attempted: sample.length,
+    ok, err,
+    errors: errDetails,
+  };
+  console.log(`  Assignation coursier : ${ok} OK / ${err} err (sur ${sample.length}, ${unassigned.length} unassigned au total)`);
+}
+
+// ===========================================================================
+// PHASE 11e — Sim 15 : un parent refuse 1 livre à la réception
+// ===========================================================================
+async function phaseParentRefuse(jwts) {
+  const pool = getPool();
+  // Trouver un paquet `constitue` avec coursier assigné et son destinataire
+  const r = await pool.query(`
+    SELECT bdp.id AS pkg_id, bdp.destinataire_id, bdp.livres
+    FROM book_delivery_packages bdp
+    WHERE bdp.statut = 'constitue'
+      AND bdp.coursier_id IS NOT NULL
+      AND bdp.nombre_livres >= 2  -- au moins 2 livres pour pouvoir refuser un sans vider le paquet
+    LIMIT 3
+  `);
+  if (r.rows.length === 0) {
+    log.phases.parent_refuse = { skipped: 'aucun paquet avec coursier' };
+    return;
+  }
+
+  let ok = 0, err = 0;
+  for (const row of r.rows) {
+    const parentJwt = jwts[row.destinataire_id];
+    if (!parentJwt) { err++; continue; }
+    const livres = row.livres ?? [];
+    const livre = livres.find(l => l.commande_livre_neuf_id);
+    if (!livre) { err++; continue; }
+    try {
+      const resp = await client(parentJwt).post(
+        `/api/bourse-livre/v2/packages/${row.pkg_id}/parent-refuse-article`,
+        { commande_livre_neuf_id: livre.commande_livre_neuf_id, motif: 'mauvaise_edition' },
+      );
+      if (resp.status >= 200 && resp.status < 300) ok++;
+      else err++;
+    } catch (_) { err++; }
+  }
+  log.phases.parent_refuse = { attempted: r.rows.length, ok, err };
+  console.log(`  Refus parent : ${ok} OK / ${err} err (sur ${r.rows.length} paquets)`);
+}
+
+// ===========================================================================
+// PHASE 11f — Sim 15 : snapshot final DB
+// ===========================================================================
+async function phaseSim15Snapshot() {
+  const pool = getPool();
+  const queries = {
+    livres_par_statut: `SELECT statut_validation::text AS s, COUNT(*) FROM commande_livres_neufs GROUP BY s ORDER BY s`,
+    paquets_par_statut: `SELECT statut::text AS s, COUNT(*) AS c, SUM(nombre_livres) AS n_livres FROM book_delivery_packages GROUP BY s`,
+    paquets_assignes: `SELECT COUNT(*) AS assigned, COUNT(*) FILTER (WHERE coursier_id IS NULL) AS unassigned FROM book_delivery_packages WHERE statut = 'constitue'`,
+    validations_actives: `SELECT statut::text AS s, COUNT(*) AS c, COUNT(*) FILTER (WHERE expire_at IS NOT NULL) AS avec_expire FROM commande_validations GROUP BY s`,
+  };
+  const snap = {};
+  for (const [name, sql] of Object.entries(queries)) {
+    try {
+      const r = await pool.query(sql);
+      snap[name] = r.rows;
+    } catch (e) { snap[name] = { error: e.message }; }
+  }
+  log.phases.sim15_snapshot = snap;
+  console.log('  Snapshot sim15 :');
+  console.log('    livres_par_statut :', JSON.stringify(snap.livres_par_statut));
+  console.log('    paquets_par_statut :', JSON.stringify(snap.paquets_par_statut));
+  console.log('    paquets_assignes  :', JSON.stringify(snap.paquets_assignes));
+}
+
 async function phaseWholesaleOrder(users, jwts) {
   const librairies = loadJson('librairies.json');
   const superLibUserId = Object.keys(librairies).find(uid => librairies[uid].est_super);
@@ -608,6 +856,13 @@ async function main() {
     console.log('— Phase Super-Librairie valide —'); await safe('super_librairie_valide', () => phaseSuperLibrairieValide(commandes, jwts, users));
     console.log('— Phase Build Paquets (post-validation) —'); await safe('build_paquets_post', () => phaseBuildPaquetsPostValidation(users, jwts));
     console.log('— Phase Observe Delivery Chains —'); await safe('observe_delivery_chains', () => phaseObserveDeliveryChains(users, jwts));
+    // ✅ Sim 15 — phases MVP1/MVP2/MVP3
+    console.log('— Phase Coursiers Active (seed couriers row) —'); await safe('couriers_active', () => phaseEnsureCouriersActive(users));
+    console.log('— Phase Rupture Grossiste (YL marque batch) —'); await safe('rupture_grossiste', () => phaseRuptureGrossiste(jwts));
+    console.log('— Phase Liberer Articles (YL → libraires_proches 48h) —'); await safe('liberer_articles', () => phaseLibererArticles(jwts));
+    console.log('— Phase Assign Courier (YL/admin → coursier) —'); await safe('assign_courier', () => phaseAssignCourier(users, jwts));
+    console.log('— Phase Parent Refuse Article (refus livraison) —'); await safe('parent_refuse', () => phaseParentRefuse(jwts));
+    console.log('— Phase Sim15 Snapshot final —'); await safe('sim15_snapshot', () => phaseSim15Snapshot());
     console.log('— Phase Wholesale Order —');        await safe('wholesale_order', () => phaseWholesaleOrder(users, jwts));
     console.log('— Phase Delivery Routes —');        await safe('delivery_routes', () => phaseDeliveryRoutes(jwts));
     console.log('— Phase Parents Contacts —');       await safe('parents_contacts',() => phaseParentsContacts(jwts));
