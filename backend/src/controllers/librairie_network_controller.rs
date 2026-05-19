@@ -22,14 +22,23 @@ use uuid::Uuid;
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
+    // ✅ FIX 2026-05-19 (bug L vrai root cause) — il existe DEUX structs
+    // `TransactionAgregee` dans le projet :
+    //   - models::librairie_network (champs montant_total, commission_app,
+    //     montant_net — alignée sur le schéma DB `transactions_agregees`)
+    //   - models::librairie_network_model (champ `montant` sans suffixe —
+    //     ne matche aucune colonne DB, FromRow plante :
+    //     "no column found for name: montant")
+    // valider_budget_commande utilisait la mauvaise (_model) par import,
+    // d'où 100 % des POST /valider-budget en 500 sur le RETURNING *.
+    // Fix : utiliser la version alignée (librairie_network::TransactionAgregee).
     models::librairie_network::{
         ChaineLivraisonUnifiee, CommandeLivreNeuf, CommandeLivreOccasion, CommandeMixte,
         CommandeStatut, CommandeValidation, DestinationQR, LibrairiePartner, LivreQRReference,
-        MethodePaiement, PointPassage, ValidationStatut,
+        MethodePaiement, PointPassage, TransactionAgregee, ValidationStatut,
     },
     models::librairie_network_model::{
         CreateLibrairieRequest, LibrairieLieuIn, NotificationLibrairie, QRCodeCoursier,
-        TransactionAgregee,
     },
     services::librairie_prix_bornes_service,
     state::AppState,
