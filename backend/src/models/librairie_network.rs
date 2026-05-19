@@ -217,7 +217,17 @@ pub struct CommandeValidation {
     pub commande_id: Uuid,
     pub librairie_id: Uuid,
     pub statut: ValidationStatut,
-    pub livres_valides: Vec<String>, // IDs des livres validés
+    // ✅ FIX 2026-05-19 (bug N) — colonne DB `commande_validations.livres_valides`
+    // est de type `jsonb`, pas `TEXT[]`. sqlx ne peut pas décoder un JSONB
+    // directement en `Vec<String>` → erreur runtime :
+    //   "mismatched types; Rust type Vec<String> (as SQL type TEXT[])
+    //    is not compatible with SQL type jsonb"
+    // Solution : utiliser `sqlx::types::Json<Vec<String>>` pour que sqlx
+    // sérialise/désérialise automatiquement via serde_json. Le champ reste
+    // exposé comme `Vec<String>` à l'API publique (Serialize/Deserialize
+    // de Json<T> sont transparents).
+    #[sqlx(json)]
+    pub livres_valides: Vec<String>, // IDs des livres validés (stockés en JSONB)
     pub timestamp_debut: DateTime<Utc>,
     pub timestamp_fin: Option<DateTime<Utc>>,
     pub verrou_exclusif: bool, // Empêche autres validations
