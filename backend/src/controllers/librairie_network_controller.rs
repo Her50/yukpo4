@@ -1356,7 +1356,9 @@ pub async fn broadcast_commande_librairies(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur update statut: {}", e)))?;
 
-        // Créer une entrée de validation pour le super libraire
+        // ✅ FIX 2026-05-19 (anomalie sim 16 #1) — Tx CRITIQUE = UPDATE
+        // statut + INSERT validation super-lib seulement. INSERT notifs +
+        // audit log déplacés HORS tx (side effects non-critiques).
         sqlx::query(
             r#"
             INSERT INTO commande_validations (commande_id, librairie_id, statut, verrou_exclusif)
@@ -1370,12 +1372,16 @@ pub async fn broadcast_commande_librairies(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur validation super librairie: {}", e)))?;
 
-        // Notification interne à YukpoLibrairie
+        tx.commit()
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
+
+        // Notification interne à YukpoLibrairie + audit log — HORS tx
         let message = format!(
             "Commande {} — {} livres neufs, {} livres occasion. GPS livraison: {}",
             cmd_reference_commande, cmd_nb_neufs, cmd_nb_occasion, gps_livraison
         );
-        sqlx::query(
+        if let Err(e) = sqlx::query(
             r#"
             INSERT INTO notifications_librairie (
                 librairie_id, commande_id, type_notification, message, statut
@@ -1386,12 +1392,13 @@ pub async fn broadcast_commande_librairies(
         .bind(sl_id)
         .bind(payload.commande_id)
         .bind(&message)
-        .execute(&mut *tx)
+        .execute(&state.pg)
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur notification: {}", e)))?;
+        {
+            log::warn!("[broadcast_commande_librairies] notif super-lib échouée : {}", e);
+        }
 
-        // Log audit
-        sqlx::query(
+        if let Err(e) = sqlx::query(
             r#"
             INSERT INTO super_librairie_audit_log (commande_id, evenement, details)
             VALUES ($1, 'routee', $2)
@@ -1405,13 +1412,11 @@ pub async fn broadcast_commande_librairies(
             "delai_s": delai_s,
             "timeout_at": serde_json::Value::Null,
         }))
-        .execute(&mut *tx)
+        .execute(&state.pg)
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur audit log: {}", e)))?;
-
-        tx.commit()
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
+        {
+            log::warn!("[broadcast_commande_librairies] audit log échoué : {}", e);
+        }
 
         // Notification push à YukpoLibrairie
         let _ = send_notification(
@@ -1502,6 +1507,18 @@ async fn broadcast_vers_librairies_proches(
         ));
     }
 
+    // ✅ FIX 2026-05-19 (anomalie sim 16 #1 — "current transaction is aborted")
+    // Avant : 1 seule tx pour UPDATE statut + N×2 INSERTs (validations +
+    // notifications) en boucle sur librairies. Si UN INSERT plante (contrainte
+    // FK, doublon, enum invalide), Postgres aborted la tx et les itérations
+    // suivantes plantent toutes avec "current tx aborted" → 122 erreurs 500.
+    //
+    // Maintenant :
+    //   1) Tx CRITIQUE = UPDATE statut + boucle INSERT validations protégés
+    //      par SAVEPOINT par itération (tolère 1 lib qui plante sans casser
+    //      les autres).
+    //   2) HORS tx : INSERT notifications_librairie (side effect non-critique).
+    //      Une notif qui plante = warning log, pas un 500 pour le client.
     let mut tx = state
         .pg
         .begin()
@@ -1527,9 +1544,14 @@ async fn broadcast_vers_librairies_proches(
         reference_commande, nb_neufs, nb_occasion
     );
 
-    let mut notifications_created = Vec::new();
+    // Insert validations protégés par SAVEPOINT : 1 lib en erreur ne casse pas les autres
+    let mut validations_ok: Vec<&LibrairiePartner> = Vec::new();
     for librairie in &librairies {
-        sqlx::query(
+        let sp_name = format!("sp_val_{}", librairie.id.simple());
+        let _ = sqlx::query(&format!("SAVEPOINT {}", sp_name))
+            .execute(&mut *tx)
+            .await;
+        let res = sqlx::query(
             r#"
             INSERT INTO commande_validations (commande_id, librairie_id, statut, verrou_exclusif)
             VALUES ($1, $2, 'en_cours', false)
@@ -1539,10 +1561,35 @@ async fn broadcast_vers_librairies_proches(
         .bind(commande_id)
         .bind(librairie.id)
         .execute(&mut *tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur validation: {}", e)))?;
+        .await;
+        match res {
+            Ok(_) => {
+                let _ = sqlx::query(&format!("RELEASE SAVEPOINT {}", sp_name))
+                    .execute(&mut *tx)
+                    .await;
+                validations_ok.push(librairie);
+            }
+            Err(e) => {
+                let _ = sqlx::query(&format!("ROLLBACK TO SAVEPOINT {}", sp_name))
+                    .execute(&mut *tx)
+                    .await;
+                log::warn!(
+                    "[broadcast_vers_librairies_proches] validation libraire {} skipped : {}",
+                    librairie.id, e
+                );
+            }
+        }
+    }
 
-        let notification = sqlx::query_as::<_, NotificationLibrairie>(
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
+
+    // Notifications HORS tx — side effect non-critique : un échec ici ne
+    // doit pas faire échouer le broadcast pour le client.
+    let mut notifications_created = Vec::new();
+    for librairie in &validations_ok {
+        match sqlx::query_as::<_, NotificationLibrairie>(
             r#"
             INSERT INTO notifications_librairie (
                 librairie_id, commande_id, type_notification, message, statut
@@ -1554,16 +1601,16 @@ async fn broadcast_vers_librairies_proches(
         .bind(librairie.id)
         .bind(commande_id)
         .bind(&message)
-        .fetch_one(&mut *tx)
+        .fetch_one(&state.pg)
         .await
-        .map_err(|e| AppError::Internal(format!("Erreur notification: {}", e)))?;
-
-        notifications_created.push((librairie.user_id, notification));
+        {
+            Ok(notif) => notifications_created.push((librairie.user_id, notif)),
+            Err(e) => log::warn!(
+                "[broadcast_vers_librairies_proches] notif libraire {} échouée : {}",
+                librairie.id, e
+            ),
+        }
     }
-
-    tx.commit()
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     for (lib_user_id, notification) in &notifications_created {
         let _ = send_notification(
