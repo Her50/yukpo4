@@ -2722,6 +2722,15 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // médicament et avance next_refill_at de refill_interval_days.
     yukpomnang_backend::services::chronic_refill_worker::spawn_worker(app_state.clone());
 
+    // ✅ 2026-05-19 — Worker auto-validation Yukpo Librairie. Sans ce worker,
+    // les commandes mixtes broadcastées en super-librairie restent bloquées
+    // en `envoyee_super_librairie` indéfiniment (bottleneck humain). Toutes
+    // les 5 min, il bascule en `validee_complete` les commandes qui ont été
+    // routées vers la super-librairie depuis plus de 60s. Désactivable via
+    // YUKPO_LIB_AUTO_VAL_ENABLED=false ; intervalle configurable via
+    // YUKPO_LIB_AUTO_VAL_INTERVAL_S.
+    yukpomnang_backend::services::yukpo_lib_auto_validator::spawn_worker(app_state.clone());
+
     // ✅ OPTIMISÉ Cloud Run 2026-02-14: Lancer toutes les migrations SQLx en arrière-plan pour Cloud Run
     // ✅ CORRIGÉ 2026-04-01: Réutiliser pg_pool (déjà configuré avec PgConnectOptions + attente socket)
     //    au lieu de créer un nouveau pool avec connect_lazy(URL) qui échoue pour les Unix sockets Cloud SQL
