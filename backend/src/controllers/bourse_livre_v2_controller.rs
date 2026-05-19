@@ -6053,6 +6053,8 @@ pub async fn admin_assign_courier_to_package(
     Path(package_id): Path<i32>,
     Json(payload): Json<AssignCourierPayload>,
 ) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+
     // Auth : admin direct OK, sinon doit être super-libraire actif.
     let is_admin = ensure_admin_role(&user).is_ok();
     if !is_admin {
