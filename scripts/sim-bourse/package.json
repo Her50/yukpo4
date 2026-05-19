@@ -1,0 +1,21 @@
+{
+  "name": "yukpo-sim-bourse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simulation end-to-end du système Bourse du Livre Yukpo (troc + vente occasion + commandes neufs + matching + chaînes + paquets coursier + parrainage + wallet) via les endpoints HTTP réels du backend Axum. Conçu pour tourner contre l'app Fly de staging dédiée 'yukpo-bourse-sim'.",
+  "type": "module",
+  "scripts": {
+    "seed": "node 01-seed.js",
+    "orchestrate": "node 02-orchestrate.js",
+    "report": "node 03-report.js",
+    "cleanup": "node 04-cleanup.js",
+    "all": "npm run seed && npm run orchestrate && npm run report"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.0"
+  }
+}
