@@ -16,6 +16,7 @@ import { useUserTrocPool } from '../../hooks/useUserTrocPool';
 import {
   getSystemesForPays, getSystemeById, LISTE_PAYS_UNIQUES, type PaysCode,
 } from '../../data/schoolSystems';
+import { isMaternelleOuPrimaire } from '../../data/etablissementSetup';
 import { apiGet } from '../../services/apiService';
 import GammeSelector, { Gamme, priceForGamme } from '../../components/livres-scolaires/GammeSelector';
 
@@ -206,6 +207,11 @@ const ScanProgrammePage: React.FC = () => {
   const classe = serieCode ? `${classeNom} ${serieCode}` : classeNom;
   const systeme: Systeme = currentSystemeObj?.langue === 'en' ? 'anglophone' : 'francophone';
   const niveau = niveauNom;
+  // ✅ FIX 2026-05-19 (bug G frontend) — verrou Occasion/Échange masqué pour
+  // maternelle/primaire. Cohérent avec le rejet backend 400 BadRequest pour
+  // ces niveaux en mode occasion/troc/echange. Test sur niveauNom ET classeNom
+  // pour couvrir les deux situations (sélecteur niveau + lecture classe).
+  const isOccasionableNiveau = !isMaternelleOuPrimaire(niveauNom) && !isMaternelleOuPrimaire(classeNom);
 
   const [items, setItems] = useState<ExtractedItem[]>([]);
   const [detection, setDetection] = useState<ScanDetection | null>(null);
@@ -1411,24 +1417,30 @@ const ScanProgrammePage: React.FC = () => {
                                   }`}
                                   title={t('bourse.scan.buy_new')}
                                 >{t('bourse.scan.new')}</button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setTrocIntent(i, false); }}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                    item.choix === 'occasion' && !item.troc_intent
-                                      ? 'bg-orange-500 text-white shadow-sm'
-                                      : 'text-gray-500 hover:bg-gray-200'
-                                  }`}
-                                  title={t('bourse.scan.buy_used')}
-                                >{t('bourse.scan.used')}</button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setTrocIntent(i, true); }}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                    item.choix === 'occasion' && item.troc_intent
-                                      ? 'bg-cyan-600 text-white shadow-sm'
-                                      : 'text-gray-500 hover:bg-gray-200'
-                                  }`}
-                                  title={t('bourse.scan.troc_title')}
-                                >{t('bourse.scan.troc_short')}</button>
+                                {/* ✅ FIX 2026-05-19 (bug G) — Occasion/Échange masqués pour
+                                    maternelle/primaire (verrou métier + backend 400). */}
+                                {isOccasionableNiveau && (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setTrocIntent(i, false); }}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                        item.choix === 'occasion' && !item.troc_intent
+                                          ? 'bg-orange-500 text-white shadow-sm'
+                                          : 'text-gray-500 hover:bg-gray-200'
+                                      }`}
+                                      title={t('bourse.scan.buy_used')}
+                                    >{t('bourse.scan.used')}</button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setTrocIntent(i, true); }}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                        item.choix === 'occasion' && item.troc_intent
+                                          ? 'bg-cyan-600 text-white shadow-sm'
+                                          : 'text-gray-500 hover:bg-gray-200'
+                                      }`}
+                                      title={t('bourse.scan.troc_title')}
+                                    >{t('bourse.scan.troc_short')}</button>
+                                  </>
+                                )}
                               </div>
                             )}
                             {/* Mini-descriptif contextuel selon le mode actif */}
