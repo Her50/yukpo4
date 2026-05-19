@@ -130,8 +130,30 @@ async function phaseMatching(users, jwts) {
           if (r.status === 200) {
             const data = r.data || {};
             const matches = data.livres_pending ?? data.matches ?? [];
-            const chains = data.chaines ?? [];
-            return { ok: true, matches: matches.length, chains: chains.map(c => ({ proposed_by_user: u.id, chain: c })) };
+            // ✅ FIX 2026-05-19 — La réponse de /match-all-pending ne contient
+            // PAS de clé `chaines` directe. Le compte de chaînes potentielles
+            // est dans matches[i].n_matchings_chaines. On appelle séparément
+            // /troc-livres/matchings pour les détails des livres avec
+            // n_matchings_chaines > 0.
+            const chains = [];
+            for (const m of matches) {
+              if ((m.n_matchings_chaines ?? 0) > 0) {
+                try {
+                  const r2 = await client(jwts[u.id]).post(
+                    '/api/troc-livres/matchings',
+                    { livre_id: m.id, max_participants: 10 },
+                  );
+                  if (r2.status === 200) {
+                    const c = r2.data?.chaines ?? r2.data?.chains ?? [];
+                    for (const chain of c) {
+                      chains.push({ proposed_by_user: u.id, livre_id: m.id, chain });
+                    }
+                  }
+                } catch (_) { /* swallow */ }
+              }
+            }
+            const totalMatchCount = data.match_count ?? 0;
+            return { ok: true, matches: matches.length, match_count: totalMatchCount, chains };
           }
           return { ok: false, status: r.status, body: r.data };
         } catch (e) {
