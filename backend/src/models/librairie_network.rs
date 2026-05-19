@@ -225,8 +225,15 @@ pub struct CommandeValidation {
     pub created_at: DateTime<Utc>,
 }
 
+// ✅ FIX 2026-05-19 (bug M) — colonne DB `commande_validations.statut` est
+// un ENUM Postgres custom `validation_statut`, pas varchar. Pattern identique
+// aux fix C/I/L. Sans cette annotation, sqlx renvoie 500 :
+//   "mismatched types; Rust type ValidationStatut (as SQL type varchar)
+//    is not compatible with SQL type validation_statut"
+// 28/300 validations libraires dans la sim itér 10 tombaient en 500
+// (uniquement celles dont le libraire était dans la zone broadcast).
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, PartialEq, Eq)]
-#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+#[sqlx(type_name = "validation_statut", rename_all = "snake_case")]
 pub enum ValidationStatut {
     EnCours,       // Librairie en train de valider
     ValidePartiel, // Validation partielle
