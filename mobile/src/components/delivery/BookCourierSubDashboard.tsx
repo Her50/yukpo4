@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -41,6 +43,7 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
     const [paquetsDisponibles, setPaquetsDisponibles] = useState<BookDeliveryPackage[]>([]);
     const [stats, setStats] = useState({ actifs: 0, completes: 0, livres: 0, gains_totaux_xaf: 0 });
     const [expanded, setExpanded] = useState(true);
+    const [refusModalPkg, setRefusModalPkg] = useState<BookDeliveryPackage | null>(null);
     const navigation = require('@react-navigation/native')?.useNavigation?.();
 
     const loadData = useCallback(async () => {
@@ -270,10 +273,96 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                                     <Text style={[styles.actionText, { color: '#10B981' }]}>{t('bookCourierSubDashboard.marquerLivre')}</Text>
                                 </TouchableOpacity>
                             )}
+                            {/* ✅ 2026-05-19 MVP3 mobile — Refuser un livre dégradé/introuvable
+                                à la collecte. Ouvre un modal listant les livres du paquet. */}
+                            {(pkg.statut === 'constitue' || pkg.statut === 'en_route') &&
+                                Array.isArray((pkg as any).livres) &&
+                                (pkg as any).livres.length > 0 && (
+                                    <TouchableOpacity
+                                        style={[styles.actionButton, { backgroundColor: '#F43F5E20' }]}
+                                        onPress={() => setRefusModalPkg(pkg)}
+                                    >
+                                        <SafeIcon name="x-circle" size={14} color="#F43F5E" />
+                                        <Text style={[styles.actionText, { color: '#F43F5E' }]}>
+                                            {t('bookCourierSubDashboard.refuserLivre', 'Refuser livre')}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                         </>
                     )}
                 </View>
             </NativeCard>
+        );
+    };
+
+    // ✅ Modal liste détaillée des livres d'un paquet, avec bouton Refuser
+    //    par livre. Permet au coursier de refuser ciblé en cas de dégât.
+    const renderRefusModal = () => {
+        const pkg = refusModalPkg;
+        if (!pkg) return null;
+        const livres: any[] = Array.isArray((pkg as any).livres) ? (pkg as any).livres : [];
+        return (
+            <Modal
+                visible={true}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setRefusModalPkg(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                {t('bookCourierSubDashboard.refuserLivreModalTitle', 'Refuser un livre')}
+                            </Text>
+                            <TouchableOpacity onPress={() => setRefusModalPkg(null)}>
+                                <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalSubtitle}>
+                            {t(
+                                'bookCourierSubDashboard.refuserLivreModalSubtitle',
+                                'Choisis le livre à refuser. Le destinataire sera notifié et son total ajusté.',
+                            )}
+                        </Text>
+                        <ScrollView style={styles.modalList}>
+                            {livres.map((livre, idx) => (
+                                <TouchableOpacity
+                                    key={`${pkg.id}-${idx}`}
+                                    style={styles.livreRow}
+                                    onPress={() => {
+                                        setRefusModalPkg(null);
+                                        setTimeout(() => handleCourierRefuseBook(pkg, livre), 100);
+                                    }}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.livreTitre}>
+                                            {livre.titre ?? t('common.na', 'N/A')}
+                                        </Text>
+                                        {livre.auteur && (
+                                            <Text style={styles.livreAuteur}>{livre.auteur}</Text>
+                                        )}
+                                        {livre.mode && (
+                                            <Text style={styles.livreMode}>
+                                                {livre.mode} ·{' '}
+                                                {(livre.valeur ?? livre.prix ?? 0).toLocaleString('fr-FR')} XAF
+                                            </Text>
+                                        )}
+                                    </View>
+                                    <SafeIcon name="chevron-right" size={16} color="#F43F5E" />
+                                </TouchableOpacity>
+                            ))}
+                            {livres.length === 0 && (
+                                <Text style={styles.modalEmpty}>
+                                    {t(
+                                        'bookCourierSubDashboard.refuserLivreAucun',
+                                        'Aucun livre listé dans ce paquet.',
+                                    )}
+                                </Text>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         );
     };
 
@@ -381,6 +470,8 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
                     )}
                 </View>
             )}
+            {/* ✅ 2026-05-19 MVP3 mobile — modal de refus livre dégradé */}
+            {renderRefusModal()}
         </View>
     );
 };
@@ -588,6 +679,67 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 14,
         color: modernColors.textSecondary,
+    },
+    // ✅ Modal refus livre dégradé
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        padding: 16,
+        maxHeight: '80%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: modernColors.textPrimary,
+    },
+    modalSubtitle: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        marginBottom: 12,
+    },
+    modalList: {
+        maxHeight: 400,
+    },
+    livreRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    livreTitre: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: modernColors.textPrimary,
+    },
+    livreAuteur: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 2,
+    },
+    livreMode: {
+        fontSize: 11,
+        color: '#F43F5E',
+        marginTop: 2,
+    },
+    modalEmpty: {
+        textAlign: 'center',
+        padding: 24,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
     },
 });
 

@@ -11,6 +11,7 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons/Button';
@@ -72,6 +73,7 @@ const STATUT_COMMANDE_FLOW: { key: string; label: string; icon: any }[] = [
 ];
 
 const MaCommandeTimelinePage: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [detail, setDetail] = useState<MaCommandeDetail | null>(null);
   const [packages, setPackages] = useState<BookDeliveryPackage[]>([]);
@@ -210,7 +212,9 @@ const MaCommandeTimelinePage: React.FC = () => {
 
         {/* Timeline */}
         <section className="mb-10">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Avancement</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">
+            {t('bourseCommande.avancement', 'Avancement')}
+          </h2>
           <ol className="space-y-3">
             {STATUT_COMMANDE_FLOW.map((step, idx) => {
               const reached = idx <= currentStatutIdx;
@@ -250,7 +254,7 @@ const MaCommandeTimelinePage: React.FC = () => {
         {/* Articles neufs */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-slate-900 mb-3">
-            Livres neufs ({livresNeufs.length})
+            {t('bourseCommande.livresNeufs', 'Livres neufs')} ({livresNeufs.length})
           </h2>
           {livresNeufs.length === 0 ? (
             <p className="text-sm text-slate-500">Aucun livre neuf dans cette commande.</p>
@@ -302,7 +306,7 @@ const MaCommandeTimelinePage: React.FC = () => {
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
                               <>
-                                <X className="w-3 h-3 mr-1" /> Refuser
+                                <X className="w-3 h-3 mr-1" /> {t('bourseCommande.refuser', 'Refuser')}
                               </>
                             )}
                           </Button>

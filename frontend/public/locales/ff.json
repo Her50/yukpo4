@@ -1,4 +1,3 @@
-
 {
   "app": {
     "title": "Yukpo - Jeyngol moƴƴo",
@@ -42,5 +41,24 @@
   },
   "language": {
     "switch": "Waylo ɗemngal"
+  },
+  "yukpoLib": {
+    "ops": {
+      "title": "Yukpo Librairie — Golle",
+      "subtitle": "Yiilo rupture grossiste + libration libraires_proches + tellinde coursier",
+      "tabRuptures": "Yiilo",
+      "tabCoursiers": "Tellinde coursier"
+    }
+  },
+  "bourseCommande": {
+    "timelineTitle": "Janngu kommande am",
+    "avancement": "Yahdu",
+    "livresNeufs": "Kayye keseje",
+    "livresOccasion": "Kayye gilakke",
+    "refuser": "Salaade",
+    "ruptureBanner": "Goɗɗum e kayye nde ina e yiilo grossiste. Yukpo Librairie ittii ɗum e libraires_proches (saa 48)."
+  },
+  "bookCourierFlow": {
+    "title": "Coɗɗitorde am Bourse du Livre"
   }
 }

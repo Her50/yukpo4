@@ -289,5 +289,8 @@
     "livresOccasion": "Used books",
     "refuser": "Refuse",
     "ruptureBanner": "Some items are in wholesale rupture. Yukpo Bookstore released them to nearby bookstores (48h delay)."
+  },
+  "bookCourierFlow": {
+    "title": "My Book Deliveries"
   }
 }

@@ -289,5 +289,8 @@
     "livresOccasion": "Livres occasion",
     "refuser": "Refuser",
     "ruptureBanner": "Certains articles sont en rupture grossiste. Yukpo Librairie les a libérés auprès des libraires_proches (délai 48h)."
+  },
+  "bookCourierFlow": {
+    "title": "Mes livraisons Bourse du Livre"
   }
 }

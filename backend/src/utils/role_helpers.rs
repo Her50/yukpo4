@@ -185,3 +185,87 @@ mod tests {
         assert!(!is_yukpo_official_librairie_admin(1));
     }
 }
+
+/// 2026-05-19 — Helper partagé : vérifie le rôle team de l'utilisateur sur
+/// la super-librairie active. Autorise :
+///   - admin direct (rôle JWT = admin/super_admin) → bypass
+///   - owner direct (librairie_partners.user_id = $user) → bypass
+///   - membre `libraire_team_members.role` avec rang ≥ min_role
+///
+/// Hiérarchie : manager (3) > cashier (2) > preparer (1).
+///
+/// Retourne le UUID de la super-librairie active si autorisé, 403 sinon.
+/// Utilisé par tous les endpoints MVP1/MVP4 qui mutent l'état Bourse
+/// (rupture, libération, assignation coursier, batch assign).
+pub async fn ensure_super_lib_role(
+    pool: &sqlx::PgPool,
+    user: &AuthenticatedUser,
+    min_role: &str,
+) -> AppResult<uuid::Uuid> {
+    use sqlx::Row;
+
+    // 1. Admin platform → bypass total
+    if is_admin_user(user) {
+        // On a quand même besoin de retourner l'UUID super-lib si elle existe.
+        if let Ok(Some(row)) = sqlx::query(
+            "SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1",
+        )
+        .fetch_optional(pool)
+        .await
+        {
+            if let Ok(id) = row.try_get::<uuid::Uuid, _>("id") {
+                return Ok(id);
+            }
+        }
+        // Admin sans super-lib → on autorise quand même mais on retourne nil
+        return Ok(uuid::Uuid::nil());
+    }
+
+    // 2. Trouver la super-librairie active
+    let sl_row = sqlx::query(
+        "SELECT id, user_id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lookup super-lib: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Aucune super-librairie active".to_string()))?;
+
+    let sl_id: uuid::Uuid = sl_row.get("id");
+    let sl_owner_id: i32 = sl_row.get("user_id");
+
+    // 3. Owner direct bypass
+    if user.id == sl_owner_id {
+        return Ok(sl_id);
+    }
+
+    // 4. Team member avec rang suffisant
+    let rank = |r: &str| -> i32 {
+        match r {
+            "manager" => 3,
+            "cashier" => 2,
+            "preparer" => 1,
+            _ => 0,
+        }
+    };
+    let min_rank = rank(min_role);
+
+    let team_role: Option<String> = sqlx::query_scalar(
+        "SELECT role FROM libraire_team_members WHERE librairie_id = $1 AND accepted_user_id = $2 LIMIT 1",
+    )
+    .bind(sl_id)
+    .bind(user.id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur team: {}", e)))?;
+
+    let user_role = team_role.unwrap_or_default();
+    if rank(&user_role) >= min_rank && min_rank > 0 {
+        return Ok(sl_id);
+    }
+
+    Err(AppError::Forbidden(format!(
+        "Rôle '{}' requis sur la super-librairie (rôle actuel: '{}')",
+        min_role,
+        if user_role.is_empty() { "aucun" } else { &user_role }
+    )))
+}

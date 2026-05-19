@@ -12,6 +12,7 @@
 // =============================================================================
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, AlertTriangle, CheckCircle2, Loader2, MapPin, Phone, RefreshCcw } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
@@ -62,6 +63,7 @@ function sortPackages(pkgs: BookDeliveryPackage[]): BookDeliveryPackage[] {
 }
 
 const BookDeliveryFlowPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [packages, setPackages] = useState<BookDeliveryPackage[]>([]);
@@ -180,7 +182,7 @@ const BookDeliveryFlowPage: React.FC = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <BookOpen className="w-6 h-6 text-emerald-600" />
-          <h1 className="text-xl font-bold flex-1">Mes livraisons Bourse du Livre</h1>
+          <h1 className="text-xl font-bold flex-1">{t('bookCourierFlow.title', 'Mes livraisons Bourse du Livre')}</h1>
           <button
             onClick={loadData}
             className="p-2 hover:bg-gray-100 rounded-md"
