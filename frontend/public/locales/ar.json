@@ -1,5 +1,3 @@
-
-
 {
   "app": {
     "title": "يوقبو - مساعدك الذكي",
@@ -43,5 +41,24 @@
   },
   "language": {
     "switch": "تغيير اللغة"
+  },
+  "yukpoLib": {
+    "ops": {
+      "title": "مكتبة يوكبو — العمليات",
+      "subtitle": "إدارة نفاد المخزون وتوزيع المكتبات وتعيين السعاة",
+      "tabRuptures": "نفاد المخزون",
+      "tabCoursiers": "تعيين الساعي"
+    }
+  },
+  "bourseCommande": {
+    "timelineTitle": "تتبع طلبي",
+    "avancement": "التقدم",
+    "livresNeufs": "كتب جديدة",
+    "livresOccasion": "كتب مستعملة",
+    "refuser": "رفض",
+    "ruptureBanner": "بعض المنتجات في حالة نفاد المخزون. أتاحتها مكتبة يوكبو للمكتبات المجاورة (مهلة 48 ساعة)."
+  },
+  "bookCourierFlow": {
+    "title": "توصيلات كتبي"
   }
 }

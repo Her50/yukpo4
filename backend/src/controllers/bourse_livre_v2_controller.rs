@@ -14,7 +14,7 @@ use crate::services::book_exchange_ai_service::{
 };
 use crate::state::AppState;
 use crate::utils::etablissement_upsert::{upsert_etablissement, EtablissementUpsertInput};
-use crate::utils::role_helpers::ensure_admin_role;
+use crate::utils::role_helpers::{ensure_admin_role, ensure_super_lib_role};
 use axum::{
     extract::{Extension, Path, Query, State},
     http::StatusCode,
@@ -6055,26 +6055,9 @@ pub async fn admin_assign_courier_to_package(
 ) -> AppResult<impl IntoResponse> {
     use sqlx::Row;
 
-    // Auth : admin direct OK, sinon doit être super-libraire actif.
-    let is_admin = ensure_admin_role(&user).is_ok();
-    if !is_admin {
-        let row = sqlx::query(
-            r#"
-            SELECT 1 AS ok FROM librairie_partners
-            WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
-            LIMIT 1
-            "#,
-        )
-        .bind(user.id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
-        if row.is_none() {
-            return Err(AppError::Forbidden(
-                "Réservé admin ou super-libraire".to_string(),
-            ));
-        }
-    }
+    // ✅ MVP4 — exige rôle 'manager' (admin OR owner OR team manager).
+    // Le helper partagé gère les 3 cas + check sur libraire_team_members.
+    ensure_super_lib_role(&state.pg, &user, "manager").await?;
 
     // Vérifier que le coursier cible est actif.
     let courier_check = sqlx::query(
@@ -6569,25 +6552,9 @@ pub async fn list_unassigned_packages(
 ) -> AppResult<impl IntoResponse> {
     use sqlx::Row;
 
-    let is_admin = ensure_admin_role(&user).is_ok();
-    if !is_admin {
-        let row = sqlx::query(
-            r#"
-            SELECT 1 FROM librairie_partners
-            WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
-            LIMIT 1
-            "#,
-        )
-        .bind(user.id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
-        if row.is_none() {
-            return Err(AppError::Forbidden(
-                "Réservé admin ou super-libraire".to_string(),
-            ));
-        }
-    }
+    // ✅ MVP4 — lecture autorisée à tout membre team avec rôle 'preparer' min
+    // (un préparateur a besoin de voir les paquets pour gérer l'opérationnel).
+    ensure_super_lib_role(&state.pg, &user, "preparer").await?;
 
     let limit: i64 = params
         .get("limit")
@@ -6665,20 +6632,8 @@ pub async fn admin_assign_courier_batch(
 ) -> AppResult<impl IntoResponse> {
     use sqlx::Row;
 
-    // Auth : admin direct, sinon super-libraire actif.
-    let is_admin = ensure_admin_role(&user).is_ok();
-    if !is_admin {
-        let row = sqlx::query(
-            "SELECT 1 FROM librairie_partners WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true LIMIT 1",
-        )
-        .bind(user.id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
-        if row.is_none() {
-            return Err(AppError::Forbidden("Réservé admin ou super-libraire".into()));
-        }
-    }
+    // ✅ MVP4 — exige rôle 'manager' (admin OR owner OR team manager).
+    ensure_super_lib_role(&state.pg, &user, "manager").await?;
 
     if payload.package_ids.is_empty() {
         return Err(AppError::BadRequest("package_ids vide".into()));

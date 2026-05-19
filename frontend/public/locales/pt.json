@@ -1,5 +1,3 @@
-
-
 {
   "app": {
     "title": "Yukpo - Seu assistente inteligente",
@@ -43,5 +41,24 @@
   },
   "language": {
     "switch": "Mudar idioma"
+  },
+  "yukpoLib": {
+    "ops": {
+      "title": "Yukpo Livraria — Operações",
+      "subtitle": "Cascata de ruptura grossista + libertação livrarias_próximas + atribuição estafeta",
+      "tabRuptures": "Rupturas",
+      "tabCoursiers": "Atribuir estafeta"
+    }
+  },
+  "bourseCommande": {
+    "timelineTitle": "Seguimento da encomenda",
+    "avancement": "Progresso",
+    "livresNeufs": "Livros novos",
+    "livresOccasion": "Livros usados",
+    "refuser": "Recusar",
+    "ruptureBanner": "Alguns artigos estão em ruptura grossista. A Yukpo Livraria libertou-os para livrarias próximas (prazo 48h)."
+  },
+  "bookCourierFlow": {
+    "title": "As minhas entregas Bolsa do Livro"
   }
 }
