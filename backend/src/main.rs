@@ -2731,6 +2731,13 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // YUKPO_LIB_AUTO_VAL_INTERVAL_S.
     yukpomnang_backend::services::yukpo_lib_auto_validator::spawn_worker(app_state.clone());
 
+    // ✅ 2026-05-19 — Worker commande_stale_watchdog. Cron 6h.
+    // Filet de sécurité contre l'inaction Yukpo Librairie après auto-validation :
+    // détecte les commandes `validee_complete` sans paquet constitué après
+    // 48h et envoie une notif aux super-libraires. Sans ça, une commande
+    // que YL oublie de traiter reste éternellement bloquée silencieusement.
+    yukpomnang_backend::services::commande_stale_watchdog::spawn_worker(app_state.clone());
+
     // ✅ 2026-05-19 MVP1 — Worker expirer-libraires-proches. Cron 1h.
     // Quand Yukpo Lib libère un article rupture vers les libraires_proches
     // (POST /super-librairie/liberer-articles) avec expire_at = NOW() + 48h,
