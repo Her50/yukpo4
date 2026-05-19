@@ -158,18 +158,29 @@ async function insertLivres(client, parents, serviceIds, programmes) {
     // ne devrait pas se déclencher, mais on garde l'invariant pour robustesse.
     const modeFinal = (isPrimaire(prog.classe) || !cSuivante) ? 'don' : mode;
 
+    // ✅ 2026-05-19 — Contrainte production : scan recto/verso OBLIGATOIRE pour
+    // troc/vente_occasion. La simulation s'aligne et fournit toujours les URLs
+    // placeholder pour respecter la contrainte modèle (Vec<String> non-nullable).
+    const livreIdx = i + 1;
+    const imgRecto = `https://sim-bourse.local/livres/${owner.id}/${livreIdx}-recto.jpg`;
+    const imgVerso = `https://sim-bourse.local/livres/${owner.id}/${livreIdx}-verso.jpg`;
+    const imagesUrls = [imgRecto, imgVerso];
+
     livres.push({
       service_id: serviceIds.get(owner.id), user_id: owner.id,
       titre: prog.titre_livre, classe_actuelle: prog.classe, classe_souhaitee: classeSouhaitee,
       matiere: prog.matiere, niveau: prog.niveau,
       etat_livre: etat, etat_classification: etat,
-      mode_listing: mode, prix_detecte: prixDetecte,
+      mode_listing: modeFinal, prix_detecte: prixDetecte,
       valeur_calculee: valeurCalculee, ratio_etat: ratioEtat,
       programme_scolaire_id: prog.id, est_au_programme: true,
       ia_analysis_status: 'completed', ia_confidence: 0.95,
       situation_troc: 'offre_demande', troc_status: 'pending',
       gps, ville: owner.ville, quartier,
       is_available: true,
+      images_urls: imagesUrls,
+      image_recto: imgRecto,
+      image_verso: imgVerso,
     });
   }
 
@@ -178,12 +189,13 @@ async function insertLivres(client, parents, serviceIds, programmes) {
     const chunk = livres.slice(i, i + BATCH);
     const values = []; const params = []; let p = 1;
     for (const l of chunk) {
-      values.push(`(${Array.from({ length: 23 }, () => `$${p++}`).join(',')})`);
+      values.push(`(${Array.from({ length: 26 }, () => `$${p++}`).join(',')})`);
       params.push(
         l.service_id, l.user_id, l.titre, l.classe_actuelle, l.classe_souhaitee, l.matiere, l.niveau,
         l.etat_livre, l.etat_classification, l.mode_listing, l.prix_detecte, l.valeur_calculee, l.ratio_etat,
         l.programme_scolaire_id, l.est_au_programme, l.ia_analysis_status, l.ia_confidence,
         l.situation_troc, l.troc_status, l.gps, l.ville, l.quartier, l.is_available,
+        l.images_urls, l.image_recto, l.image_verso,
       );
     }
     await client.query(`
@@ -191,7 +203,8 @@ async function insertLivres(client, parents, serviceIds, programmes) {
         service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
         etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
         programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-        situation_troc, troc_status, gps, ville, quartier, is_available
+        situation_troc, troc_status, gps, ville, quartier, is_available,
+        images_urls, image_recto, image_verso
       ) VALUES ${values.join(',')}
     `, params);
   }
@@ -271,15 +284,19 @@ async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
         const prixOfficiel = parseFloat(prog.prix_officiel ?? 5000) || 5000;
         const valeurCalculee = Math.round(prixOfficiel * 0.6);
         const { gps, quartier } = randomGpsForVille(p.ville);
+      const imgR = `https://sim-bourse.local/livres/dag-${usedChains}-${k}-recto.jpg`;
+      const imgV = `https://sim-bourse.local/livres/dag-${usedChains}-${k}-verso.jpg`;
       await client.query(
         `INSERT INTO livres_scolaires (
           service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
           etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
           programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-          situation_troc, troc_status, gps, ville, quartier, is_available
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
         ) VALUES (
           $1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,
-          'offre_demande','pending',$10,$11,$12,true
+          'offre_demande','pending',$10,$11,$12,true,
+          $13,$14,$15
         )`,
         [
           serviceIds.get(p.id),
@@ -294,6 +311,7 @@ async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
           gps,
           p.ville,
           quartier,
+          [imgR, imgV], imgR, imgV,
         ],
       );
       inserted++;
@@ -399,18 +417,22 @@ async function insertMixedChainSeeds(client, parents, serviceIds, nChains) {
       const prix = parseFloat(progV.prix_officiel ?? 5000) || 5000;
       const valeur = Math.round(prix * 0.6);
       const { gps, quartier } = randomGpsForVille(vendeur.ville);
+      const imgR = `https://sim-bourse.local/livres/mix-${i}-v-recto.jpg`;
+      const imgV = `https://sim-bourse.local/livres/mix-${i}-v-verso.jpg`;
       await client.query(
         `INSERT INTO livres_scolaires (
           service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
           etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
           programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-          situation_troc, troc_status, gps, ville, quartier, is_available
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true)`,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true,$14,$15,$16)`,
         [
           serviceIds.get(vendeur.id), vendeur.id,
           `[MIX-${i}-V] ${progV.titre_livre}`,
           cV, cV /* vendeur ne cherche rien */, progV.matiere, progV.niveau,
           valeur, valeur, progV.id, gps, vendeur.ville, quartier,
+          [imgR, imgV], imgR, imgV,
         ],
       );
       nLivres++;
@@ -421,18 +443,22 @@ async function insertMixedChainSeeds(client, parents, serviceIds, nChains) {
       const prix = parseFloat(progT.prix_officiel ?? 5000) || 5000;
       const valeur = Math.round(prix * 0.6);
       const { gps, quartier } = randomGpsForVille(trocer.ville);
+      const imgR = `https://sim-bourse.local/livres/mix-${i}-t-recto.jpg`;
+      const imgV = `https://sim-bourse.local/livres/mix-${i}-t-verso.jpg`;
       await client.query(
         `INSERT INTO livres_scolaires (
           service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
           etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
           programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-          situation_troc, troc_status, gps, ville, quartier, is_available
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true)`,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
         [
           serviceIds.get(trocer.id), trocer.id,
           `[MIX-${i}-T] ${progT.titre_livre}`,
           cT, cV /* trocer cherche le livre du vendeur */, progT.matiere, progT.niveau,
           valeur, progT.id, gps, trocer.ville, quartier,
+          [imgR, imgV], imgR, imgV,
         ],
       );
       nLivres++;
