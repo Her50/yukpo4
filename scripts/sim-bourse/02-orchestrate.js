@@ -113,31 +113,48 @@ async function phaseMatching(users, jwts) {
   let ok = 0, err = 0, totalMatches = 0;
   const allChainsProposed = [];
   const t0 = Date.now();
-
   const errDetails = {};
-  for (let i = 0; i < parents.length; i++) {
-    const u = parents[i];
-    try {
-      const r = await client(jwts[u.id]).post('/api/troc-livres/match-all-pending', { target_amount: 10000 });
-      if (r.status === 200) {
+  // ✅ 2026-05-19 (anomalie sim 16 #4) — Paralléliser par batch pour réduire
+  // la latence totale. 160 séquentiel × 456ms = 73s; 160 / batch 20 × 456ms
+  // = 3.6s théorique. Batch 20 = compromis pression réseau / latence.
+  const BATCH = parseInt(process.env.SIM_MATCHING_BATCH ?? '20', 10);
+  for (let i = 0; i < parents.length; i += BATCH) {
+    const slice = parents.slice(i, i + BATCH);
+    const results = await Promise.all(
+      slice.map(async (u) => {
+        try {
+          const r = await client(jwts[u.id]).post(
+            '/api/troc-livres/match-all-pending',
+            { target_amount: 10000 },
+          );
+          if (r.status === 200) {
+            const data = r.data || {};
+            const matches = data.livres_pending ?? data.matches ?? [];
+            const chains = data.chaines ?? [];
+            return { ok: true, matches: matches.length, chains: chains.map(c => ({ proposed_by_user: u.id, chain: c })) };
+          }
+          return { ok: false, status: r.status, body: r.data };
+        } catch (e) {
+          return { ok: false, status: e.code || 'NETWORK_ERR', body: e.message };
+        }
+      }),
+    );
+    for (const r of results) {
+      if (r.ok) {
         ok++;
-        const data = r.data || {};
-        const matches = (data.livres_pending ?? data.matches ?? []);
-        const chains = (data.chaines ?? []);
-        totalMatches += matches.length;
-        for (const c of chains) allChainsProposed.push({ proposed_by_user: u.id, chain: c });
+        totalMatches += r.matches;
+        allChainsProposed.push(...r.chains);
       } else {
         err++;
-        trackErr(errDetails, r.status, r.data);
+        trackErr(errDetails, r.status, r.body);
       }
-    } catch (e) {
-      err++;
-      trackErr(errDetails, e.code || 'NETWORK_ERR', e.message);
     }
-    if ((i + 1) % 40 === 0) console.log(`    matching ${i + 1}/${parents.length} (${allChainsProposed.length} chaînes vues)`);
+    if ((i + BATCH) % 40 < BATCH) {
+      console.log(`    matching ${Math.min(i + BATCH, parents.length)}/${parents.length} (${allChainsProposed.length} chaînes vues, batch=${BATCH})`);
+    }
   }
-  log.phases.matching = { ok, err, total_matches: totalMatches, chaines_proposed: allChainsProposed.length, latency_total_ms: Date.now() - t0, errors: errDetails };
-  console.log(`  Matching: ${ok} OK / ${err} err / ${allChainsProposed.length} chaînes proposées`);
+  log.phases.matching = { ok, err, total_matches: totalMatches, chaines_proposed: allChainsProposed.length, latency_total_ms: Date.now() - t0, errors: errDetails, batch_size: BATCH };
+  console.log(`  Matching: ${ok} OK / ${err} err / ${allChainsProposed.length} chaînes proposées (latence ${Date.now() - t0}ms)`);
   return allChainsProposed;
 }
 
