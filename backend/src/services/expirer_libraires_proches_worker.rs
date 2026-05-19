@@ -188,13 +188,14 @@ async fn expire_one(
                 let _ = send_push_notification(
                     &state.pg,
                     parent_user_id,
-                    "Articles annulés (rupture)",
-                    &msg,
+                    "Articles annulés (rupture)".to_string(),
+                    msg,
                     Some(json!({
                         "type": "commande_articles_annules",
                         "commande_id": commande_id.to_string(),
                         "nb_articles": nb_annules,
                     })),
+                    None,
                 )
                 .await;
             }
