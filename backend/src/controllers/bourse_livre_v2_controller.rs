@@ -6554,6 +6554,233 @@ pub async fn cancel_book_on_site(
     })))
 }
 
+/// POST /api/bourse-livre/v2/packages/{id}/parent-refuse-article
+///
+/// 2026-05-19 MVP3 — Le parent (destinataire) refuse un livre NEUF à la
+/// réception (mauvaise édition, endommagé, ne correspond pas…).
+/// Cf. ARCHITECTURE §5 source C + §6 cas B.
+///
+/// Body : `{ commande_livre_neuf_id: Uuid, motif: Option<String> }`
+///
+/// Logique :
+///   1. Auth : l'utilisateur doit être le `destinataire_id` du paquet.
+///   2. UPDATE `commande_livres_neufs.statut_validation = 'refuse_parent'`
+///      (idempotent — skip si déjà refusé).
+///   3. UPDATE `book_delivery_packages` : retire le livre du JSONB `livres`,
+///      recalcule `nombre_livres` et `montant_a_encaisser`.
+///   4. Push notif coursier (article retour) + super-lib (réintégrer stock).
+///
+/// Erreurs :
+///   - 403 si l'utilisateur n'est pas le destinataire
+///   - 404 si paquet ou livre introuvable
+///   - 400 si le livre n'est pas dans `livres` du paquet (cohérence)
+#[derive(Debug, serde::Deserialize)]
+pub struct ParentRefuseArticlePayload {
+    pub commande_livre_neuf_id: Uuid,
+    #[serde(default)]
+    pub motif: Option<String>,
+}
+
+pub async fn parent_refuse_article(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(package_id): Path<i32>,
+    Json(payload): Json<ParentRefuseArticlePayload>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+
+    info!(
+        "[parent_refuse_article] user {} refuse livre_neuf {} du paquet {}",
+        user_id, payload.commande_livre_neuf_id, package_id
+    );
+
+    let mut tx = state
+        .pg
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur tx: {}", e)))?;
+
+    // 1. Charger le paquet en FOR UPDATE pour empêcher mutation concurrente.
+    let pkg_row = sqlx::query(
+        r#"
+        SELECT destinataire_id, coursier_id, livres, nombre_livres,
+               montant_net_a_payer::float8 AS montant_net_a_payer,
+               valeur_totale::float8 AS valeur_totale
+        FROM book_delivery_packages
+        WHERE id = $1
+        FOR UPDATE
+        "#,
+    )
+    .bind(package_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lookup paquet: {}", e)))?;
+
+    let pkg = match pkg_row {
+        Some(r) => r,
+        None => {
+            tx.rollback().await.ok();
+            return Err(AppError::NotFound("Paquet introuvable".to_string()));
+        }
+    };
+
+    let destinataire_id: Option<i32> = pkg.try_get("destinataire_id").ok();
+    if destinataire_id != Some(user_id) {
+        tx.rollback().await.ok();
+        return Err(AppError::Forbidden(
+            "Réservé au destinataire du paquet".to_string(),
+        ));
+    }
+
+    let coursier_id: Option<i32> = pkg.try_get("coursier_id").ok();
+    let livres_jsonb: serde_json::Value = pkg.try_get("livres").unwrap_or(json!([]));
+
+    // 2. Retire l'item correspondant du JSONB et accumule prix refusé.
+    let mut livres_array = livres_jsonb.as_array().cloned().unwrap_or_default();
+    let target_id_str = payload.commande_livre_neuf_id.to_string();
+    let mut prix_refuse: f64 = 0.0;
+    let mut titre_refuse: String = String::new();
+    let initial_len = livres_array.len();
+    livres_array.retain(|item| {
+        let item_id = item
+            .get("commande_livre_neuf_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if item_id == target_id_str {
+            prix_refuse += item
+                .get("prix")
+                .or_else(|| item.get("valeur"))
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            titre_refuse = item
+                .get("titre")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            false // drop
+        } else {
+            true // keep
+        }
+    });
+
+    if livres_array.len() == initial_len {
+        tx.rollback().await.ok();
+        return Err(AppError::BadRequest(
+            "Ce livre n'est pas dans ce paquet".to_string(),
+        ));
+    }
+
+    // 3. UPDATE commande_livres_neufs.statut_validation
+    let cln_update = sqlx::query(
+        r#"
+        UPDATE commande_livres_neufs
+        SET statut_validation = 'refuse_parent'
+        WHERE id = $1
+          AND statut_validation IN ('valide', 'libere_libraires')
+        RETURNING id
+        "#,
+    )
+    .bind(payload.commande_livre_neuf_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur update livre: {}", e)))?;
+
+    if cln_update.is_none() {
+        // Le livre n'est pas dans un statut acceptable (ex: déjà refusé).
+        // On rollback : la mutation du JSONB du paquet seule n'a pas de sens
+        // sans le UPDATE statut côté commande.
+        tx.rollback().await.ok();
+        return Err(AppError::BadRequest(
+            "Livre déjà refusé ou statut incompatible".to_string(),
+        ));
+    }
+
+    // 4. UPDATE book_delivery_packages : new livres + recalcul totaux.
+    let new_nb: i32 = livres_array.len() as i32;
+    sqlx::query(
+        r#"
+        UPDATE book_delivery_packages
+        SET livres = $1,
+            nombre_livres = $2,
+            montant_net_a_payer = GREATEST(0, montant_net_a_payer - $3::numeric),
+            valeur_totale = GREATEST(0, valeur_totale - $3::numeric),
+            updated_at = NOW()
+        WHERE id = $4
+        "#,
+    )
+    .bind(serde_json::Value::Array(livres_array))
+    .bind(new_nb)
+    .bind(prix_refuse)
+    .bind(package_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur update paquet: {}", e)))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
+
+    // 5. Notifs (hors tx).
+    let motif_str = payload
+        .motif
+        .clone()
+        .unwrap_or_else(|| "ne_correspond_pas".to_string());
+
+    if let Some(cid) = coursier_id {
+        let _ = sqlx::query(
+            "INSERT INTO push_notifications (user_id, title, body, data, created_at) VALUES ($1, 'Article retour', $2, $3, NOW())",
+        )
+        .bind(cid)
+        .bind(format!(
+            "Le destinataire a refusé '{}'. Reprends l'article pour retour Yukpo Librairie.",
+            titre_refuse
+        ))
+        .bind(json!({
+            "type": "package_article_refuse_parent",
+            "package_id": package_id,
+            "commande_livre_neuf_id": payload.commande_livre_neuf_id.to_string(),
+            "motif": motif_str,
+        }))
+        .execute(&state.pg)
+        .await;
+    }
+
+    // Notif super-lib : retrouve le user_id du super-libraire actif.
+    if let Ok(Some(sl_row)) = sqlx::query(
+        "SELECT user_id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1",
+    )
+    .fetch_optional(&state.pg)
+    .await
+    {
+        if let Ok(sl_user_id) = sl_row.try_get::<i32, _>("user_id") {
+            let _ = sqlx::query(
+                "INSERT INTO push_notifications (user_id, title, body, data, created_at) VALUES ($1, 'Article retour Yukpo Lib', $2, $3, NOW())",
+            )
+            .bind(sl_user_id)
+            .bind(format!(
+                "Le coursier va retourner '{}' (refus parent). À réintégrer en stock.",
+                titre_refuse
+            ))
+            .bind(json!({
+                "type": "yukpo_lib_article_returned",
+                "package_id": package_id,
+                "commande_livre_neuf_id": payload.commande_livre_neuf_id.to_string(),
+                "motif": motif_str,
+                "valeur": prix_refuse,
+            }))
+            .execute(&state.pg)
+            .await;
+        }
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "nouveau_nombre_livres": new_nb,
+        "montant_deduit": prix_refuse,
+        "titre_refuse": titre_refuse,
+    })))
+}
+
 /// POST /api/bourse-livre/v2/chains/{id}/schedule
 /// Génère le planning multi-jours pour une chaîne finalisée.
 pub async fn build_delivery_schedule(

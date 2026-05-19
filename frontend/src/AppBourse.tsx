@@ -34,6 +34,7 @@ import DeliveryLocationOnboardingPage from './pages/livres-scolaires/DeliveryLoc
 import VendreLivresPage from './pages/livres-scolaires/VendreLivresPage';
 import MesCommandesPage from './pages/livres-scolaires/MesCommandesPage';
 import CommandeDetailPage from './pages/livres-scolaires/CommandeDetailPage';
+import MaCommandeTimelinePage from './pages/livres-scolaires/MaCommandeTimelinePage';
 import { LibrairieDashboardPage, LibrairieCommandeDetailPage } from './pages/livres-scolaires/LibrairiePortalPage';
 import LibrairieMarcheBoursePage from './pages/livres-scolaires/LibrairieMarcheBoursePage';
 import EcoleSearchPage from './pages/livres-scolaires/EcoleSearchPage';
@@ -135,6 +136,11 @@ function AppBourse() {
               <Route path="/vendre" element={<BourseLayout><RequireAuth><VendreLivresPage /></RequireAuth></BourseLayout>} />
               <Route path="/mes-commandes" element={<BourseLayout><MesCommandesPage /></BourseLayout>} />
               <Route path="/mes-commandes/:id" element={<BourseLayout><RequireAuth><CommandeDetailPage /></RequireAuth></BourseLayout>} />
+              {/* ✅ 2026-05-19 MVP3 — Timeline parent (suivi statut + refus livraison à la réception).
+                  cf. ARCHITECTURE_WORKFLOW_YUKPO_LIBRAIRIE.md §7 wireframe.
+                  /suivi/:id complémente /mes-commandes/:id (page détail existante)
+                  en mettant l'accent sur la vue temporelle + actions livraison. */}
+              <Route path="/suivi/:id" element={<BourseLayout><RequireAuth><MaCommandeTimelinePage /></RequireAuth></BourseLayout>} />
               <Route path="/recap" element={<BourseLayout><RecapAchatPage /></BourseLayout>} />
               {/* ✅ 2026-05-10 : Centre de Rentrée — UX unique parent-centric, classe tabs, école partenaire prioritaire, troc article-par-article */}
               <Route path="/rentree" element={<BourseLayout><RentreeCenterPage /></BourseLayout>} />
