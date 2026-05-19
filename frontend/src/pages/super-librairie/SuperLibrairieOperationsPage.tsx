@@ -10,6 +10,7 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons/Button';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +64,7 @@ const STATUT_COLOR: Record<string, string> = {
 };
 
 const SuperLibrairieOperationsPage: React.FC = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('ruptures');
 
   return (
@@ -70,19 +72,22 @@ const SuperLibrairieOperationsPage: React.FC = () => {
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Yukpo Librairie — Opérations
+            {t('yukpoLib.ops.title', 'Yukpo Librairie — Opérations')}
           </h1>
           <p className="text-slate-600 text-sm">
-            Cascade rupture grossiste + libération libraires_proches + assignation coursier
+            {t(
+              'yukpoLib.ops.subtitle',
+              'Cascade rupture grossiste + libération libraires_proches + assignation coursier',
+            )}
           </p>
         </header>
 
         <nav className="flex gap-2 mb-6 border-b border-slate-200">
           <TabButton current={tab} value="ruptures" onClick={() => setTab('ruptures')}>
-            <AlertTriangle className="w-4 h-4" /> Ruptures
+            <AlertTriangle className="w-4 h-4" /> {t('yukpoLib.ops.tabRuptures', 'Ruptures')}
           </TabButton>
           <TabButton current={tab} value="coursiers" onClick={() => setTab('coursiers')}>
-            <User className="w-4 h-4" /> Assigner coursier
+            <User className="w-4 h-4" /> {t('yukpoLib.ops.tabCoursiers', 'Assigner coursier')}
           </TabButton>
         </nav>
 

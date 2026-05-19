@@ -94,6 +94,79 @@ const BookCourierSubDashboard: React.FC<BookCourierSubDashboardProps> = ({ onRef
         }
     };
 
+    // ✅ 2026-05-19 MVP3 mobile — coursier refuse un livre trop dégradé à la collecte.
+    // Appelle POST /api/bourse-livre/v2/packages/cancel-book qui retire le livre du
+    // JSONB `livres` du paquet, recalcule nombre_livres + montant, et crédite le
+    // wallet du destinataire si applicable (cas troc). Idempotent.
+    const handleCourierRefuseBook = async (pkg: BookDeliveryPackage, livre: any) => {
+        Alert.alert(
+            t('bookCourierSubDashboard.refuserLivreTitre', 'Refuser ce livre ?'),
+            `${livre.titre || t('common.na', 'N/A')}\n${t('bookCourierSubDashboard.refuserLivreDesc', 'Indique pourquoi tu ne peux pas le prendre. Le destinataire sera notifié et son total ajusté.')}`,
+            [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                    text: t('bookCourierSubDashboard.refuserDegrade', 'Trop dégradé'),
+                    style: 'destructive',
+                    onPress: () => refuseBookWithMotif(pkg, livre, 'trop_degrade'),
+                },
+                {
+                    text: t('bookCourierSubDashboard.refuserIntrouvable', 'Introuvable'),
+                    onPress: () => refuseBookWithMotif(pkg, livre, 'introuvable'),
+                },
+                {
+                    text: t('bookCourierSubDashboard.refuserVendeurAbsent', 'Vendeur absent'),
+                    onPress: () => refuseBookWithMotif(pkg, livre, 'vendeur_absent'),
+                },
+            ],
+        );
+    };
+
+    const refuseBookWithMotif = async (
+        pkg: BookDeliveryPackage,
+        livre: any,
+        raison: string,
+    ) => {
+        try {
+            // L'API mobile bourseLivreV2Api.cancelBookOnSite attend { package_id,
+            // livre_id, raison? }. livre_id est l'ID du livre côté livres_scolaires
+            // (occasion/troc) — utilisé par le backend cancel_book_on_site.
+            const livreId = livre.livre_id ?? livre.id;
+            if (!livreId) {
+                Alert.alert(
+                    t('message.error', 'Erreur'),
+                    t('bookCourierSubDashboard.livreIdManquant', 'ID livre manquant'),
+                );
+                return;
+            }
+            const res = await bourseLivreV2Api.cancelBookOnSite({
+                package_id: pkg.id,
+                livre_id: livreId,
+                raison,
+            });
+            const credit = res?.credit_amount ?? 0;
+            Alert.alert(
+                t('bookCourierSubDashboard.livreRefuse', 'Livre refusé'),
+                credit > 0
+                    ? t(
+                          'bookCourierSubDashboard.livreRefuseCredit',
+                          'Le destinataire a reçu ' + credit + ' XAF de crédit (cas troc).',
+                      )
+                    : t(
+                          'bookCourierSubDashboard.livreRefuseOk',
+                          "Total ajusté côté commande. Continue ta tournée.",
+                      ),
+            );
+            loadData();
+            onRefresh?.();
+        } catch (e: any) {
+            Alert.alert(
+                t('message.error', 'Erreur'),
+                e?.message ||
+                    t('bookCourierSubDashboard.impossibleRefuser', 'Impossible de refuser ce livre'),
+            );
+        }
+    };
+
     const renderPackageCard = (pkg: BookDeliveryPackage, isAvailable: boolean = false) => {
         const statusColor = STATUS_COLORS[pkg.statut] || modernColors.textSecondary;
         const statusLabel = STATUS_LABELS[pkg.statut] || pkg.statut;
