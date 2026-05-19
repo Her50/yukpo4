@@ -241,26 +241,36 @@ async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
   }
 
   // Sélectionne 3 × nChains parents distincts (skip ceux qui ne sont pas 'user')
+  // ✅ FIX 2026-05-19 — Pour que find_matching_chaine accepte la chaîne,
+  // les 3 parents d'un triplet doivent être à ≤ 20 km l'un de l'autre
+  // (MAX_EDGE_DISTANCE_KM). Solution : grouper par ville et constituer
+  // les triplets parmi des parents de LA MÊME VILLE.
   const eligibleParents = parents.filter(p => p.role === 'user');
-  if (eligibleParents.length < nChains * 3) {
-    console.warn(
-      `    ⚠ Pas assez de parents (${eligibleParents.length}) pour ${nChains} chaînes — réduit.`,
-    );
-    nChains = Math.floor(eligibleParents.length / 3);
+  const byVille = {};
+  for (const p of eligibleParents) {
+    (byVille[p.ville] = byVille[p.ville] || []).push(p);
   }
-  const shuffled = [...eligibleParents].sort(() => Math.random() - 0.5);
+  // On préfère les grosses villes qui ont assez de parents pour former 10 triplets
+  const villesAssezGrosses = Object.keys(byVille).filter(v => byVille[v].length >= 3);
+  if (villesAssezGrosses.length === 0) {
+    console.warn(`    ⚠ Aucune ville avec ≥3 parents — DAG seed skipped.`);
+    return;
+  }
 
   let inserted = 0;
-  for (let i = 0; i < nChains; i++) {
-    const triplet = shuffled.slice(i * 3, i * 3 + 3);
-    for (let k = 0; k < 3; k++) {
-      const p = triplet[k];
-      const classeActuelle = classes[k];
-      const classeSouhaitee = classes[(k + 1) % 3]; // cycle
-      const prog = progByClasse[classeActuelle];
-      const prixOfficiel = parseFloat(prog.prix_officiel ?? 5000) || 5000;
-      const valeurCalculee = Math.round(prixOfficiel * 0.6);
-      const { gps, quartier } = randomGpsForVille(p.ville);
+  let usedChains = 0;
+  outer: for (const ville of villesAssezGrosses) {
+    const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
+    while (pool.length >= 3 && usedChains < nChains) {
+      const triplet = pool.splice(0, 3);
+      for (let k = 0; k < 3; k++) {
+        const p = triplet[k];
+        const classeActuelle = classes[k];
+        const classeSouhaitee = classes[(k + 1) % 3];
+        const prog = progByClasse[classeActuelle];
+        const prixOfficiel = parseFloat(prog.prix_officiel ?? 5000) || 5000;
+        const valeurCalculee = Math.round(prixOfficiel * 0.6);
+        const { gps, quartier } = randomGpsForVille(p.ville);
       await client.query(
         `INSERT INTO livres_scolaires (
           service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
@@ -274,7 +284,7 @@ async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
         [
           serviceIds.get(p.id),
           p.id,
-          `[DAG-${i}] ${prog.titre_livre}`,
+          `[DAG-${usedChains}] ${prog.titre_livre}`,
           classeActuelle,
           classeSouhaitee,
           prog.matiere,
@@ -287,9 +297,14 @@ async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
         ],
       );
       inserted++;
+      }
+      usedChains++;
     }
+    if (usedChains >= nChains) break;
   }
-  console.log(`    → ${inserted} livres DAG-friendly insérés (${nChains} chaînes 3-hop)`);
+  console.log(
+    `    → ${inserted} livres DAG-friendly insérés (${usedChains}/${nChains} chaînes 3-hop, same-city)`,
+  );
 }
 
 /**
@@ -347,16 +362,31 @@ async function insertMixedChainSeeds(client, parents, serviceIds, nChains) {
     [classes[1]]: progR.rows.find(r => r.classe === classes[1]),
   };
 
+  // ✅ FIX 2026-05-19 — Triplets V/T/A groupés par MÊME VILLE (contrainte
+  // MAX_EDGE_DISTANCE_KM=20km du DAG).
   const eligibleParents = parents.filter(p => p.role === 'user');
-  if (eligibleParents.length < nChains * 3) {
-    nChains = Math.floor(eligibleParents.length / 3);
+  const byVille = {};
+  for (const p of eligibleParents) {
+    (byVille[p.ville] = byVille[p.ville] || []).push(p);
   }
-  const shuffled = [...eligibleParents].sort(() => Math.random() - 0.5);
+  const triplets = [];
+  for (const ville of Object.keys(byVille)) {
+    const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
+    while (pool.length >= 3 && triplets.length < nChains) {
+      triplets.push(pool.splice(0, 3));
+    }
+    if (triplets.length >= nChains) break;
+  }
+  nChains = triplets.length;
+  if (nChains === 0) {
+    console.warn(`    ⚠ Aucune ville avec ≥3 parents — mixed seed skipped.`);
+    return;
+  }
 
   let nLivres = 0;
   let nDemandes = 0;
   for (let i = 0; i < nChains; i++) {
-    const [vendeur, trocer, acheteur] = shuffled.slice(i * 3, i * 3 + 3);
+    const [vendeur, trocer, acheteur] = triplets[i];
     if (!vendeur || !trocer || !acheteur) break;
 
     const cV = classes[0]; // classe du livre du vendeur (= cherché par trocer)
