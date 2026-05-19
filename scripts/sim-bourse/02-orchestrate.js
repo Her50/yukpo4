@@ -372,6 +372,74 @@ async function phaseValidationLibraires(commandes, users, jwts) {
 }
 
 // ===========================================================================
+// PHASE 9a-bis — Super-librairie (YukpoLibrairie) valide les commandes
+// ===========================================================================
+// Critique : depuis 2026-05-09 (commit 936698d950), TOUS les broadcasts
+// routent vers super_librairie (priorité permanente Yukpo). Les libraires
+// de zone ne reçoivent JAMAIS de validation. Pour que la cascade
+// validation→paquet→chaîne se déclenche, c'est le super-libraire qui doit
+// valider chaque commande en `envoyee_super_librairie`.
+async function phaseSuperLibrairieValide(commandes, jwts, users) {
+  const pool = getPool();
+  const librairies = loadJson('librairies.json');
+  const superLibUserIdStr = Object.keys(librairies).find(uid => librairies[uid].est_super);
+  if (!superLibUserIdStr) {
+    log.phases.super_librairie_valide = { skipped: 'aucune super-librairie' };
+    console.log('  Pas de super-librairie sim → skip');
+    return;
+  }
+  const superLibUserId = parseInt(superLibUserIdStr, 10);
+  const jwt = jwts[superLibUserId];
+  if (!jwt) {
+    log.phases.super_librairie_valide = { skipped: 'JWT super-lib absent' };
+    return;
+  }
+
+  const cmdR = await pool.query(`
+    SELECT id FROM commandes_mixtes WHERE statut = 'envoyee_super_librairie' LIMIT 300
+  `);
+  const cmdIds = cmdR.rows.map(r => r.id);
+  if (cmdIds.length === 0) {
+    log.phases.super_librairie_valide = { skipped: 'aucune commande envoyee_super_librairie' };
+    console.log('  Aucune commande à valider côté super-librairie');
+    return;
+  }
+
+  let ok = 0, err = 0;
+  let livres_total_valides = 0;
+  const errDetails = {};
+  const t0 = Date.now();
+
+  for (let i = 0; i < cmdIds.length; i++) {
+    const commande_id = cmdIds[i];
+    const livresR = await pool.query(`SELECT id FROM commande_livres_neufs WHERE commande_id = $1`, [commande_id]);
+    const livre_ids = livresR.rows.map(r => r.id);
+
+    try {
+      const r = await client(jwt).post('/api/librairie-network/validation/valider', {
+        commande_id,
+        livres_valides: livre_ids,
+        livres_indisponibles: [],
+        notes_validation: 'super-librairie-sim-valide-tout',
+      });
+      if (r.status >= 200 && r.status < 300) { ok++; livres_total_valides += livre_ids.length; }
+      else { err++; trackErr(errDetails, r.status, r.data); }
+    } catch (e) {
+      err++;
+      trackErr(errDetails, e.code || 'NETWORK_ERR', e.message);
+    }
+    if ((i + 1) % 50 === 0) console.log(`    super-lib valide ${i + 1}/${cmdIds.length}  (ok=${ok} err=${err})`);
+  }
+  log.phases.super_librairie_valide = {
+    ok, err, total: cmdIds.length,
+    livres_total_valides,
+    latency_total_ms: Date.now() - t0,
+    errors: errDetails,
+  };
+  console.log(`  Super-librairie valide: ${ok} OK / ${err} err / ${livres_total_valides} livres validés`);
+}
+
+// ===========================================================================
 // PHASE 9b — Admin déclenche /packages/build-all après validations
 // ===========================================================================
 async function phaseBuildPaquetsPostValidation(users, jwts) {
@@ -537,6 +605,7 @@ async function main() {
     console.log('— Phase Commandes Mixtes —');       commandes = await safe('commandes_mixtes', () => phaseCommandesMixtes(users, jwts)) ?? [];
     console.log('— Phase Broadcast —');              await safe('broadcast',       () => phaseBroadcastCommandes(commandes, jwts));
     console.log('— Phase Validation compétitive —'); await safe('validation',      () => phaseValidationLibraires(commandes, users, jwts));
+    console.log('— Phase Super-Librairie valide —'); await safe('super_librairie_valide', () => phaseSuperLibrairieValide(commandes, jwts, users));
     console.log('— Phase Build Paquets (post-validation) —'); await safe('build_paquets_post', () => phaseBuildPaquetsPostValidation(users, jwts));
     console.log('— Phase Observe Delivery Chains —'); await safe('observe_delivery_chains', () => phaseObserveDeliveryChains(users, jwts));
     console.log('— Phase Wholesale Order —');        await safe('wholesale_order', () => phaseWholesaleOrder(users, jwts));
