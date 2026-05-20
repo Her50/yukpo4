@@ -61,6 +61,41 @@ impl TrocIntelligentService {
         })
     }
 
+    /// ✅ Anti-cycle DAG (2026-05-20) : BFS depuis `from` sur l'adjacence sortante
+    /// pour savoir si `to` est atteignable. Si oui, ajouter une arête `to → from`
+    /// fermerait un cycle dans la chaîne courante.
+    ///
+    /// Règle métier rappelée par l'utilisateur : une chaîne est un chemin OUVERT,
+    /// jamais un cycle fermé. Un parent qui finit une chaîne PEUT redémarrer
+    /// une AUTRE chaîne (réutilisation inter-chaînes), mais ne doit jamais
+    /// revenir au start de la MÊME chaîne.
+    fn path_exists(adj_out: &HashMap<i32, Vec<i32>>, from: i32, to: i32) -> bool {
+        if from == to {
+            return true;
+        }
+        if adj_out.is_empty() {
+            return false;
+        }
+        let mut visited: HashSet<i32> = HashSet::new();
+        let mut stack: Vec<i32> = vec![from];
+        while let Some(u) = stack.pop() {
+            if !visited.insert(u) {
+                continue;
+            }
+            if let Some(neighbours) = adj_out.get(&u) {
+                for &v in neighbours {
+                    if v == to {
+                        return true;
+                    }
+                    if !visited.contains(&v) {
+                        stack.push(v);
+                    }
+                }
+            }
+        }
+        false
+    }
+
     /// Calculer le score de proximité géographique
     pub fn calculate_proximity_score(&self, distance_km: f64) -> f64 {
         if distance_km < 1.0 {
@@ -652,6 +687,11 @@ impl TrocIntelligentService {
         // Greedy DAG construction: ajouter les arêtes une par une
         // en respectant:
         //   - Anti-réciprocité: si A→B, pas B→A
+        //   - ✅ Anti-cycle DAG: si une chaîne dirigée receiver →...→ sender
+        //     existe déjà, ajouter sender→receiver fermerait un cycle. Un DAG
+        //     valide n'a aucun cycle intra-chaîne (le user de fin d'une chaîne
+        //     PEUT être start d'une AUTRE chaîne, mais jamais revenir au start
+        //     de la MÊME chaîne — 2026-05-20).
         //   - Max nodes
         //   - Pas de self-loop
         //   - Un livre ne peut être transféré qu'une seule fois
@@ -665,6 +705,8 @@ impl TrocIntelligentService {
         let mut used_livre_ids: HashSet<i32> = HashSet::new();
         let mut chain_users: HashSet<i32> = HashSet::new();
         let mut senders_in_chain: HashSet<i32> = HashSet::new(); // Users qui envoient dans cette chaîne
+        // ✅ Anti-cycle DAG : adjacency list reconstruite incrémentalement
+        let mut adj_out: HashMap<i32, Vec<i32>> = HashMap::new();
 
         // L'initiateur est toujours dans la chaîne
         chain_users.insert(initiateur_id);
@@ -672,6 +714,16 @@ impl TrocIntelligentService {
         for edge in &edges {
             // Anti-réciprocité: si (receiver→sender) existe, skip
             if directed_pairs.contains(&(edge.receiver_id, edge.sender_id)) {
+                continue;
+            }
+            // ✅ Anti-cycle DAG : si un chemin receiver → ... → sender existe
+            // dans le DAG courant, ajouter sender→receiver créerait un cycle.
+            // BFS sur adj_out depuis receiver, on cherche à atteindre sender.
+            if Self::path_exists(&adj_out, edge.receiver_id, edge.sender_id) {
+                info!(
+                    "[TROC_INTELLIGENT] Skip arête {}->{}: créerait un cycle (path {} → ... → {} existant)",
+                    edge.sender_id, edge.receiver_id, edge.receiver_id, edge.sender_id
+                );
                 continue;
             }
             // Livre déjà utilisé ?
@@ -751,6 +803,7 @@ impl TrocIntelligentService {
             chain_users.insert(edge.sender_id);
             chain_users.insert(edge.receiver_id);
             senders_in_chain.insert(edge.sender_id);
+            adj_out.entry(edge.sender_id).or_default().push(edge.receiver_id);
             dag_edges.push(edge);
         }
 

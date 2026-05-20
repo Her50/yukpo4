@@ -212,116 +212,177 @@ async function insertLivres(client, parents, serviceIds, programmes) {
 }
 
 /**
- * 2026-05-19 — Insère N triplets de parents avec connectivité 3-hop forcée
- * en troc. Garantit que find_matching_chaine peut construire ≥ N chaînes
- * valides (cycles équilibrés A→B→C→A multi-parents — l'essence du troc DAG).
+ * 2026-05-20 — Insère N chaînes OUVERTES (acycliques) de 4 parents jouant
+ * V → T1 → T2 → A. C'est la vraie sémantique du DAG troc :
+ *   - V (vendeur) : livre classe[0] mode='vente'           → SOURCE (cash in)
+ *   - T1 (trocer) : livre classe[1] mode='troc', cherche classe[0]
+ *   - T2 (trocer) : livre classe[2] mode='troc', cherche classe[1]
+ *   - A (acheteur) : demande_occasion classe[2]            → SINK (cash out)
  *
- * Pour chaque triplet (P0, P1, P2) on choisit :
- *   - Matière commune (Mathématiques)
- *   - 3 classes différentes (ex: 6e, 5e, 4e)
- *   - P0 : livre classe[0], cherche classe[1]
- *   - P1 : livre classe[1], cherche classe[2]
- *   - P2 : livre classe[2], cherche classe[0]
+ * Edges :
+ *   livre(V, c0) → besoin(T1, c0)
+ *   livre(T1, c1) → besoin(T2, c1)
+ *   livre(T2, c2) → demande_occasion(A, c2)
  *
- * Résultat matching : livre(P0) ↦ besoin(P1), livre(P1) ↦ besoin(P2),
- * livre(P2) ↦ besoin(P0). Cycle 3-hop équilibré valide.
+ * Aucune arête ne reboucle sur V → chemin ouvert acyclique.
+ *
+ * Correction historique : ce seed produisait précédemment P0→P1→P2→P0 (cycle
+ * fermé), interdit par la règle "DAG acyclique intra-chaîne" — le user a
+ * corrigé : "on ne doit jamais revenir au noeud de départ".
  */
 async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
-  // Récupère 3 programmes Math distincts (3 classes différentes) actifs
+  // ✅ 2026-05-20 — Chemin OUVERT V→T1→T2→A (4 parents, 3 classes Math distinctes)
   const progR = await client.query(`
     SELECT id, classe, matiere, titre_livre, niveau,
            COALESCE(prix_officiel, 5000) AS prix_officiel
     FROM programmes_scolaires
     WHERE matiere IN ('Mathématiques', 'Mathematics', 'Math', 'Maths')
       AND is_active = true
-      AND classe IN ('6ème','5ème','4ème','6e','5e','4e','Form 1','Form 2','Form 3')
+      AND classe IN ('6ème','5ème','4ème','3ème','6e','5e','4e','3e','Form 1','Form 2','Form 3','Form 4')
     ORDER BY classe
     LIMIT 30
   `);
-  if (progR.rows.length < 3) {
-    console.warn(`    ⚠ Pas assez de programmes Math distincts (${progR.rows.length}) — DAG seed skipped.`);
-    return;
-  }
-  // On garde 3 classes les + différentes
   const classes = [...new Set(progR.rows.map(r => r.classe))].slice(0, 3);
   if (classes.length < 3) {
     console.warn(`    ⚠ Pas assez de classes Math distinctes (${classes.length}) — DAG seed skipped.`);
     return;
   }
   const progByClasse = {};
-  for (const c of classes) {
-    progByClasse[c] = progR.rows.find(r => r.classe === c);
-  }
+  for (const c of classes) progByClasse[c] = progR.rows.find(r => r.classe === c);
 
-  // Sélectionne 3 × nChains parents distincts (skip ceux qui ne sont pas 'user')
-  // ✅ FIX 2026-05-19 — Pour que find_matching_chaine accepte la chaîne,
-  // les 3 parents d'un triplet doivent être à ≤ 20 km l'un de l'autre
-  // (MAX_EDGE_DISTANCE_KM). Solution : grouper par ville et constituer
-  // les triplets parmi des parents de LA MÊME VILLE.
+  // Quatre parents par chaîne, même ville (contrainte MAX_EDGE_DISTANCE_KM=20)
   const eligibleParents = parents.filter(p => p.role === 'user');
   const byVille = {};
-  for (const p of eligibleParents) {
-    (byVille[p.ville] = byVille[p.ville] || []).push(p);
-  }
-  // On préfère les grosses villes qui ont assez de parents pour former 10 triplets
-  const villesAssezGrosses = Object.keys(byVille).filter(v => byVille[v].length >= 3);
+  for (const p of eligibleParents) (byVille[p.ville] = byVille[p.ville] || []).push(p);
+  const villesAssezGrosses = Object.keys(byVille).filter(v => byVille[v].length >= 4);
   if (villesAssezGrosses.length === 0) {
-    console.warn(`    ⚠ Aucune ville avec ≥3 parents — DAG seed skipped.`);
+    console.warn(`    ⚠ Aucune ville avec ≥4 parents — DAG open-path seed skipped.`);
     return;
   }
 
-  let inserted = 0;
+  // Vérif table demandes (sinon pas de sink)
+  const tableEx = await client.query(
+    `SELECT 1 FROM information_schema.tables WHERE table_name = 'livres_scolaires_demandes'`,
+  );
+  if (tableEx.rowCount === 0) {
+    console.warn('    ⚠ Table livres_scolaires_demandes absente — DAG open-path seed skipped.');
+    return;
+  }
+
+  let nLivres = 0;
+  let nDemandes = 0;
   let usedChains = 0;
-  outer: for (const ville of villesAssezGrosses) {
+  for (const ville of villesAssezGrosses) {
     const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
-    while (pool.length >= 3 && usedChains < nChains) {
-      const triplet = pool.splice(0, 3);
-      for (let k = 0; k < 3; k++) {
-        const p = triplet[k];
-        const classeActuelle = classes[k];
-        const classeSouhaitee = classes[(k + 1) % 3];
-        const prog = progByClasse[classeActuelle];
-        const prixOfficiel = parseFloat(prog.prix_officiel ?? 5000) || 5000;
-        const valeurCalculee = Math.round(prixOfficiel * 0.6);
-        const { gps, quartier } = randomGpsForVille(p.ville);
-      const imgR = `https://sim-bourse.local/livres/dag-${usedChains}-${k}-recto.jpg`;
-      const imgV = `https://sim-bourse.local/livres/dag-${usedChains}-${k}-verso.jpg`;
-      await client.query(
-        `INSERT INTO livres_scolaires (
-          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
-          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
-          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-          situation_troc, troc_status, gps, ville, quartier, is_available,
-          images_urls, image_recto, image_verso
-        ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,
-          'offre_demande','pending',$10,$11,$12,true,
-          $13,$14,$15
-        )`,
-        [
-          serviceIds.get(p.id),
-          p.id,
-          `[DAG-${usedChains}] ${prog.titre_livre}`,
-          classeActuelle,
-          classeSouhaitee,
-          prog.matiere,
-          prog.niveau,
-          valeurCalculee,
-          prog.id,
-          gps,
-          p.ville,
-          quartier,
-          [imgR, imgV], imgR, imgV,
-        ],
-      );
-      inserted++;
+    while (pool.length >= 4 && usedChains < nChains) {
+      const [v, t1, t2, a] = pool.splice(0, 4);
+      const cV = classes[0], cT1 = classes[1], cT2 = classes[2];
+      const progV = progByClasse[cV], progT1 = progByClasse[cT1], progT2 = progByClasse[cT2];
+
+      // V : livre vente classe cV (SOURCE)
+      {
+        const prix = parseFloat(progV.prix_officiel ?? 5000) || 5000;
+        const valeur = Math.round(prix * 0.6);
+        const { gps, quartier } = randomGpsForVille(v.ville);
+        const imgR = `https://sim-bourse.local/livres/dag-${usedChains}-v-recto.jpg`;
+        const imgV = `https://sim-bourse.local/livres/dag-${usedChains}-v-verso.jpg`;
+        await client.query(
+          `INSERT INTO livres_scolaires (
+            service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+            etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+            programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+            situation_troc, troc_status, gps, ville, quartier, is_available,
+            images_urls, image_recto, image_verso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true,$14,$15,$16)`,
+          [
+            serviceIds.get(v.id), v.id,
+            `[DAG-${usedChains}-V] ${progV.titre_livre}`,
+            cV, cV, progV.matiere, progV.niveau,
+            valeur, valeur, progV.id, gps, v.ville, quartier,
+            [imgR, imgV], imgR, imgV,
+          ],
+        );
+        nLivres++;
       }
+
+      // T1 : livre troc classe cT1, cherche cV
+      {
+        const prix = parseFloat(progT1.prix_officiel ?? 5000) || 5000;
+        const valeur = Math.round(prix * 0.6);
+        const { gps, quartier } = randomGpsForVille(t1.ville);
+        const imgR = `https://sim-bourse.local/livres/dag-${usedChains}-t1-recto.jpg`;
+        const imgV = `https://sim-bourse.local/livres/dag-${usedChains}-t1-verso.jpg`;
+        await client.query(
+          `INSERT INTO livres_scolaires (
+            service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+            etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+            programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+            situation_troc, troc_status, gps, ville, quartier, is_available,
+            images_urls, image_recto, image_verso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
+          [
+            serviceIds.get(t1.id), t1.id,
+            `[DAG-${usedChains}-T1] ${progT1.titre_livre}`,
+            cT1, cV /* cherche le livre de V */, progT1.matiere, progT1.niveau,
+            valeur, progT1.id, gps, t1.ville, quartier,
+            [imgR, imgV], imgR, imgV,
+          ],
+        );
+        nLivres++;
+      }
+
+      // T2 : livre troc classe cT2, cherche cT1
+      {
+        const prix = parseFloat(progT2.prix_officiel ?? 5000) || 5000;
+        const valeur = Math.round(prix * 0.6);
+        const { gps, quartier } = randomGpsForVille(t2.ville);
+        const imgR = `https://sim-bourse.local/livres/dag-${usedChains}-t2-recto.jpg`;
+        const imgV = `https://sim-bourse.local/livres/dag-${usedChains}-t2-verso.jpg`;
+        await client.query(
+          `INSERT INTO livres_scolaires (
+            service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+            etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+            programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+            situation_troc, troc_status, gps, ville, quartier, is_available,
+            images_urls, image_recto, image_verso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
+          [
+            serviceIds.get(t2.id), t2.id,
+            `[DAG-${usedChains}-T2] ${progT2.titre_livre}`,
+            cT2, cT1 /* cherche le livre de T1 */, progT2.matiere, progT2.niveau,
+            valeur, progT2.id, gps, t2.ville, quartier,
+            [imgR, imgV], imgR, imgV,
+          ],
+        );
+        nLivres++;
+      }
+
+      // A : demande_occasion classe cT2 (SINK)
+      {
+        const prix = parseFloat(progT2.prix_officiel ?? 5000) || 5000;
+        const { gps, quartier } = randomGpsForVille(a.ville);
+        await client.query(
+          `INSERT INTO livres_scolaires_demandes (
+            user_id, titre, matiere, classe_souhaitee, niveau,
+            budget_max_xaf, gps, ville, quartier, is_active, is_satisfied
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,false)`,
+          [
+            a.id,
+            `[DAG-${usedChains}-A] ${progT2.titre_livre}`,
+            progT2.matiere, cT2, progT2.niveau,
+            Math.round(prix * 0.7),
+            gps, a.ville, quartier,
+          ],
+        );
+        nDemandes++;
+      }
+
       usedChains++;
     }
     if (usedChains >= nChains) break;
   }
   console.log(
-    `    → ${inserted} livres DAG-friendly insérés (${usedChains}/${nChains} chaînes 3-hop, same-city)`,
+    `    → ${nLivres} livres + ${nDemandes} demandes (${usedChains}/${nChains} chaînes ouvertes V→T1→T2→A, same-city)`,
   );
 }
 
