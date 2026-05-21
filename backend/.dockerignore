@@ -57,6 +57,10 @@ docs/
 *.bat
 *.sh
 !scripts/start-cloud.sh
+# Le Dockerfile.fly copie individuellement plusieurs scripts/*.sh — ils
+# doivent rester dans le contexte de build (sinon docker buildx échoue
+# avec "failed to compute cache key" même sur un build sans cache).
+!scripts/*.sh
 scripts/*.ps1
 scripts/*.bat
 build*.sh

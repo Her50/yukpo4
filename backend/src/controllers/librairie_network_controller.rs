@@ -757,6 +757,24 @@ pub async fn create_commande_mixte(
         .await;
     }
 
+    // ✅ 2026-05-18 — Auto-progression server-side : edition → validation_budget
+    //                                              → envoyee_super_librairie
+    // Avant : le frontend devait enchaîner 3 appels HTTP (create, valider-budget,
+    // broadcast). Si l'un échouait (mauvais payload, network), la commande
+    // restait bloquée à 'edition' (timeline vide, invisible côté libraire).
+    // Maintenant : le backend fait lui-même la transition au commit, donc
+    // toute commande créée passe DIRECTEMENT à envoyee_super_librairie si un
+    // super libraire actif existe. Non bloquant : tout échec est loggué mais
+    // la commande reste créée.
+    if let Err(e) = auto_progress_commande_mixte(&state, commande.id).await {
+        log::warn!(
+            "[create_commande_mixte] auto-progression a échoué pour {} : {} — \
+             la commande reste en 'edition', l'admin peut la pousser manuellement",
+            commande.id,
+            e
+        );
+    }
+
     Ok(Json(serde_json::json!({
         "success": true,
         "commande": commande,
@@ -766,6 +784,163 @@ pub async fn create_commande_mixte(
         "commission_app": commission_app,
         "montant_net_libraires": montant_net_libraires
     })))
+}
+
+/// ✅ 2026-05-18 — Helper : promote une commande de 'edition' à
+/// 'envoyee_super_librairie' en deux étapes :
+///   1. UPDATE statut='validation_budget' + calcul commission/net libraires
+///   2. UPDATE statut='envoyee_super_librairie' + INSERT validation/notification
+///      si un super libraire actif existe.
+///
+/// Idempotent : si la commande n'est pas en 'edition', no-op silencieux.
+/// Erreurs : remontées au caller pour log non bloquant.
+async fn auto_progress_commande_mixte(
+    state: &Arc<AppState>,
+    commande_id: Uuid,
+) -> Result<(), AppError> {
+    use sqlx::Row;
+
+    // 1) Calculer les totaux + passer en validation_budget
+    let totaux: (f64, f64) = sqlx::query_as(
+        r#"
+        SELECT
+          COALESCE((SELECT SUM(prix_final * quantite)::DOUBLE PRECISION
+                      FROM commande_livres_neufs WHERE commande_id = $1), 0.0)
+          + COALESCE((SELECT SUM(prix * quantite)::DOUBLE PRECISION
+                      FROM commande_livres_occasion WHERE commande_id = $1), 0.0)
+          AS total,
+          0.0 AS placeholder
+        "#,
+    )
+    .bind(commande_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("auto-progress totaux: {}", e)))?;
+    let total_commande = totaux.0;
+    let commission_app = total_commande * ConfigurationSysteme::COMMISSION_APP;
+    let montant_net_libraires = total_commande - commission_app;
+
+    let updated = sqlx::query(
+        r#"
+        UPDATE commandes_mixtes
+        SET statut = 'validation_budget',
+            commission_app = $1,
+            montant_net_libraires = $2,
+            updated_at = NOW()
+        WHERE id = $3 AND statut = 'edition'
+        "#,
+    )
+    .bind(commission_app)
+    .bind(montant_net_libraires)
+    .bind(commande_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("auto-progress validation_budget: {}", e)))?;
+
+    if updated.rows_affected() == 0 {
+        return Ok(()); // déjà progressée par un autre chemin
+    }
+
+    // 2) Trouver le super libraire actif (Yukpo Librairie)
+    let sl_row = sqlx::query(
+        r#"SELECT id, user_id, delai_validation_super_librairie_s
+           FROM librairie_partners
+           WHERE est_super_librairie = true AND est_actif = true AND statut = 'actif'
+           LIMIT 1"#,
+    )
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("auto-progress super_lib lookup: {}", e)))?;
+
+    let Some(sl) = sl_row else {
+        log::info!(
+            "[auto_progress] {} : pas de super libraire actif, reste en validation_budget",
+            commande_id
+        );
+        return Ok(());
+    };
+    let sl_id: Uuid = sl.get("id");
+    let sl_user_id: i32 = sl.get("user_id");
+
+    // ✅ 2026-05-18 — Décision business : Yukpo Librairie a la priorité
+    // PERMANENTE. Plus de timeout de 15 min déclenchant un fallback aux
+    // librairies proches. On laisse `super_librairie_timeout_at = NULL`
+    // → le worker `super_librairie_timeout_worker` filtre `WHERE
+    // super_librairie_timeout_at IS NOT NULL` → no-op pour ces commandes.
+    // Yukpo Librairie traite à son rythme, sans expiration.
+
+    // 3) Routage vers Yukpo Librairie (UPDATE + INSERT validation + notification)
+    let mut tx = state
+        .pg
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(format!("auto-progress tx begin: {}", e)))?;
+
+    sqlx::query(
+        r#"UPDATE commandes_mixtes
+           SET statut = 'envoyee_super_librairie',
+               super_librairie_id = $1,
+               super_librairie_timeout_at = NULL,
+               updated_at = NOW()
+           WHERE id = $2"#,
+    )
+    .bind(sl_id)
+    .bind(commande_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("auto-progress UPDATE statut: {}", e)))?;
+
+    sqlx::query(
+        r#"INSERT INTO commande_validations
+            (commande_id, librairie_id, statut, verrou_exclusif)
+           VALUES ($1, $2, 'en_cours', false)
+           ON CONFLICT DO NOTHING"#,
+    )
+    .bind(commande_id)
+    .bind(sl_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("auto-progress validation: {}", e)))?;
+
+    let message = format!(
+        "Nouvelle commande {} routée automatiquement (création parent).",
+        commande_id
+    );
+    sqlx::query(
+        r#"INSERT INTO notifications_librairie
+            (librairie_id, commande_id, type_notification, message, statut)
+           VALUES ($1, $2, 'nouvelle_commande', $3, 'envoyee')"#,
+    )
+    .bind(sl_id)
+    .bind(commande_id)
+    .bind(&message)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("auto-progress notif: {}", e)))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(format!("auto-progress commit: {}", e)))?;
+
+    // Notification push (non bloquante)
+    let _ = send_notification(
+        state,
+        sl_user_id,
+        "Nouvelle commande prioritaire",
+        &message,
+        Some(serde_json::json!({
+            "type": "super_librairie_commande",
+            "commande_id": commande_id.to_string(),
+            "auto": true,
+        })),
+    )
+    .await;
+
+    log::info!(
+        "[auto_progress] commande {} routée automatiquement vers Yukpo Librairie",
+        commande_id
+    );
+    Ok(())
 }
 
 /// Mettre à jour une commande (phase édition)
@@ -1158,27 +1333,30 @@ pub async fn broadcast_commande_librairies(
         let delai_s: i32 =
             sl.get::<Option<i32>, _>("delai_validation_super_librairie_s").unwrap_or(300);
         let delai_s = delai_s as i64;
-        let timeout_at = Utc::now() + chrono::Duration::seconds(delai_s);
-
+        // ✅ 2026-05-18 — Yukpo Librairie a la priorité PERMANENTE.
+        // timeout_at = NULL → le worker fallback ignore ces commandes.
+        // L'ancien délai 15 min provoquait un broadcast aux librairies proches
+        // qui doublonnait la commande. Décision business : Yukpo gère à son
+        // rythme.
+        let _ = delai_s; // conservé pour compat audit log
         let mut tx = state
             .pg
             .begin()
             .await
             .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
-        // Passer la commande en statut super librairie
+        // Passer la commande en statut super librairie (sans timeout)
         sqlx::query(
             r#"
             UPDATE commandes_mixtes
             SET statut                   = 'envoyee_super_librairie',
                 super_librairie_id       = $1,
-                super_librairie_timeout_at = $2,
+                super_librairie_timeout_at = NULL,
                 updated_at               = NOW()
-            WHERE id = $3
+            WHERE id = $2
             "#,
         )
         .bind(sl_id)
-        .bind(timeout_at)
         .bind(payload.commande_id)
         .execute(&mut *tx)
         .await
@@ -1233,10 +1411,12 @@ pub async fn broadcast_commande_librairies(
             "#,
         )
         .bind(payload.commande_id)
+        // ✅ FIX 2026-05-18 — timeout_at retiré (Yukpo Librairie priorité
+        // permanente, plus de délai). Audit log conserve `delai_s` historique.
         .bind(serde_json::json!({
             "gps_livraison": gps_livraison,
             "delai_s": delai_s,
-            "timeout_at": timeout_at.to_rfc3339(),
+            "timeout_at": serde_json::Value::Null,
         }))
         .execute(&state.pg)
         .await
@@ -1254,23 +1434,24 @@ pub async fn broadcast_commande_librairies(
                 "type": "super_librairie_commande",
                 "commande_id": payload.commande_id.to_string(),
                 "gps_livraison": gps_livraison,
-                "timeout_at": timeout_at.to_rfc3339(),
+                // ✅ timeout_at retiré (priorité permanente Yukpo Librairie).
+                "timeout_at": serde_json::Value::Null,
             })),
         )
         .await;
 
         info!(
-            "[broadcast_commande_librairies] Commande {} routée vers YukpoLibrairie — timeout dans {}s",
-            payload.commande_id, delai_s
+            "[broadcast_commande_librairies] Commande {} routée vers YukpoLibrairie (priorité permanente, sans timeout)",
+            payload.commande_id
         );
 
         return Ok(Json(serde_json::json!({
             "success": true,
             "mode": "super_librairie",
-            "message": "Commande reçue par YukpoLibrairie en priorité",
-            "timeout_at": timeout_at.to_rfc3339(),
-            "delai_validation_s": delai_s,
-            "note": "Si YukpoLibrairie ne valide pas dans le délai, la commande sera automatiquement diffusée aux librairies proches."
+            "message": "Commande reçue par YukpoLibrairie en priorité permanente",
+            "timeout_at": serde_json::Value::Null,
+            "delai_validation_s": serde_json::Value::Null,
+            "note": "YukpoLibrairie traite cette commande sans expiration. La commande reste en priorité super libraire jusqu'à validation."
         })).into_response());
     }
 

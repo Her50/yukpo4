@@ -80,6 +80,7 @@ const STATUT_ICON: Record<string, React.ComponentType<{ className?: string }>> =
 };
 
 const TIMELINE_STEPS: { key: string; label: string }[] = [
+  { key: 'edition', label: 'Brouillon créé' },
   { key: 'validation_budget', label: 'Budget validé' },
   { key: 'envoyee_librairies', label: 'Envoyée aux librairies' },
   { key: 'validee_complete', label: 'Validée' },
@@ -120,7 +121,17 @@ const CommandeDetailPage: React.FC = () => {
         if (!res.ok || data?.success === false) {
           throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
         }
-        const c: CommandeDetails | undefined = data.commande || data;
+        // ✅ FIX 2026-05-18 — Le backend retourne :
+        //   { success, details: { commande, livres_neufs, livres_occasion }, parent_contact }
+        // L'objet commande est sous data.details.commande, livres séparés.
+        const details = data.details || data;
+        const c: CommandeDetails | undefined = details.commande
+          ? {
+              ...details.commande,
+              livres_neufs: details.livres_neufs,
+              livres_occasion: details.livres_occasion,
+            }
+          : details;
         if (!c?.id) throw new Error('Réponse serveur incomplète');
         setCmd(c);
       } catch (e: any) {

@@ -517,6 +517,33 @@ function DeliveryModal({
   const phoneDigits = telephone.replace(/\D/g, '');
   const phoneValid = phoneDigits.length >= 8 && phoneDigits.length <= 15;
 
+  // ✅ 2026-05-18 — Auto-confirm : si toutes les données ont été collectées
+  // en amont (DeliveryLocationOnboardingPage) — adresse + GPS + téléphone
+  // valide — on saute cette étape de re-vérification et on confirme
+  // directement. L'utilisateur peut toujours interrompre via le bouton ×
+  // si la modale apparaît brièvement.
+  const autoConfirmRef = useRef(false);
+  useEffect(() => {
+    if (autoConfirmRef.current) return;
+    const hasAddress = adresse.trim().length > 0;
+    const hasGps = !!coords;
+    if (hasAddress && hasGps && phoneValid) {
+      autoConfirmRef.current = true;
+      // Micro-tick pour laisser la modale se peindre (UX : flash bref
+      // pour signaler à l'user qu'on confirme avec ses données saved).
+      const id = window.setTimeout(() => {
+        onConfirm({
+          adresse: adresse.trim(),
+          telephone: telephone.trim(),
+          note: note.trim() || undefined,
+          gps: coords,
+        });
+      }, 150);
+      return () => window.clearTimeout(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4" onClick={onClose}>
       <div
@@ -605,9 +632,15 @@ function DeliveryModal({
             }`}
           >
             <MapPin className={`w-4 h-4 shrink-0 ${coords ? 'text-emerald-600' : 'text-amber-600'}`} />
-            <span className="flex-1 text-left font-medium">
+            {/* ✅ 2026-05-18 — Plus de coords GPS brutes (ex. "4.0323, 9.8227")
+                qui ne disent rien à l'utilisateur. On affiche l'adresse
+                textuelle qu'il a déjà saisie/sélectionnée, ou un libellé
+                générique si aucune adresse. */}
+            <span className="flex-1 text-left font-medium truncate">
               {coords
-                ? `${t('bourse.recap.position_set')} · ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`
+                ? adresse && adresse.trim().length > 0
+                  ? `${t('bourse.recap.position_set')} · ${adresse.length > 32 ? adresse.slice(0, 32) + '…' : adresse}`
+                  : t('bourse.recap.position_set')
                 : t('bourse.recap.choose_on_map')}
             </span>
             {coords && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
@@ -1356,20 +1389,32 @@ const RecapAchatPage: React.FC = () => {
               // invisible côté libraire.
               if (commandeId) {
                 try {
-                  await apiPost(
+                  // ✅ FIX 2026-05-18 — Payload requis : commande_id + methode_paiement.
+                  // Avant : `{}` → backend 400 → commande restait en 'edition' (timeline
+                  // de suivi vide). 'mobile_money' = défaut sûr (MoMo/OM, populaire CM).
+                  // L'utilisateur pourra changer la méthode au moment du règlement.
+                  const r = await apiPost(
                     `/api/librairie-network/commandes/${commandeId}/valider-budget`,
-                    {},
+                    { commande_id: commandeId, methode_paiement: 'mobile_money' },
                   );
+                  if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    console.warn('[valider-budget] HTTP', r.status, d);
+                  }
                 } catch (e) {
                   console.warn('[valider-budget] échec, commande reste en edition', e);
                 }
                 // Broadcast = route la commande au super libraire (YukpoLibrairie)
                 // puis aux librairies proches en fallback. Nécessite gps_livraison.
                 try {
-                  await apiPost(
+                  const r = await apiPost(
                     `/api/librairie-network/commandes/${commandeId}/broadcast`,
                     { commande_id: commandeId },
                   );
+                  if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    console.warn('[broadcast] HTTP', r.status, d);
+                  }
                 } catch (e) {
                   console.warn('[broadcast] échec, la commande n\'apparaîtra pas chez le libraire avant intervention manuelle admin', e);
                 }
@@ -1377,8 +1422,24 @@ const RecapAchatPage: React.FC = () => {
 
               setShowDelivery(false);
               sessionStorage.removeItem(TROC_DECISION_KEY);
-              // Vide le panier — la commande est désormais en base, le suivi se fait via /mes-commandes
-              enfants.forEach(e => clearPanierForEnfant(e.id));
+              // ✅ 2026-05-18 — Vide le panier en UNE SEULE opération (atomique
+              // + un seul write localStorage). Avant : forEach sur enfants
+              // avec clearPanierForEnfant → si la liste enfants était vide
+              // au moment T (race), aucune itération → panier non vidé.
+              clearPanier();
+              // Sécurité supplémentaire : écrit explicitement un panier vide
+              // dans localStorage AVANT le navigate, pour qu'aucune page
+              // suivante (Suivi, Accueil) ne puisse lire un panier stale.
+              try {
+                const raw = localStorage.getItem('yukpo_parent_shop_v4');
+                if (raw) {
+                  const parsed = JSON.parse(raw);
+                  localStorage.setItem(
+                    'yukpo_parent_shop_v4',
+                    JSON.stringify({ ...parsed, panier: [] }),
+                  );
+                }
+              } catch { /* localStorage indispo */ }
               {
                 const nbArticles = livres_neufs.length + livres_occasion.length;
                 toast({
