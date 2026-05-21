@@ -2,18 +2,9 @@
 # Cible : factoriser N connexions backend en M connexions Postgres (N >> M)
 # pour atteindre 10k req/s avec un Postgres limité à 1000 max_connections.
 
-FROM edoburu/pgbouncer:1.23.1
+FROM edoburu/pgbouncer:latest
 
-# Variables d'environnement attendues (à fournir via `fly secrets set`) :
-#   DB_HOST            — hôte Postgres Fly (ex: yukpo-bourse-sim-db.internal)
-#   DB_PORT            — port Postgres (5432)
-#   DB_NAME            — nom de la base (yukpo_db)
-#   DB_USER            — user superuser pour stats_users
-#   DB_PASSWORD        — mot de passe (chiffré dans Fly secrets)
-#
-# Le entrypoint d'edoburu/pgbouncer génère automatiquement userlist.txt
-# et pgbouncer.ini depuis ces variables au boot.
-
+# Variables edoburu/pgbouncer (sans préfixe, écrit directement dans pgbouncer.ini)
 ENV POOL_MODE=transaction
 ENV MAX_CLIENT_CONN=10000
 ENV DEFAULT_POOL_SIZE=50
@@ -27,6 +18,18 @@ ENV LOG_CONNECTIONS=1
 ENV LOG_DISCONNECTIONS=1
 ENV LOG_POOLER_ERRORS=1
 ENV STATS_PERIOD=60
+ENV IGNORE_STARTUP_PARAMETERS=extra_float_digits,application_name,search_path
+ENV LISTEN_ADDR=0.0.0.0
+ENV LISTEN_PORT=6432
+
+# ✅ 2026-05-21 — Support prepared statements en mode transaction.
+# PgBouncer 1.21+ tracks named prepared statements per-client and re-prepares
+# them when the connection is reassigned to a different server. Compatible
+# avec sqlx 0.8 qui utilise prepared statements named pour query_as!.
+# Sans ce paramètre, on observait "current transaction is aborted" en cascade
+# car sqlx re-utilise un prepared statement sur une connexion server qui
+# vient d'être réassignée (donc le prepared n'existe plus).
+ENV MAX_PREPARED_STATEMENTS=200
 
 EXPOSE 6432
 
