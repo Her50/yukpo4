@@ -1,23 +1,28 @@
 // src/hooks/useUser.ts
-// @ts-check
+//
+// ✅ 2026-05-21 — Migration cookie httpOnly (fix XSS) :
+// Le JWT n'est plus accessible côté JS. On fetch `/api/auth/me` pour restaurer
+// l'utilisateur courant. Plus aucun `jwtDecode(localStorage.getItem('token'))`.
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { jwtDecode } from 'jwt-decode';
-import { UtilisateurYukpo } from '@/types/user_types';
-import { isAdminRole } from '@/utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
+import { isAdminRole } from '@/utils/roleHelpers';
+import { API_BASE_URL } from '../config/api';
 
 export type Role = 'admin' | 'user' | 'client' | 'public';
 
+/** @deprecated — Conservé pour compat type des écrans qui importent encore.
+ * Le JWT n'est plus décodé côté JS ; les claims viennent de /auth/me.
+ */
 export interface DecodedToken {
-  sub: string | number; // <-- Correction : correspond à l'id utilisateur dans le JWT
+  sub: string | number;
   email: string;
   role: Role | string;
   exp: number;
   name?: string;
   photo?: string;
   picture?: string;
-  tokens_balance?: number; // <-- Correspond au champ du JWT backend
+  tokens_balance?: number;
   currency?: string;
-  partner_type?: string | null; // ✅ pharmacie | restaurant | hopital | livraison | etc.
+  partner_type?: string | null;
 }
 
 export interface User {
@@ -26,11 +31,10 @@ export interface User {
   role: Role;
   isAdmin: boolean;
   isUser: boolean;
-  isPartner: boolean;          // ✅ true si role==='partenaire' OU partner_type défini
-  partnerType?: string | null; // ✅ pharmacie | restaurant | …
+  isPartner: boolean;
+  partnerType?: string | null;
   name: string;
   photo: string;
-  // Champs de profil utilisateur
   nom?: string;
   prenom?: string;
   nom_complet?: string;
@@ -43,132 +47,123 @@ export interface User {
   currency?: string;
 }
 
+interface MeResponse {
+  id: number;
+  email: string;
+  role: string;
+  name?: string | null;
+  partner_type?: string | null;
+  tokens_balance?: number;
+}
+
 export const useUser = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Ajouter une référence pour éviter les réinitialisations multiples
+
   const initializationRef = useRef(false);
   const lastUserRef = useRef<User | null>(null);
 
-  // Fonction pour récupérer l'utilisateur depuis le token
-  const getUserFromToken = useCallback((): User | null => {
-    const token = localStorage.getItem('token');
-    const isFakeUserMode = localStorage.getItem('__DEV_FAKE_USER__') === 'true';
-    let currentUser: User | null = null;
+  const buildUserFromMe = useCallback((me: MeResponse): User => {
+    const partnerType = me.partner_type ?? null;
+    const isPartner = me.role === 'partenaire' || !!partnerType;
+    return {
+      id: String(me.id),
+      email: me.email,
+      role: me.role as Role,
+      isAdmin: isAdminRole(me.role),
+      isUser: me.role === 'user',
+      isPartner,
+      partnerType,
+      name: me.name ?? '',
+      photo: '',
+      credits: me.tokens_balance ?? 0,
+      currency: 'XAF',
+    };
+  }, []);
 
-    console.log('[useUser] Initialisation, token présent:', !!token);
+  // Récupère l'utilisateur depuis /auth/me. Override dev-fake-user géré ici aussi.
+  const refreshUser = useCallback(async (): Promise<User | null> => {
+    const isFakeUserMode =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('__DEV_FAKE_USER__') === 'true';
 
-    if (token) {
-      try {
-        const decoded = jwtDecode<DecodedToken>(token);
-        console.log('[useUser] Token décodé:', decoded);
-        
-        if (decoded.exp * 1000 > Date.now()) {
-          const partnerType = decoded.partner_type ?? null;
-          const isPartner = decoded.role === 'partenaire' || !!partnerType;
-          currentUser = {
-            id: String(decoded.sub),
-            email: decoded.email,
-            role: decoded.role as Role,
-            // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
-            isAdmin: isAdminRole(decoded.role),
-            isUser: decoded.role === 'user',
-            isPartner,
-            partnerType,
-            name: decoded.name || '',
-            photo: decoded.photo || decoded.picture || '',
-            credits: decoded.tokens_balance ?? 0,
-            currency: decoded.currency ?? 'XAF',
-          };
-          console.log('[useUser] Utilisateur authentifié:', currentUser);
-        } else {
-          console.log('[useUser] Token expiré, suppression');
-          localStorage.removeItem('token');
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/me`);
+      if (res.ok) {
+        const me = (await res.json()) as MeResponse;
+        const built = buildUserFromMe(me);
+        // Override solde si présent dans localStorage (post-IA)
+        const storedBalance =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('tokens_balance')
+            : null;
+        if (storedBalance !== null) {
+          built.credits = parseInt(storedBalance, 10);
         }
-      } catch (e) {
-        console.error('[useUser] Erreur décodage token:', e);
-        localStorage.removeItem('token');
+        return built;
       }
+    } catch (e) {
+      console.warn('[useUser] /auth/me erreur:', e);
     }
 
-    // Override dynamique du solde si présent dans localStorage (post-IA)
-    const storedBalance = localStorage.getItem('tokens_balance');
-    if (storedBalance !== null && currentUser) {
-      currentUser.credits = parseInt(storedBalance, 10);
-      console.log('[useUser] Solde mis à jour depuis localStorage:', currentUser.credits);
-    }
-
-    // ✅ MODE DEV : injecte un utilisateur fictif si activé
-    if (!currentUser && import.meta.env.DEV && isFakeUserMode) {
-      currentUser = {
-        id: "fake-dev-id",
-        email: "admin@yukpo.dev",
-        role: "admin",
+    // Fallback DEV fake user
+    if (!user && import.meta.env.DEV && isFakeUserMode) {
+      return {
+        id: 'fake-dev-id',
+        email: 'admin@yukpo.dev',
+        role: 'admin',
         isAdmin: true,
         isUser: false,
         isPartner: false,
         partnerType: null,
-        name: "Dev Admin",
-        photo: "",
+        name: 'Dev Admin',
+        photo: '',
         credits: 9999,
-        currency: "XAF",
+        currency: 'XAF',
       };
-      console.warn("🧪 UTILISATEUR DE DÉVELOPPEMENT ACTIVÉ — via localStorage");
     }
+    return null;
+  }, [buildUserFromMe, user]);
 
-    return currentUser;
-  }, []);
-
-  // Effet initial et écoute des changements de tokens_balance
+  // Effet initial : appelle /auth/me + écoute les changements de tokens_balance
   useEffect(() => {
-    // Éviter les réinitialisations multiples
     if (initializationRef.current) return;
     initializationRef.current = true;
-    
-    const updateUser = () => {
-      const currentUser = getUserFromToken();
-      
-      // Éviter les mises à jour inutiles si l'utilisateur n'a pas changé
-      if (JSON.stringify(currentUser) !== JSON.stringify(lastUserRef.current)) {
-        setUser(currentUser);
-        lastUserRef.current = currentUser;
+
+    let cancelled = false;
+    const updateUser = async () => {
+      const current = await refreshUser();
+      if (cancelled) return;
+      if (JSON.stringify(current) !== JSON.stringify(lastUserRef.current)) {
+        setUser(current);
+        lastUserRef.current = current;
       }
-      
       setIsLoading(false);
     };
-
-    // Mise à jour initiale
     updateUser();
 
-    // Écouter les changements de tokens_balance dans localStorage
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'tokens_balance' || e.key === 'token') {
-        console.log('[useUser] Changement détecté dans localStorage:', e.key);
         updateUser();
       }
     };
-
-    // Écouter les changements de localStorage (entre onglets)
-    window.addEventListener('storage', handleStorageChange);
-
-    // Écouter les changements de tokens_balance via CustomEvent (même onglet)
     const handleTokensUpdate = () => {
-      console.log('[useUser] CustomEvent tokens_updated reçu');
       updateUser();
     };
 
+    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('tokens_updated', handleTokensUpdate);
 
     return () => {
+      cancelled = true;
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('tokens_updated', handleTokensUpdate);
     };
-  }, [getUserFromToken]);
+  }, [refreshUser]);
 
-  // 🔁 Bascule dynamique via console
+  // 🔁 Bascule dynamique via console (mode dev)
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       // @ts-ignore
       window.__YUKPO_TOGGLE_DEV = () => {
         const current = localStorage.getItem('__DEV_FAKE_USER__') === 'true';
@@ -178,24 +173,13 @@ export const useUser = () => {
     }
   }, []);
 
-  // Fonction pour récupérer les informations complètes de l'utilisateur
   const fetchUserDetails = useCallback(async () => {
     if (!user?.id) return;
-    
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      
-      const response = await fetch('/api/users/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`);
       if (response.ok) {
         const userDetails = await response.json();
-        setUser(prev => prev ? { ...prev, ...userDetails } : null);
+        setUser((prev) => (prev ? { ...prev, ...userDetails } : null));
       }
     } catch (error) {
       console.error('[useUser] Erreur récupération détails utilisateur:', error);
@@ -206,17 +190,20 @@ export const useUser = () => {
     user,
     isLoading,
     fetchUserDetails,
-    login: (token: string) => {
-      console.log('[useUser] Login avec token de longueur:', token.length);
-      localStorage.setItem('token', token);
-      // Forcer une re-évaluation
-      window.location.reload();
+    // login : le cookie est déjà posé par le backend, on rafraîchit juste le state.
+    login: async (_token: string) => {
+      const next = await refreshUser();
+      setUser(next);
     },
-    logout: () => {
-      console.log('[useUser] Logout');
-      localStorage.removeItem('token');
-      localStorage.removeItem('__DEV_FAKE_USER__');
+    logout: async () => {
+      try {
+        await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' });
+      } catch { /* non bloquant */ }
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('__DEV_FAKE_USER__');
+      } catch { /* noop */ }
       window.location.href = '/';
     },
   };
-}
+};

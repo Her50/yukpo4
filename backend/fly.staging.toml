@@ -1,0 +1,107 @@
+# Configuration Fly.io — environnement STAGING-SIM dédié à la simulation
+# complète du système Bourse du Livre (troc + vente occasion + commandes neufs
+# + matching + chaînes + paquets coursier + parrainage + wallet).
+#
+# Isolé de la prod (yukpo-fly-backend) :
+#   - App distincte : yukpo-bourse-sim
+#   - DB distincte : yukpo-bourse-sim-db (fork point-in-time de yukpo-fly-postgres)
+#   - JWT_SECRET dédié (forgé côté script de simulation)
+#   - SMS_PROVIDER=stub (aucun envoi Twilio réel)
+#
+# Cycle de vie :
+#   1. fly deploy --config backend/fly.staging.toml -a yukpo-bourse-sim
+#   2. Simulation 1k livres + 200 users
+#   3. fly apps destroy yukpo-bourse-sim (+ destroy DB) à la fin = retour à 0 $
+
+app = "yukpo-bourse-sim"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile.fly"
+
+[env]
+  PORT = "8080"
+  HOST = "0.0.0.0"
+  RUST_LOG = "info,sqlx=warn"
+  APP_ENV = "staging-sim"
+  CLOUD_RUN = "false"
+
+  # Modules désactivés (idem prod)
+  GPU_ENABLED = "false"
+  ENABLE_AI_OPTIMIZATIONS = "true"
+
+  # ✅ 2026-05-21 — Cible 10k req/s avec respect du plafond Fly Postgres
+  # (max_connections = 300 sur l'instance staging). Calcul :
+  #   DB_POOL_SIZE × max_machines + ~20 connexions admin/monitoring ≤ 300
+  #   → 28 × 10 = 280, +20 marge = 300. OK.
+  # Pour vraiment 10k req/s prod, PgBouncer indispensable (cible 1000+ conn
+  # côté backend → 50 vers Postgres via transaction pooling).
+  DB_POOL_SIZE = "28"
+  DB_POOL_MIN_SIZE = "4"
+  DB_ACQUIRE_TIMEOUT_SECS = "15"
+  DB_STATEMENT_TIMEOUT_MS = "15000"
+  DB_LOCK_TIMEOUT_MS = "10000"
+  DB_IDLE_IN_TX_TIMEOUT_MS = "15000"
+  DATABASE_URL_RO = ""
+
+  # Billing désactivé pour la sim — tous comptes exemptés
+  YUKPO_IA_TOKEN_MULTIPLIER = "20"
+  YUKPO_SIGNUP_BONUS_TOKENS = "4000"
+  YUKPO_IA_EXEMPT_ALL_PARTNERS = "true"
+
+  # Admin librairie officielle : aucun par défaut. Les scripts seed
+  # désigneront un user_id admin et l'injecteront via fly secrets set.
+  YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS = ""
+
+  # Migrations : déjà appliquées dans le fork, on désactive pour ne pas
+  # retomber sur le seed MINESEC Technique cassé (cf. note fly.toml prod).
+  ENABLE_AUTO_MIGRATIONS = "false"
+
+  # Stubs externes — pas d'appels Twilio/MoMo réels en simulation
+  SMS_PROVIDER = "stub"
+
+  # Redis scaling : panic au boot si REDIS_SCALING_ENABLED=true sans GCP_PROJECT_ID.
+  # Défaut Rust = "true" si var absente (redis_scaling_service.rs:46-49) →
+  # il faut explicitement le mettre à false pour staging (pas de GCP en sim).
+  REDIS_SCALING_ENABLED = "false"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # ✅ 2026-05-21 — Autoscale 1→10 VMs pour absorber 10k req/s concurrent
+  # (= ~1k req/s par VM avec soft_limit 300 connexions).
+  min_machines_running = 1
+  max_machines_running = 10
+
+  [http_service.concurrency]
+    type = "connections"
+    # ✅ 2026-05-21 — 300 connexions soft / 600 hard par VM pour 10k targét
+    # (10 VMs × 300 = 3000 simultanées avant nouveau spawn).
+    soft_limit = 300
+    hard_limit = 600
+
+  [http_service.http_options]
+    response_timeout = 120
+    idle_timeout = 30
+
+[[vm]]
+  # ✅ 2026-05-21 — 4GB RAM + 2 CPUs partagés pour soutenir 100 conn DB +
+  # plus de threads tokio actifs. Coût : ~2× le staging précédent.
+  memory = "4gb"
+  cpu_kind = "shared"
+  cpus = 2
+
+[checks]
+  [checks.health]
+    grace_period = "45s"
+    interval = "10s"
+    method = "get"
+    path = "/health"
+    port = 8080
+    timeout = "5s"
+    type = "http"
+
+kill_signal = "SIGINT"
+kill_timeout = 30

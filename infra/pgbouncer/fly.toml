@@ -1,0 +1,64 @@
+# PgBouncer en sidecar Fly pour pooling de connexions Postgres
+# Cible : permettre au backend de scaler vers 10k req/s sans saturer
+# le max_connections du Postgres en transaction pooling.
+#
+# Architecture :
+#   Backend (10 VMs × 28 pool = 280 conn frontend)
+#         ↓ HTTPS via .internal
+#   PgBouncer (1-3 VMs × MAX_CLIENT_CONN=10000)
+#         ↓ pool transaction
+#   Postgres (max 50 conn server-side suffit grâce au pooling)
+#
+# Déploiement :
+#   fly launch --name yukpo-bourse-sim-pgbouncer --no-deploy
+#   fly secrets set -a yukpo-bourse-sim-pgbouncer \
+#     DB_HOST=yukpo-bourse-sim-db.internal \
+#     DB_PORT=5432 \
+#     DB_NAME=yukpo_db \
+#     DB_USER=yukpo_bourse_sim \
+#     DB_PASSWORD=<secret>
+#   fly deploy -a yukpo-bourse-sim-pgbouncer -c infra/pgbouncer/fly.toml
+#
+# Backend : update DATABASE_URL pour pointer vers pgbouncer:6432
+
+app = "yukpo-bourse-sim-pgbouncer"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Toutes les vraies valeurs viennent de `fly secrets set` (cf. doc plus haut).
+  POOL_MODE = "transaction"
+  MAX_CLIENT_CONN = "10000"
+  DEFAULT_POOL_SIZE = "50"
+  RESERVE_POOL_SIZE = "10"
+  RESERVE_POOL_TIMEOUT = "3"
+  QUERY_TIMEOUT = "20"
+  QUERY_WAIT_TIMEOUT = "10"
+  STATS_PERIOD = "60"
+
+[[services]]
+  internal_port = 6432
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 6432
+    handlers = ["tls"]
+    # PgBouncer accepté en TLS via Fly handler
+
+[[vm]]
+  memory = "256mb"  # PgBouncer = très léger
+  cpu_kind = "shared"
+  cpus = 1
+
+[checks]
+  [checks.tcp]
+    grace_period = "20s"
+    interval = "10s"
+    port = 6432
+    timeout = "3s"
+    type = "tcp"

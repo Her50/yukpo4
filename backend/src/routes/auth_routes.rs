@@ -1,7 +1,7 @@
 // ?? src/routes/auth_routes.rs
 
 use axum::{
-    routing::{options, post},
+    routing::{get, options, post},
     Router,
 };
 use std::sync::Arc;
@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::controllers::auth_controller::{
     bootstrap_super_admin,
     login_handler,
+    me_handler,
     oauth_login_handler,
     register_user,
     send_phone_verification_code,
@@ -74,6 +75,14 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(crate::controllers::auth_logout_controller::logout_handler),
         )
         .route("/auth/logout", options(cors_preflight_handler))
+        // ✅ 2026-05-21: GET /auth/me — récupère les infos user depuis le JWT.
+        // Permet au frontend web de connaître l'utilisateur connecté sans
+        // jamais accéder au JWT côté JS (le JWT est dans un cookie httpOnly).
+        .route(
+            "/auth/me",
+            get(me_handler).layer(middleware::from_fn(crate::middlewares::jwt::jwt_auth)),
+        )
+        .route("/auth/me", options(cors_preflight_handler))
         .layer(middleware::from_fn(
             crate::middlewares::monitoring::monitoring,
         ))

@@ -24,7 +24,9 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé : la requête est same-origin via Netlify proxy.
+  # Garder Access-Control-Allow-Origin = "*" briserait la nouvelle auth cookie
+  # httpOnly (`withCredentials: true` refuse les wildcards d'origine).
 
 [[redirects]]
   from = "/auth/*"
@@ -33,7 +35,7 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/auth/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — Cf. /api/*. Pas de CORS wildcard avec withCredentials.
 
 [[redirects]]
   from = "/services/*"
@@ -42,7 +44,7 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/services/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/healthz"
@@ -51,7 +53,7 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/prestataire/*"
@@ -60,7 +62,7 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/prestataire/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/user/*"
@@ -69,7 +71,7 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/user/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/users/*"
@@ -78,7 +80,7 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/users/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/ia/*"
@@ -87,7 +89,7 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/ia/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/ws/*"
@@ -96,7 +98,7 @@
   # to = "wss://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/fournitures/*"
@@ -105,7 +107,7 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/fournitures/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/echange/*"
@@ -114,74 +116,33 @@
   # to = "https://yukpo-backend-376093909298.europe-west1.run.app/echange/:splat"  # 💤 GCP (principal)
   status = 200
   force = true
-  headers = {Access-Control-Allow-Origin = "*"}
+  # ✅ 2026-05-21 — CORS supprimé (same-origin via proxy, incompatible cookie httpOnly).
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-
-[[headers]]
-  for = "/auth/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-
-[[headers]]
-  for = "/services/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-
-[[headers]]
-  for = "/prestataire/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-
-[[headers]]
-  for = "/user/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-
-[[headers]]
-  for = "/users/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-
-[[headers]]
-  for = "/ia/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+# ✅ 2026-05-21 — CORS supprimé des blocs [[headers]] pour /api/*, /auth/*, etc.
+# Le backend (Cloudflare → Fly) renvoie déjà ses propres Access-Control-Allow-*
+# avec credentials=true et origines whitelist. Doubler ici avec wildcard
+# briserait l'auth cookie httpOnly (`withCredentials: true` refuse wildcard).
+# Les requêtes vers /api/*, /auth/*, /services/*, etc. sont same-origin via
+# le proxy Netlify (status 200), donc CORS pas nécessaire côté Netlify.
 
 [[headers]]
   for = "/*"
   [headers.values]
     # Anti-clickjacking
     X-Frame-Options = "DENY"
-    # Filtres legacy (anciens browsers, harmless sur modernes)
-    X-XSS-Protection = "1; mode=block"
+    # ✅ 2026-05-21 — X-XSS-Protection RETIRÉ : header déprécié, peut introduire
+    # des vulnérabilités sur certains anciens browsers. CSP est la protection
+    # moderne. Cf. https://owasp.org/www-project-secure-headers/#x-xss-protection
     # Empêche le MIME-sniffing
     X-Content-Type-Options = "nosniff"
     # HSTS — force HTTPS 2 ans, sous-domaines inclus. Tous les domains Yukpo
     # sont en HTTPS via Netlify/Fly, donc safe à activer.
-    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
     # Limite la fuite d'URL référente vers les tiers (privacy + sécurité)
     Referrer-Policy = "strict-origin-when-cross-origin"
     # Restrictions API browser. Autorisé : geo (recherche prox), camera (scan
@@ -189,8 +150,33 @@
     Permissions-Policy = "geolocation=(self), camera=(self), microphone=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
     # Isolation cross-origin (limite Spectre + clic-jacking via popups)
     Cross-Origin-Opener-Policy = "same-origin-allow-popups"
-    # CSP en mode Report-Only d'abord : observe les violations sans bloquer la
-    # prod. Activer la version stricte (sans -Report-Only) quand on a confirmé
-    # qu'aucune ressource légitime n'est cassée. Sources autorisées : Google
-    # Maps, OpenStreetMap (tiles), Photon (geocoding), Fly backend, WebSockets.
-    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.yukpomnang.com wss://api.yukpomnang.com https://yukpo-fly-backend.fly.dev wss://yukpo-fly-backend.fly.dev https://yukpo-backend-376093909298.europe-west1.run.app wss://yukpo-backend-376093909298.europe-west1.run.app https://maps.googleapis.com https://*.tile.openstreetmap.org https://photon.komoot.io https://api.openai.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';"
+    # ✅ 2026-05-21 — CSP MODE ENFORCING (plus en Report-Only).
+    # Bloque réellement toute exécution/exfiltration interdite.
+    #
+    # Inventaire whitelist (grep préventif du frontend pour éviter les
+    # CSP violations en prod, sans attendre que ça casse) :
+    #   script-src :
+    #     • maps.googleapis.com / maps.gstatic.com : Google Maps JS SDK
+    #     • www.google.com / www.gstatic.com : reCAPTCHA v2/v3 (grecaptcha)
+    #   style-src :
+    #     • fonts.googleapis.com : Google Fonts
+    #     • maps.googleapis.com : styles Maps
+    #   img-src : https: (médias Wasabi/CloudFront/UI-avatars/Unsplash placeholders)
+    #   font-src : fonts.gstatic.com : Google Fonts assets
+    #   connect-src (XHR/fetch/WS) :
+    #     • api.yukpomnang.com : backend prod (Cloudflare proxy → Fly)
+    #     • yukpo-fly-backend.fly.dev : fallback Fly direct
+    #     • yukpo-backend-...run.app : fallback GCP principal
+    #     • maps.googleapis.com : Geocoding + Places
+    #     • *.tile.openstreetmap.org : tuiles OSM
+    #     • photon.komoot.io : geocoding open-source
+    #     • api.openai.com : assistant IA Yukpo (recherche+matching)
+    #     • api.exchangerate.host : conversion devises
+    #     • translation.googleapis.com : Google Translate API (i18n dynamique)
+    #     • www.googleapis.com : Google Geolocation API
+    #     • server.arcgisonline.com : tuiles satellite ArcGIS (fallback)
+    #   frame-src :
+    #     • www.google.com : iframe reCAPTCHA
+    #   worker-src 'self' + manifest-src 'self' : PWA (sw.js + manifest.json)
+    #   media-src : https: pour vidéos d'appréciation état livre (Wasabi)
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maps.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.yukpomnang.com wss://api.yukpomnang.com https://yukpo-fly-backend.fly.dev wss://yukpo-fly-backend.fly.dev https://yukpo-backend-376093909298.europe-west1.run.app wss://yukpo-backend-376093909298.europe-west1.run.app https://maps.googleapis.com https://*.tile.openstreetmap.org https://photon.komoot.io https://api.openai.com https://api.exchangerate.host https://translation.googleapis.com https://www.googleapis.com https://server.arcgisonline.com; media-src 'self' blob: https:; worker-src 'self'; manifest-src 'self'; frame-src 'self' https://www.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"

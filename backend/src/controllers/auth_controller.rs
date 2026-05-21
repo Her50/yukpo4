@@ -1,6 +1,8 @@
 use axum::{
     extract::State,
+    http::{HeaderMap, HeaderValue},
     response::{IntoResponse, Json},
+    Extension,
 };
 use bcrypt::{hash, verify};
 use log::{error, info, warn};
@@ -50,11 +52,28 @@ pub struct LoginInput {
     pub password: String,
 }
 
+/// ✅ 2026-05-21 — Construit le header Set-Cookie sécurisé pour le JWT.
+/// HttpOnly empêche JS de lire le cookie (fix XSS), Secure force HTTPS,
+/// SameSite=Lax empêche CSRF cross-site mais autorise navigation classique.
+/// Path=/ et Max-Age aligné sur le TTL du JWT (24h).
+pub(crate) fn build_jwt_cookie(token: &str, max_age_secs: i64) -> String {
+    // En debug (cargo run local), on n'a pas forcément HTTPS → on retire Secure
+    // pour pouvoir tester sur http://localhost. En release Secure est présent.
+    #[cfg(debug_assertions)]
+    let secure_flag = "";
+    #[cfg(not(debug_assertions))]
+    let secure_flag = "; Secure";
+    format!(
+        "token={}; HttpOnly{}; SameSite=Lax; Path=/; Max-Age={}",
+        token, secure_flag, max_age_secs
+    )
+}
+
 /// ? Connexion avec email/mot de passe
 pub async fn login_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginInput>,
-) -> AppResult<Json<serde_json::Value>> {
+) -> AppResult<impl IntoResponse> {
     // ✅ SÉCURITÉ: Valider les entrées
     validate_email(&payload.email)?;
     if payload.password.is_empty() {
@@ -152,9 +171,21 @@ pub async fn login_handler(
         &secret,
         user.partner_type.clone(), // ✅ NOUVEAU: passer le type de partenaire
     )?;
+    // ✅ 2026-05-21 — Réponse enrichie : on inclut user info pour permettre
+    // au frontend web de ne plus décoder le JWT (qui sera dans un cookie
+    // httpOnly invisible à JS). Le `token` reste dans la réponse pour
+    // la compatibilité mobile RN (cookies pas pratiques en natif).
     let mut response_data = serde_json::json!({
         "token": jwt,
-        "tokens_balance": user.tokens_balance
+        "tokens_balance": user.tokens_balance,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "name": user.nom_complet,
+            "partner_type": user.partner_type,
+            "tokens_balance": user.tokens_balance,
+        }
     });
 
     // ✅ NOUVEAU: Inclure partner_type dans la réponse si c'est un partenaire
@@ -168,7 +199,53 @@ pub async fn login_handler(
         response_data["tokens_balance"],
         user.role
     );
-    Ok(Json(response_data))
+
+    // ✅ 2026-05-21 — Set-Cookie httpOnly pour le navigateur web (fix XSS).
+    // Le mobile (RN) ignore les cookies et continue d'utiliser `token` du JSON.
+    let cookie_value = build_jwt_cookie(&jwt, 60 * 60 * 24);
+    let mut headers = HeaderMap::new();
+    if let Ok(hv) = HeaderValue::from_str(&cookie_value) {
+        headers.insert(axum::http::header::SET_COOKIE, hv);
+    }
+
+    Ok((headers, Json(response_data)))
+}
+
+/// ✅ 2026-05-21 — GET /api/auth/me : retourne les infos user depuis le JWT
+/// (lu dans le cookie OU le header Authorization). Permet au frontend web
+/// de récupérer ses claims sans jamais accéder au JWT côté JS.
+pub async fn me_handler(
+    State(state): State<Arc<AppState>>,
+    Extension(auth): Extension<crate::middlewares::jwt::AuthenticatedUser>,
+) -> AppResult<Json<serde_json::Value>> {
+    #[derive(FromRow)]
+    struct UserRow {
+        id: i32,
+        email: String,
+        role: String,
+        tokens_balance: i64,
+        nom_complet: Option<String>,
+        partner_type: Option<String>,
+    }
+    let user = sqlx::query_as::<_, UserRow>(
+        r#"
+        SELECT id, email, role, tokens_balance, nom_complet, partner_type
+        FROM users WHERE id = $1
+        "#,
+    )
+    .bind(auth.id)
+    .fetch_optional(&state.pg)
+    .await?
+    .ok_or_else(|| AppError::Unauthorized("Utilisateur introuvable".into()))?;
+
+    Ok(Json(serde_json::json!({
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+        "name": user.nom_complet,
+        "partner_type": user.partner_type,
+        "tokens_balance": user.tokens_balance,
+    })))
 }
 
 #[derive(Deserialize)]

@@ -57,7 +57,9 @@ function trackErr(bucket, status, body) {
 function loadJson(name) { return JSON.parse(fs.readFileSync(join(__dirname, name), 'utf8')); }
 function client(jwt) {
   return axios.create({
-    baseURL: API, timeout: 30_000,
+    // ✅ 2026-05-21 — Timeout 60s (vs 30s) pour absorber les pics matching
+    // sous charge 10k req/s. Cf. ECONNABORTED massif en sim 24.
+    baseURL: API, timeout: 60_000,
     headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
     validateStatus: () => true,
   });
@@ -147,7 +149,12 @@ async function phaseMatching(users, jwts) {
                     { livre_id: m.id, max_participants: 10 },
                   );
                   if (r2.status === 200) {
-                    const c = r2.data?.chaines ?? r2.data?.chains ?? r2.data?.matchings ?? [];
+                    // ✅ FIX 2026-05-20 — La réponse est { success, matchings: { chaines: [...], matches: [...] } }
+                    // donc on lit r2.data.matchings.chaines (et non r2.data.matchings qui est un objet).
+                    const c = r2.data?.matchings?.chaines
+                      ?? r2.data?.chaines
+                      ?? r2.data?.chains
+                      ?? [];
                     for (const chain of c) {
                       chains.push({ proposed_by_user: u.id, livre_id: m.id, chain });
                     }
@@ -197,16 +204,30 @@ async function phaseCreateChaines(chainsProposed, jwts) {
     seen.add(key); return true;
   });
 
+  // ✅ FIX 2026-05-21 (sim 26) — Try/catch INDIVIDUEL : sans ça, un seul
+  // chain creation qui timeout fait crasher la phase entière (ECONNABORTED).
+  // Maintenant on compte ces échecs comme `err` et on poursuit.
+  let timeouts = 0;
   for (let i = 0; i < uniqueChains.length; i++) {
     const { proposed_by_user, chain } = uniqueChains[i];
     const participants = chain.participants ?? [];
     if (participants.length < 2) continue;
-    const r = await client(jwts[proposed_by_user]).post('/api/troc-livres/chaine', { participants });
-    if (r.status >= 200 && r.status < 300) ok++; else err++;
-    if (samples.length < 5) samples.push({ status: r.status, n_participants: participants.length, body: r.data });
+    const callerUserId = participants.some(p => p.user_id === proposed_by_user)
+      ? proposed_by_user
+      : participants[0].user_id;
+    try {
+      const r = await client(jwts[callerUserId]).post('/api/troc-livres/chaine', { participants });
+      if (r.status >= 200 && r.status < 300) ok++; else err++;
+      if (samples.length < 5) samples.push({ status: r.status, n_participants: participants.length, body: r.data });
+    } catch (e) {
+      err++;
+      timeouts++;
+      if (samples.length < 5) samples.push({ status: e.code || 'ERROR', n_participants: participants.length, body: e.message });
+    }
+    if ((i + 1) % 20 === 0) console.log(`    chaîne ${i + 1}/${uniqueChains.length}  (ok=${ok} err=${err} timeouts=${timeouts})`);
   }
-  log.phases.create_chaines = { unique: uniqueChains.length, created_ok: ok, errors: err, samples };
-  console.log(`  Création chaînes: ${ok} OK / ${err} err sur ${uniqueChains.length} uniques`);
+  log.phases.create_chaines = { unique: uniqueChains.length, created_ok: ok, errors: err, timeouts, samples };
+  console.log(`  Création chaînes: ${ok} OK / ${err} err / ${timeouts} timeouts sur ${uniqueChains.length} uniques`);
 }
 
 // ===========================================================================
@@ -380,7 +401,17 @@ async function phaseValidationLibraires(commandes, users, jwts) {
   const pool = getPool();
   const libraires = users.filter(u => u.partner_type === 'libraire');
   if (libraires.length === 0) { log.phases.validation = { skipped: 'aucun libraire' }; return; }
-  let ok = 0, err = 0, locked = 0;
+  // ✅ FIX 2026-05-21 — Sim 23 montre 0/541 err 404 "Validation non trouvée"
+  // car la sim tirait des libraires AU HASARD mais le broadcast prod ne crée
+  // de `commande_validations` que pour le super-libraire (priorité) ou
+  // les libraires de proximité APRÈS rupture. Le tirage aléatoire ne tombait
+  // jamais sur un libraire ayant une ligne valide → 404 systématique.
+  //
+  // Fix : on interroge la DB pour récupérer SEULEMENT les libraires éligibles
+  // (ligne `commande_validations` existante avec statut 'en_cours' ou
+  // 'en_attente'). On les fait ensuite courir en parallèle pour le verrou
+  // exclusif (vraie validation compétitive).
+  let ok = 0, err = 0, locked = 0, skipped_no_validation = 0;
   let livres_total_valides = 0;
   const errDetails = {};
   const N = Math.min(commandes.length, 200);
@@ -389,13 +420,34 @@ async function phaseValidationLibraires(commandes, users, jwts) {
     const livresR = await pool.query(`SELECT id FROM commande_livres_neufs WHERE commande_id = $1`, [c.id]);
     const livre_ids = livresR.rows.map(r => r.id);
     if (livre_ids.length === 0) continue;
-    const shuffled = [...libraires].sort(() => Math.random() - 0.5).slice(0, 3);
-    const tries = await Promise.all(shuffled.map(l =>
-      client(jwts[l.id]).post('/api/librairie-network/validation/valider', {
+
+    // Récupérer les libraires éligibles (ayant déjà une ligne commande_validations
+    // pour cette commande, donc reçus via broadcast initial ou super-lib).
+    // ✅ FIX 2026-05-21 — validation_statut enum n'a pas 'en_attente'.
+    // Valeurs réelles : en_cours, valide_partiel, valide_complet, abandonne, expire.
+    // Les rows fraîches créées par broadcast ont par défaut 'en_cours'.
+    const eligibleR = await pool.query(
+      `SELECT lp.user_id
+       FROM commande_validations cv
+       JOIN librairie_partners lp ON lp.id = cv.librairie_id
+       WHERE cv.commande_id = $1
+         AND cv.statut = 'en_cours'::validation_statut
+         AND lp.est_actif = true`,
+      [c.id],
+    );
+    const eligibleUserIds = eligibleR.rows.map(r => r.user_id);
+    if (eligibleUserIds.length === 0) {
+      skipped_no_validation++;
+      continue;
+    }
+
+    const shuffled = [...eligibleUserIds].sort(() => Math.random() - 0.5).slice(0, 3);
+    const tries = await Promise.all(shuffled.map(uid =>
+      client(jwts[uid]).post('/api/librairie-network/validation/valider', {
         commande_id: c.id,
         livres_valides: livre_ids,
         livres_indisponibles: [],
-        notes_validation: `sim-validate-all-${l.id}`,
+        notes_validation: `sim-validate-all-${uid}`,
       }).catch(e => ({ status: 599, error: e.message }))
     ));
     const winners = tries.filter(r => r.status >= 200 && r.status < 300);
@@ -407,10 +459,10 @@ async function phaseValidationLibraires(commandes, users, jwts) {
         trackErr(errDetails, t.status, t.data ?? t.error);
       }
     }
-    if ((i + 1) % 50 === 0) console.log(`    validation ${i + 1}/${N}  (ok=${ok} err=${err} verrous_simultanés=${locked})`);
+    if ((i + 1) % 50 === 0) console.log(`    validation ${i + 1}/${N}  (ok=${ok} err=${err} skipped=${skipped_no_validation} verrous_simultanés=${locked})`);
   }
-  log.phases.validation = { ok, err, simultane_winners_anomalies: locked, total: N, livres_total_valides, errors: errDetails };
-  console.log(`  Validation compétitive: ${ok} OK / ${err} err / ${locked} anomalies / ${livres_total_valides} livres validés`);
+  log.phases.validation = { ok, err, simultane_winners_anomalies: locked, total: N, skipped_no_validation, livres_total_valides, errors: errDetails };
+  console.log(`  Validation compétitive: ${ok} OK / ${err} err / ${locked} anomalies / ${skipped_no_validation} skipped (no validation row) / ${livres_total_valides} livres validés`);
 }
 
 // ===========================================================================

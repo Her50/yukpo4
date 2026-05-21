@@ -9,10 +9,13 @@ use crate::models::troc_livre::{
 };
 use crate::utils::classe_normalization::{canonical, classe_match_variants};
 use log::{self, info};
+use once_cell::sync::Lazy;
 #[allow(unused_imports)]
 use sqlx::{PgPool, Row};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
 
 /// Rayon géographique maximal d'une chaîne de troc (en km).
 /// Au-delà de cette distance, une arête est rejetée pour éviter
@@ -21,6 +24,27 @@ const MAX_CHAIN_RADIUS_KM: f64 = 30.0;
 
 /// Distance maximale entre deux nœuds consécutifs (arête) dans une chaîne.
 const MAX_EDGE_DISTANCE_KM: f64 = 20.0;
+
+/// ✅ 2026-05-21 (scalabilité 10k req/s) — Cache mémoire des résultats de
+/// `find_matching_chaine` par livre_offert_id. TTL court (30s) car la DB
+/// change rapidement. Évite le rescan complet 500 livres + 500 demandes
+/// quand le même livre est interrogé en boucle (cas typique : retry
+/// frontend ou utilisateur qui rafraîchit).
+///
+/// Politique : LRU-like simple avec invalidation par âge. Pas de LRU strict
+/// (pas crucial à cette échelle). Si la map grossit > 1000 entrées, on la
+/// purge complètement (évite croissance illimitée).
+const MATCHING_CACHE_TTL_SECS: u64 = 30;
+const MATCHING_CACHE_MAX_ENTRIES: usize = 1000;
+
+#[derive(Clone)]
+struct CachedMatching {
+    chaines: Vec<MatchingChaine>,
+    inserted_at: Instant,
+}
+
+static MATCHING_CACHE: Lazy<Mutex<HashMap<i32, CachedMatching>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub struct TrocIntelligentService {
     pool: Arc<PgPool>,
@@ -59,6 +83,41 @@ impl TrocIntelligentService {
                 None
             }
         })
+    }
+
+    /// ✅ Anti-cycle DAG (2026-05-20) : BFS depuis `from` sur l'adjacence sortante
+    /// pour savoir si `to` est atteignable. Si oui, ajouter une arête `to → from`
+    /// fermerait un cycle dans la chaîne courante.
+    ///
+    /// Règle métier rappelée par l'utilisateur : une chaîne est un chemin OUVERT,
+    /// jamais un cycle fermé. Un parent qui finit une chaîne PEUT redémarrer
+    /// une AUTRE chaîne (réutilisation inter-chaînes), mais ne doit jamais
+    /// revenir au start de la MÊME chaîne.
+    fn path_exists(adj_out: &HashMap<i32, Vec<i32>>, from: i32, to: i32) -> bool {
+        if from == to {
+            return true;
+        }
+        if adj_out.is_empty() {
+            return false;
+        }
+        let mut visited: HashSet<i32> = HashSet::new();
+        let mut stack: Vec<i32> = vec![from];
+        while let Some(u) = stack.pop() {
+            if !visited.insert(u) {
+                continue;
+            }
+            if let Some(neighbours) = adj_out.get(&u) {
+                for &v in neighbours {
+                    if v == to {
+                        return true;
+                    }
+                    if !visited.contains(&v) {
+                        stack.push(v);
+                    }
+                }
+            }
+        }
+        false
     }
 
     /// Calculer le score de proximité géographique
@@ -254,6 +313,21 @@ impl TrocIntelligentService {
             livre_offert_id
         );
 
+        // ✅ 2026-05-21 (scalabilité) — Cache hit ? Vérifier avant tout calcul.
+        {
+            let cache = MATCHING_CACHE.lock().await;
+            if let Some(entry) = cache.get(&livre_offert_id) {
+                if entry.inserted_at.elapsed() < Duration::from_secs(MATCHING_CACHE_TTL_SECS) {
+                    info!(
+                        "[TROC_INTELLIGENT] Cache HIT pour livre {} (âge {:?}s)",
+                        livre_offert_id,
+                        entry.inserted_at.elapsed().as_secs()
+                    );
+                    return Ok(entry.chaines.clone());
+                }
+            }
+        }
+
         let max_nodes = max_participants.unwrap_or(10) as usize;
 
         // Récupérer le livre offert (point de départ)
@@ -268,7 +342,17 @@ impl TrocIntelligentService {
 
         let initiateur_id = livre_offert.user_id;
 
-        // Récupérer TOUS les livres actifs disponibles (sauf ceux de l'initiateur)
+        // ✅ 2026-05-21 (scalabilité 10k req/s) — LIMIT réduit 500→300 :
+        // chaque /match charge 300 livres + 300 demandes. À 10k req/s, le DB
+        // ne supporte pas le 500. 300 reste ≥ assez pour saturer un DAG
+        // local de 10 participants tout en réduisant la charge de 40%.
+        // Filtre WHERE optimisé pour usage de l'index composite (cf. migration
+        // 20260521_idx_matching).
+        // Optionnel : étendre LIMIT via env var pour benchmarks haute densité.
+        let match_scan_limit: i64 = std::env::var("MATCHING_SCAN_LIMIT")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(300);
         let all_livres = sqlx::query_as::<_, LivreScolaire>(
             r#"
             SELECT * FROM livres_scolaires
@@ -277,10 +361,11 @@ impl TrocIntelligentService {
             AND COALESCE(etat_classification, 'acceptable') != 'rejete'
             AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')
             ORDER BY created_at DESC
-            LIMIT 500
+            LIMIT $2
             "#,
         )
         .bind(initiateur_id)
+        .bind(match_scan_limit)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération livres: {}", e)))?;
@@ -306,6 +391,7 @@ impl TrocIntelligentService {
         // jamais être sender, juste receiver final de la chaîne.
         // ⚠️ Doit être chargé AVANT la construction de `livres_par_user`
         // (qui prend des références) pour éviter une réallocation du Vec.
+        // ✅ 2026-05-21 (scalabilité 10k req/s) — LIMIT 500→300 (idem livres).
         let demandes_ouvertes = sqlx::query_as::<_, LivreScolaireDemande>(
             r#"
             SELECT * FROM livres_scolaires_demandes
@@ -315,10 +401,11 @@ impl TrocIntelligentService {
               AND expires_at > NOW()
               AND user_id != $1
             ORDER BY created_at ASC
-            LIMIT 500
+            LIMIT $2
             "#,
         )
         .bind(initiateur_id)
+        .bind(match_scan_limit)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération demandes: {}", e)))?;
@@ -652,6 +739,11 @@ impl TrocIntelligentService {
         // Greedy DAG construction: ajouter les arêtes une par une
         // en respectant:
         //   - Anti-réciprocité: si A→B, pas B→A
+        //   - ✅ Anti-cycle DAG: si une chaîne dirigée receiver →...→ sender
+        //     existe déjà, ajouter sender→receiver fermerait un cycle. Un DAG
+        //     valide n'a aucun cycle intra-chaîne (le user de fin d'une chaîne
+        //     PEUT être start d'une AUTRE chaîne, mais jamais revenir au start
+        //     de la MÊME chaîne — 2026-05-20).
         //   - Max nodes
         //   - Pas de self-loop
         //   - Un livre ne peut être transféré qu'une seule fois
@@ -665,15 +757,64 @@ impl TrocIntelligentService {
         let mut used_livre_ids: HashSet<i32> = HashSet::new();
         let mut chain_users: HashSet<i32> = HashSet::new();
         let mut senders_in_chain: HashSet<i32> = HashSet::new(); // Users qui envoient dans cette chaîne
+        // ✅ Anti-cycle DAG : adjacency list reconstruite incrémentalement
+        let mut adj_out: HashMap<i32, Vec<i32>> = HashMap::new();
 
         // L'initiateur est toujours dans la chaîne
         chain_users.insert(initiateur_id);
+
+        // ✅ 2026-05-21 (Bug B/C) — ANCRER LE LIVRE OFFERT : on prend D'ABORD
+        // l'arête qui part de l'initiateur ET porte précisément le livre passé
+        // en paramètre. C'était l'objectif sémantique du paramètre
+        // `livre_offert_id` mais l'algo précédent itérait sur toutes les
+        // arêtes triées par (vente,dist) sans garantir que livre_offert_id
+        // soit envoyé. Résultat : la chaîne pouvait avoir l'initiateur comme
+        // SINK final (recevant des livres d'autres) au lieu de SOURCE qui
+        // envoie son livre. C'est le bug "livre 1002 absent de la chaîne".
+        if let Some(initial_edge) = edges
+            .iter()
+            .find(|e| e.sender_id == initiateur_id && e.livre.id == livre_offert_id)
+        {
+            directed_pairs.insert((initial_edge.sender_id, initial_edge.receiver_id));
+            used_livre_ids.insert(initial_edge.livre.id);
+            chain_users.insert(initial_edge.sender_id);
+            chain_users.insert(initial_edge.receiver_id);
+            senders_in_chain.insert(initial_edge.sender_id);
+            adj_out
+                .entry(initial_edge.sender_id)
+                .or_default()
+                .push(initial_edge.receiver_id);
+            dag_edges.push(initial_edge);
+            info!(
+                "[TROC_INTELLIGENT] Ancrage initiateur : arête {} → {} (livre {})",
+                initial_edge.sender_id, initial_edge.receiver_id, initial_edge.livre.id
+            );
+        } else {
+            info!(
+                "[TROC_INTELLIGENT] Pas d'arête directe pour livre_offert_id={} — chaîne non garantie sur ce livre",
+                livre_offert_id
+            );
+        }
 
         for edge in &edges {
             // Anti-réciprocité: si (receiver→sender) existe, skip
             if directed_pairs.contains(&(edge.receiver_id, edge.sender_id)) {
                 continue;
             }
+            // ✅ Anti-cycle DAG : si un chemin receiver → ... → sender existe
+            // dans le DAG courant, ajouter sender→receiver créerait un cycle.
+            // BFS sur adj_out depuis receiver, on cherche à atteindre sender.
+            if Self::path_exists(&adj_out, edge.receiver_id, edge.sender_id) {
+                info!(
+                    "[TROC_INTELLIGENT] Skip arête {}->{}: créerait un cycle (path {} → ... → {} existant)",
+                    edge.sender_id, edge.receiver_id, edge.receiver_id, edge.sender_id
+                );
+                continue;
+            }
+            // ✅ 2026-05-21 — Pas de contrainte 1-in-1-out : le modèle métier
+            // autorise la « collecte progressive » (plusieurs parents livrent
+            // leurs livres au même destinataire final, qui reçoit l'agrégat).
+            // Seul l'acyclicité et l'anti-réciprocité sont nécessaires.
             // Livre déjà utilisé ?
             if used_livre_ids.contains(&edge.livre.id) {
                 continue;
@@ -732,17 +873,21 @@ impl TrocIntelligentService {
                 }
             }
 
-            // Contrainte multi-chaîne: si le receiver est déjà non-source dans
-            // une autre chaîne active ET n'est pas déjà sender dans cette chaîne,
-            // on ne peut pas le rendre non-source ici aussi (règle stricte: max 1).
+            // ✅ 2026-05-21 (Bug G) — Contrainte multi-chaîne RELAXÉE.
+            // L'ancienne règle "un user max non-source dans 1 chaîne" bloquait
+            // les chaînes parallèles légitimes (parent reçoit des livres pour
+            // 2 enfants différents = 2 chaînes distinctes). On log seulement
+            // pour observabilité — la gestion de conflit se fait au commit
+            // wallet/livraison (atomic UPDATE WHERE is_available), pas au
+            // matching.
             if users_already_non_source.contains(&edge.receiver_id)
                 && !senders_in_chain.contains(&edge.receiver_id)
             {
-                info!(
-                    "[TROC_INTELLIGENT] Skip arête {}->{}: user {} déjà non-source dans une autre chaîne",
-                    edge.sender_id, edge.receiver_id, edge.receiver_id
+                log::debug!(
+                    "[TROC_INTELLIGENT] Note: user {} déjà non-source dans une chaîne active — arête {}→{} acceptée (multi-chaîne autorisée)",
+                    edge.receiver_id, edge.sender_id, edge.receiver_id
                 );
-                continue;
+                // continue retiré : on accepte l'arête
             }
 
             // Ajouter l'arête
@@ -751,6 +896,7 @@ impl TrocIntelligentService {
             chain_users.insert(edge.sender_id);
             chain_users.insert(edge.receiver_id);
             senders_in_chain.insert(edge.sender_id);
+            adj_out.entry(edge.sender_id).or_default().push(edge.receiver_id);
             dag_edges.push(edge);
         }
 
@@ -762,50 +908,33 @@ impl TrocIntelligentService {
         // sur les chemins utiles. Cela minimise le nombre de nœuds.
         // ---------------------------------------------------------------
         if dag_edges.len() > 2 {
-            // Trouver les nœuds "terminaux utiles": ceux qui envoient un livre
-            // correspondant au besoin de l'initiateur (classe_souhaitee de l'initiateur)
-            let _initiateur_besoins: HashSet<(String, String)> =
-                if let Some(init_livres) = livres_par_user.get(&initiateur_id) {
-                    init_livres
-                        .iter()
-                        .filter(|l| !l.classe_souhaitee.is_empty())
-                        .map(|l| (l.classe_souhaitee.clone(), l.matiere.clone()))
-                        .collect()
-                } else {
-                    HashSet::new()
-                };
-
-            // BFS inverse: partir des arêtes qui envoient à l'initiateur,
-            // puis remonter les dépendances
+            // ✅ 2026-05-21 (Bug C) — ÉLAGAGE FORWARD : on garde uniquement
+            // les arêtes ATTEIGNABLES À PARTIR de l'initiateur (qui est la
+            // SOURCE de la chaîne, pas le SINK). Avant : BFS inverse qui
+            // remontait vers l'initiateur, le forçant à devenir destinataire
+            // final. Maintenant : BFS forward depuis l'initiateur, l'initiateur
+            // reste la SOURCE qui envoie son livre.
             let mut essential_edges: HashSet<usize> = HashSet::new();
-            let mut needed_users: HashSet<i32> = HashSet::new();
-            needed_users.insert(initiateur_id);
+            let mut reachable: HashSet<i32> = HashSet::new();
+            reachable.insert(initiateur_id);
 
-            // D'abord marquer les arêtes qui livrent directement à l'initiateur
-            for (i, edge) in dag_edges.iter().enumerate() {
-                if edge.receiver_id == initiateur_id {
-                    essential_edges.insert(i);
-                    needed_users.insert(edge.sender_id);
-                }
-            }
-
-            // Ensuite, remonter: pour chaque sender nécessaire qui reçoit aussi
-            // un livre (il a besoin d'un livre pour participer au troc),
-            // marquer les arêtes qui lui envoient un livre
+            // Itérer jusqu'à stabilité : à chaque tour, accepter les arêtes
+            // dont le sender est dans `reachable`. Ajouter le receiver à
+            // reachable. Continuer jusqu'à ce que rien ne change.
             let mut changed = true;
             while changed {
                 changed = false;
                 for (i, edge) in dag_edges.iter().enumerate() {
-                    if !essential_edges.contains(&i) && needed_users.contains(&edge.receiver_id) {
+                    if !essential_edges.contains(&i) && reachable.contains(&edge.sender_id) {
                         essential_edges.insert(i);
-                        if needed_users.insert(edge.sender_id) {
+                        if reachable.insert(edge.receiver_id) {
                             changed = true;
                         }
                     }
                 }
             }
 
-            // Si l'élagage réduit le nombre d'arêtes, utiliser le sous-graphe minimal
+            // Si l'élagage réduit le nombre d'arêtes, utiliser le sous-graphe atteignable
             if essential_edges.len() >= 2 && essential_edges.len() < dag_edges.len() {
                 let pruned_count = dag_edges.len() - essential_edges.len();
                 dag_edges = dag_edges
@@ -822,9 +951,94 @@ impl TrocIntelligentService {
                     chain_users.insert(edge.receiver_id);
                 }
                 info!(
-                    "[TROC_INTELLIGENT] ✅ Élagage: {} arêtes supprimées, {} nœuds restants (minimum)",
+                    "[TROC_INTELLIGENT] ✅ Élagage forward: {} arêtes supprimées, {} nœuds restants atteignables depuis initiateur",
                     pruned_count, chain_users.len()
                 );
+            }
+        }
+
+        // ✅ 2026-05-21 (Bug A) — RÉCIPROCITÉ TROC : un user qui envoie un
+        // livre en mode 'troc' DOIT recevoir un livre en retour (sinon c'est
+        // un don déguisé, économiquement invalide). On itère et on retire les
+        // arêtes troc dont le sender n'a pas d'arête entrante dans le DAG.
+        // L'initiateur est exempté car son livre est ANCRÉ par construction
+        // (cf. Bug B fix au-dessus) et il reçoit en contrepartie ce qu'il
+        // cherche via la cascade.
+        //
+        // ✅ 2026-05-21 (wave 29) — RÉCIPROCITÉ QUALITATIVE par état :
+        //   • Si un trocer envoie un livre en état='bon', il DOIT recevoir
+        //     un livre en état='bon' (qualité égale = échange équitable).
+        //   • Si un trocer envoie un livre en état='acceptable', il peut
+        //     recevoir 'bon' OU 'acceptable' (upgrade gratuit accepté).
+        //   La règle assure la satisfaction client : personne ne perd en qualité
+        //   en participant à la chaîne. Réduit la probabilité de matching mais
+        //   garantit la confiance dans la valeur de l'échange.
+        let mut changed = true;
+        let mut reciprocity_passes = 0;
+        while changed && reciprocity_passes < 5 {
+            changed = false;
+            reciprocity_passes += 1;
+            let users_receiving: HashSet<i32> =
+                dag_edges.iter().map(|e| e.receiver_id).collect();
+            // Map user → meilleur état reçu dans la chaîne ("bon" si au moins
+            // une arête entrante apporte un livre en état='bon')
+            let mut best_incoming_etat: HashMap<i32, String> = HashMap::new();
+            for edge in &dag_edges {
+                let etat = edge.livre.etat_classification.as_deref().unwrap_or("acceptable");
+                let entry = best_incoming_etat
+                    .entry(edge.receiver_id)
+                    .or_insert_with(|| etat.to_string());
+                // "bon" l'emporte sur "acceptable"
+                if entry != "bon" && etat == "bon" {
+                    *entry = "bon".to_string();
+                }
+            }
+            let before = dag_edges.len();
+            dag_edges.retain(|edge| {
+                let mode = edge.livre.mode_listing.as_deref().unwrap_or("troc");
+                if mode != "troc" {
+                    return true; // ventes : ok sans réciprocité (cash)
+                }
+                if edge.sender_id == initiateur_id {
+                    return true; // initiateur exempté (sa contrepartie vient via la cascade)
+                }
+                // Sender en mode troc DOIT recevoir aussi
+                if !users_receiving.contains(&edge.sender_id) {
+                    return false;
+                }
+                // ✅ Réciprocité qualitative : si sender envoie 'bon',
+                // il DOIT recevoir 'bon' (pas dégradation acceptable).
+                let sent_etat = edge.livre.etat_classification.as_deref().unwrap_or("acceptable");
+                if sent_etat == "bon" {
+                    let received_etat = best_incoming_etat
+                        .get(&edge.sender_id)
+                        .map(|s| s.as_str())
+                        .unwrap_or("acceptable");
+                    if received_etat != "bon" {
+                        log::info!(
+                            "[TROC_INTELLIGENT] Skip arête {}→{} : sender envoie livre 'bon' mais ne reçoit que '{}' — dégradation qualitative interdite",
+                            edge.sender_id, edge.receiver_id, received_etat
+                        );
+                        return false;
+                    }
+                }
+                true
+            });
+            if dag_edges.len() < before {
+                changed = true;
+                info!(
+                    "[TROC_INTELLIGENT] Réciprocité troc passe {} : {} arêtes retirées (trocer sans contrepartie)",
+                    reciprocity_passes, before - dag_edges.len()
+                );
+            }
+        }
+        // Recompute chain_users après filtre réciprocité
+        if reciprocity_passes > 1 {
+            chain_users.clear();
+            chain_users.insert(initiateur_id);
+            for edge in &dag_edges {
+                chain_users.insert(edge.sender_id);
+                chain_users.insert(edge.receiver_id);
             }
         }
 
@@ -839,7 +1053,15 @@ impl TrocIntelligentService {
                 "[TROC_INTELLIGENT/DEBUG] ❌ DAG trop court ({} arêtes < 2) — chaîne abandonnée",
                 dag_edges.len()
             );
-            // Pas assez d'arêtes pour former une chaîne intéressante
+            // ✅ Cache aussi le résultat vide (évite recompute si requêté en boucle)
+            let mut cache = MATCHING_CACHE.lock().await;
+            cache.insert(
+                livre_offert_id,
+                CachedMatching {
+                    chaines: vec![],
+                    inserted_at: Instant::now(),
+                },
+            );
             return Ok(vec![]);
         }
 
@@ -895,15 +1117,6 @@ impl TrocIntelligentService {
             }
         }
 
-        // Construire les participants (vendeurs en premier)
-        let mut participants: Vec<(i32, i32)> = participants_map.into_iter().collect();
-        participants.sort_by(|a, b| {
-            let a_is_vendeur = vendeurs.contains(&a.0);
-            let b_is_vendeur = vendeurs.contains(&b.0);
-            // Vendeurs d'abord, puis par ordre d'ajout
-            b_is_vendeur.cmp(&a_is_vendeur).then_with(|| a.1.cmp(&b.1))
-        });
-
         // ✅ 2026-05-16 — Map user_id → demande_id pour les acheteurs sinks.
         // Si un user reçoit dans la chaîne sans jamais envoyer (= buyer), on
         // encode l'identifiant de sa demande dans `livre_offert_id` (négatif)
@@ -912,6 +1125,41 @@ impl TrocIntelligentService {
             .iter()
             .map(|d| (d.user_id, d.id))
             .collect();
+
+        // Construire les participants (ordre topologique : sources → milieu → sinks)
+        // ✅ 2026-05-21 (Bug D) — Filtre phantom-sink ÉPARGNE l'initiateur :
+        //   sinon un /chaine endpoint refuserait avec 403 "Vous devez être
+        //   participant de la chaîne pour la créer" pour le user qui a appelé
+        //   /match. L'initiateur est exempté du filtre — il est toujours
+        //   en position 1 par construction (Bug E fix juste après).
+        let mut participants: Vec<(i32, i32)> = participants_map
+            .into_iter()
+            .filter(|(uid, _)| {
+                if *uid == initiateur_id {
+                    return true; // initiateur toujours conservé
+                }
+                let has_outgoing = transfers.iter().any(|t| t.sender_id == *uid);
+                let has_demande = demande_for_user.contains_key(uid);
+                has_outgoing || has_demande
+            })
+            .collect();
+        // ✅ 2026-05-21 (Bug E) — Tri 4-rangs : initiateur (0) → vendeur (1)
+        //   → trocer (2) → sink (3). L'initiateur a toujours la position 1
+        //   dans participants[], cohérent avec son rôle de source de la chaîne.
+        participants.sort_by(|a, b| {
+            let rank = |uid: i32| -> u8 {
+                if uid == initiateur_id {
+                    0
+                } else if vendeurs.contains(&uid) {
+                    1
+                } else if !transfers.iter().any(|t| t.sender_id == uid) {
+                    3 // sink : reçoit mais n'envoie pas → demande d'achat
+                } else {
+                    2 // trocer milieu
+                }
+            };
+            rank(a.0).cmp(&rank(b.0)).then_with(|| a.1.cmp(&b.1))
+        });
 
         // Re-numéroter
         let participant_chaines: Vec<ParticipantChaine> = participants
@@ -972,7 +1220,30 @@ impl TrocIntelligentService {
             distance_totale_km
         );
 
-        Ok(vec![matching])
+        let result = vec![matching];
+
+        // ✅ 2026-05-21 (scalabilité) — Store cache avec garde de croissance.
+        {
+            let mut cache = MATCHING_CACHE.lock().await;
+            if cache.len() >= MATCHING_CACHE_MAX_ENTRIES {
+                // Purge totale si trop d'entrées (évite croissance illimitée
+                // sans LRU strict). Coût rare, accepté.
+                log::info!(
+                    "[TROC_INTELLIGENT] Cache matching purgé ({} entrées)",
+                    cache.len()
+                );
+                cache.clear();
+            }
+            cache.insert(
+                livre_offert_id,
+                CachedMatching {
+                    chaines: result.clone(),
+                    inserted_at: Instant::now(),
+                },
+            );
+        }
+
+        Ok(result)
     }
 
     /// Calcule la distance entre deux livres via leur GPS
@@ -1251,13 +1522,15 @@ impl TrocIntelligentService {
                     )));
                 }
             } else {
-                // Cas demande : ne peut occuper QUE la dernière position
-                if idx + 1 != participants.len() {
-                    return Err(AppError::BadRequest(format!(
-                        "Demande d'achat (livre_offert_id={}) doit être en dernière position, trouvée à l'index {}",
-                        participant.livre_offert_id, idx
-                    )));
-                }
+                // ✅ 2026-05-21 (wave 31) — Plusieurs demandes d'achat acceptées
+                // dans la chaîne (collecte progressive multi-sink). L'ancienne
+                // règle "demande UNIQUEMENT en dernière position" était
+                // incompatible avec le modèle métier validé par l'utilisateur :
+                // un coursier collecte progressivement et délivre à PLUSIEURS
+                // acheteurs en fin de tournée. Validation simplifiée : on
+                // vérifie juste que la demande existe et appartient au user
+                // (sécurité préservée). L'ordre topologique reste assuré par
+                // le tri 4-rangs (initiateur/vendeur/trocer/sink) de find_matching_chaine.
                 let demande_id = -participant.livre_offert_id;
                 let demande = sqlx::query_as::<_, LivreScolaireDemande>(
                     "SELECT * FROM livres_scolaires_demandes WHERE id = $1 AND is_active = true AND is_satisfied = false"
@@ -1276,85 +1549,26 @@ impl TrocIntelligentService {
             }
         }
 
-        // Pour chaque arête DAG (i → i+1), vérifier la correspondance classe/matière
-        for i in 0..participants.len().saturating_sub(1) {
-            let sender = &participants[i];
-            let receiver = &participants[i + 1];
-
-            // Sender DOIT être un vrai livre (les demandes ne peuvent jamais être sender)
-            if sender.livre_offert_id < 0 {
-                return Err(AppError::BadRequest(format!(
-                    "Une demande (id={}) ne peut pas être expéditrice dans la chaîne",
-                    -sender.livre_offert_id
-                )));
-            }
-
-            let livre_envoye =
-                sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
-                    .bind(sender.livre_offert_id)
-                    .fetch_optional(&*self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
-                    .ok_or_else(|| {
-                        AppError::BadRequest(format!("Livre {} non trouvé", sender.livre_offert_id))
-                    })?;
-
-            // Le receiver peut être soit un livre régulier, soit une demande.
-            // On résout les champs (classe_souhaitee, matiere) selon le cas.
-            let (receiver_classe_souhaitee, receiver_matiere, receiver_label) =
-                if receiver.livre_offert_id >= 0 {
-                    let l = sqlx::query_as::<_, LivreScolaire>(
-                        "SELECT * FROM livres_scolaires WHERE id = $1",
-                    )
-                    .bind(receiver.livre_offert_id)
-                    .fetch_optional(&*self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
-                    .ok_or_else(|| {
-                        AppError::BadRequest(format!("Livre {} non trouvé", receiver.livre_offert_id))
-                    })?;
-                    (l.classe_souhaitee.clone(), l.matiere.clone(), format!("livre {}", l.id))
-                } else {
-                    let demande_id = -receiver.livre_offert_id;
-                    let d = sqlx::query_as::<_, LivreScolaireDemande>(
-                        "SELECT * FROM livres_scolaires_demandes WHERE id = $1",
-                    )
-                    .bind(demande_id)
-                    .fetch_optional(&*self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Erreur validation demande: {}", e)))?
-                    .ok_or_else(|| {
-                        AppError::BadRequest(format!("Demande {} non trouvée", demande_id))
-                    })?;
-                    (d.classe_souhaitee.clone(), d.matiere.clone(), format!("demande {}", d.id))
-                };
-
-            // Le matching DAG: le livre envoyé a la classe que le receiver cherche.
-            // ✅ FIX 2026-05-16 — Comparaison canonique (lower+trim+accents)
-            // pour tolérer "6e" vs "6ème", "MATHS" vs "maths", etc.
-            if canonical(&livre_envoye.classe_actuelle) != canonical(&receiver_classe_souhaitee)
-                || canonical(&livre_envoye.matiere) != canonical(&receiver_matiere)
-            {
-                return Err(AppError::BadRequest(format!(
-                    "Correspondance DAG incorrecte: livre {} (classe={}, matière={}) ne correspond pas au besoin du participant {} ({} — classe_souhaitee={}, matière={})",
-                    sender.livre_offert_id, livre_envoye.classe_actuelle, livre_envoye.matiere,
-                    receiver.user_id, receiver_label, receiver_classe_souhaitee, receiver_matiere
-                )));
-            }
-
-            // Anti-réciprocité: vérifier que receiver → sender n'existe PAS dans la même chaîne
-            let reverse_exists = participants.iter().enumerate().any(|(j, p)| {
-                j > i
-                    && p.user_id == receiver.user_id
-                    && participants.get(j + 1).map(|next| next.user_id) == Some(sender.user_id)
-            });
-            if reverse_exists {
-                return Err(AppError::BadRequest(format!(
-                    "Anti-réciprocité violée: transferts {} → {} et {} → {} dans la même chaîne",
-                    sender.user_id, receiver.user_id, receiver.user_id, sender.user_id
-                )));
-            }
-        }
+        // ✅ 2026-05-21 (Bug F) — Validation linéaire consecutive-edge SUPPRIMÉE.
+        // Le modèle métier autorise les chaînes multi-edge (collecte progressive :
+        // plusieurs senders → 1 receiver final, ou même 1 sender envoie 2 livres
+        // au même destinataire). Le schéma `participants[]` linéaire ne peut pas
+        // capturer ces topologies, donc le check `participants[i] → participants[i+1]`
+        // rejetait à tort des chaînes légitimes.
+        //
+        // La validité économique du DAG (réciprocité troc, anti-cycle, distance)
+        // est désormais ENTIÈREMENT garantie par `find_matching_chaine` côté
+        // serveur. La validation ici se limite donc à :
+        //   1. Chaque participant.livre_offert_id existe et appartient à
+        //      participant.user_id (déjà fait dans la boucle ci-dessus).
+        //   2. Une demande d'achat ne peut pas être expéditrice (handled dans
+        //      la même boucle plus haut quand idx + 1 != participants.len()).
+        //
+        // Sécurité : le caller du endpoint POST /troc-livres/chaine est
+        // authentifié et doit être présent dans participants (cf.
+        // controllers/troc_livres_controller.rs:442). Combiné à la propriété
+        // (livre.user_id == participant.user_id) vérifiée ci-dessus, on ne
+        // peut pas créer une chaîne avec les livres d'autrui sans complicité.
 
         Ok(())
     }

@@ -158,18 +158,29 @@ async function insertLivres(client, parents, serviceIds, programmes) {
     // ne devrait pas se déclencher, mais on garde l'invariant pour robustesse.
     const modeFinal = (isPrimaire(prog.classe) || !cSuivante) ? 'don' : mode;
 
+    // ✅ 2026-05-19 — Contrainte production : scan recto/verso OBLIGATOIRE pour
+    // troc/vente_occasion. La simulation s'aligne et fournit toujours les URLs
+    // placeholder pour respecter la contrainte modèle (Vec<String> non-nullable).
+    const livreIdx = i + 1;
+    const imgRecto = `https://sim-bourse.local/livres/${owner.id}/${livreIdx}-recto.jpg`;
+    const imgVerso = `https://sim-bourse.local/livres/${owner.id}/${livreIdx}-verso.jpg`;
+    const imagesUrls = [imgRecto, imgVerso];
+
     livres.push({
       service_id: serviceIds.get(owner.id), user_id: owner.id,
       titre: prog.titre_livre, classe_actuelle: prog.classe, classe_souhaitee: classeSouhaitee,
       matiere: prog.matiere, niveau: prog.niveau,
       etat_livre: etat, etat_classification: etat,
-      mode_listing: mode, prix_detecte: prixDetecte,
+      mode_listing: modeFinal, prix_detecte: prixDetecte,
       valeur_calculee: valeurCalculee, ratio_etat: ratioEtat,
       programme_scolaire_id: prog.id, est_au_programme: true,
       ia_analysis_status: 'completed', ia_confidence: 0.95,
       situation_troc: 'offre_demande', troc_status: 'pending',
       gps, ville: owner.ville, quartier,
       is_available: true,
+      images_urls: imagesUrls,
+      image_recto: imgRecto,
+      image_verso: imgVerso,
     });
   }
 
@@ -178,12 +189,13 @@ async function insertLivres(client, parents, serviceIds, programmes) {
     const chunk = livres.slice(i, i + BATCH);
     const values = []; const params = []; let p = 1;
     for (const l of chunk) {
-      values.push(`(${Array.from({ length: 23 }, () => `$${p++}`).join(',')})`);
+      values.push(`(${Array.from({ length: 26 }, () => `$${p++}`).join(',')})`);
       params.push(
         l.service_id, l.user_id, l.titre, l.classe_actuelle, l.classe_souhaitee, l.matiere, l.niveau,
         l.etat_livre, l.etat_classification, l.mode_listing, l.prix_detecte, l.valeur_calculee, l.ratio_etat,
         l.programme_scolaire_id, l.est_au_programme, l.ia_analysis_status, l.ia_confidence,
         l.situation_troc, l.troc_status, l.gps, l.ville, l.quartier, l.is_available,
+        l.images_urls, l.image_recto, l.image_verso,
       );
     }
     await client.query(`
@@ -191,7 +203,8 @@ async function insertLivres(client, parents, serviceIds, programmes) {
         service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
         etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
         programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-        situation_troc, troc_status, gps, ville, quartier, is_available
+        situation_troc, troc_status, gps, ville, quartier, is_available,
+        images_urls, image_recto, image_verso
       ) VALUES ${values.join(',')}
     `, params);
   }
@@ -199,97 +212,354 @@ async function insertLivres(client, parents, serviceIds, programmes) {
 }
 
 /**
- * 2026-05-19 — Insère N triplets de parents avec connectivité 3-hop forcée
- * en troc. Garantit que find_matching_chaine peut construire ≥ N chaînes
- * valides (cycles équilibrés A→B→C→A multi-parents — l'essence du troc DAG).
+ * 2026-05-20 — Insère N chaînes OUVERTES (acycliques) de 4 parents jouant
+ * V → T1 → T2 → A. C'est la vraie sémantique du DAG troc :
+ *   - V (vendeur) : livre classe[0] mode='vente'           → SOURCE (cash in)
+ *   - T1 (trocer) : livre classe[1] mode='troc', cherche classe[0]
+ *   - T2 (trocer) : livre classe[2] mode='troc', cherche classe[1]
+ *   - A (acheteur) : demande_occasion classe[2]            → SINK (cash out)
  *
- * Pour chaque triplet (P0, P1, P2) on choisit :
- *   - Matière commune (Mathématiques)
- *   - 3 classes différentes (ex: 6e, 5e, 4e)
- *   - P0 : livre classe[0], cherche classe[1]
- *   - P1 : livre classe[1], cherche classe[2]
- *   - P2 : livre classe[2], cherche classe[0]
+ * Edges :
+ *   livre(V, c0) → besoin(T1, c0)
+ *   livre(T1, c1) → besoin(T2, c1)
+ *   livre(T2, c2) → demande_occasion(A, c2)
  *
- * Résultat matching : livre(P0) ↦ besoin(P1), livre(P1) ↦ besoin(P2),
- * livre(P2) ↦ besoin(P0). Cycle 3-hop équilibré valide.
+ * Aucune arête ne reboucle sur V → chemin ouvert acyclique.
+ *
+ * Correction historique : ce seed produisait précédemment P0→P1→P2→P0 (cycle
+ * fermé), interdit par la règle "DAG acyclique intra-chaîne" — le user a
+ * corrigé : "on ne doit jamais revenir au noeud de départ".
  */
 async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
-  // Récupère 3 programmes Math distincts (3 classes différentes) actifs
+  // ✅ 2026-05-20 — Chemin OUVERT V→T1→T2→A (4 parents, 3 classes Math distinctes)
   const progR = await client.query(`
     SELECT id, classe, matiere, titre_livre, niveau,
            COALESCE(prix_officiel, 5000) AS prix_officiel
     FROM programmes_scolaires
     WHERE matiere IN ('Mathématiques', 'Mathematics', 'Math', 'Maths')
       AND is_active = true
-      AND classe IN ('6ème','5ème','4ème','6e','5e','4e','Form 1','Form 2','Form 3')
+      AND classe IN ('6ème','5ème','4ème','3ème','6e','5e','4e','3e','Form 1','Form 2','Form 3','Form 4')
     ORDER BY classe
     LIMIT 30
   `);
-  if (progR.rows.length < 3) {
-    console.warn(`    ⚠ Pas assez de programmes Math distincts (${progR.rows.length}) — DAG seed skipped.`);
-    return;
-  }
-  // On garde 3 classes les + différentes
   const classes = [...new Set(progR.rows.map(r => r.classe))].slice(0, 3);
   if (classes.length < 3) {
     console.warn(`    ⚠ Pas assez de classes Math distinctes (${classes.length}) — DAG seed skipped.`);
     return;
   }
   const progByClasse = {};
-  for (const c of classes) {
-    progByClasse[c] = progR.rows.find(r => r.classe === c);
-  }
+  for (const c of classes) progByClasse[c] = progR.rows.find(r => r.classe === c);
 
-  // Sélectionne 3 × nChains parents distincts (skip ceux qui ne sont pas 'user')
+  // Quatre parents par chaîne, même ville (contrainte MAX_EDGE_DISTANCE_KM=20)
   const eligibleParents = parents.filter(p => p.role === 'user');
-  if (eligibleParents.length < nChains * 3) {
-    console.warn(
-      `    ⚠ Pas assez de parents (${eligibleParents.length}) pour ${nChains} chaînes — réduit.`,
-    );
-    nChains = Math.floor(eligibleParents.length / 3);
+  const byVille = {};
+  for (const p of eligibleParents) (byVille[p.ville] = byVille[p.ville] || []).push(p);
+  const villesAssezGrosses = Object.keys(byVille).filter(v => byVille[v].length >= 4);
+  if (villesAssezGrosses.length === 0) {
+    console.warn(`    ⚠ Aucune ville avec ≥4 parents — DAG open-path seed skipped.`);
+    return;
   }
-  const shuffled = [...eligibleParents].sort(() => Math.random() - 0.5);
 
-  let inserted = 0;
-  for (let i = 0; i < nChains; i++) {
-    const triplet = shuffled.slice(i * 3, i * 3 + 3);
-    for (let k = 0; k < 3; k++) {
-      const p = triplet[k];
-      const classeActuelle = classes[k];
-      const classeSouhaitee = classes[(k + 1) % 3]; // cycle
-      const prog = progByClasse[classeActuelle];
-      const prixOfficiel = parseFloat(prog.prix_officiel ?? 5000) || 5000;
-      const valeurCalculee = Math.round(prixOfficiel * 0.6);
-      const { gps, quartier } = randomGpsForVille(p.ville);
+  // Vérif table demandes (sinon pas de sink)
+  const tableEx = await client.query(
+    `SELECT 1 FROM information_schema.tables WHERE table_name = 'livres_scolaires_demandes'`,
+  );
+  if (tableEx.rowCount === 0) {
+    console.warn('    ⚠ Table livres_scolaires_demandes absente — DAG open-path seed skipped.');
+    return;
+  }
+
+  let nLivres = 0;
+  let nDemandes = 0;
+  let usedChains = 0;
+  for (const ville of villesAssezGrosses) {
+    const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
+    while (pool.length >= 4 && usedChains < nChains) {
+      const [v, t1, t2, a] = pool.splice(0, 4);
+      const cV = classes[0], cT1 = classes[1], cT2 = classes[2];
+      const progV = progByClasse[cV], progT1 = progByClasse[cT1], progT2 = progByClasse[cT2];
+
+      // V : livre vente classe cV (SOURCE)
+      {
+        const prix = parseFloat(progV.prix_officiel ?? 5000) || 5000;
+        const valeur = Math.round(prix * 0.6);
+        const { gps, quartier } = randomGpsForVille(v.ville);
+        const imgR = `https://sim-bourse.local/livres/dag-${usedChains}-v-recto.jpg`;
+        const imgV = `https://sim-bourse.local/livres/dag-${usedChains}-v-verso.jpg`;
+        await client.query(
+          `INSERT INTO livres_scolaires (
+            service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+            etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+            programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+            situation_troc, troc_status, gps, ville, quartier, is_available,
+            images_urls, image_recto, image_verso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true,$14,$15,$16)`,
+          [
+            serviceIds.get(v.id), v.id,
+            `[DAG-${usedChains}-V] ${progV.titre_livre}`,
+            cV, cV, progV.matiere, progV.niveau,
+            valeur, valeur, progV.id, gps, v.ville, quartier,
+            [imgR, imgV], imgR, imgV,
+          ],
+        );
+        nLivres++;
+      }
+
+      // T1 : livre troc classe cT1, cherche cV
+      {
+        const prix = parseFloat(progT1.prix_officiel ?? 5000) || 5000;
+        const valeur = Math.round(prix * 0.6);
+        const { gps, quartier } = randomGpsForVille(t1.ville);
+        const imgR = `https://sim-bourse.local/livres/dag-${usedChains}-t1-recto.jpg`;
+        const imgV = `https://sim-bourse.local/livres/dag-${usedChains}-t1-verso.jpg`;
+        await client.query(
+          `INSERT INTO livres_scolaires (
+            service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+            etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+            programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+            situation_troc, troc_status, gps, ville, quartier, is_available,
+            images_urls, image_recto, image_verso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
+          [
+            serviceIds.get(t1.id), t1.id,
+            `[DAG-${usedChains}-T1] ${progT1.titre_livre}`,
+            cT1, cV /* cherche le livre de V */, progT1.matiere, progT1.niveau,
+            valeur, progT1.id, gps, t1.ville, quartier,
+            [imgR, imgV], imgR, imgV,
+          ],
+        );
+        nLivres++;
+      }
+
+      // T2 : livre troc classe cT2, cherche cT1
+      {
+        const prix = parseFloat(progT2.prix_officiel ?? 5000) || 5000;
+        const valeur = Math.round(prix * 0.6);
+        const { gps, quartier } = randomGpsForVille(t2.ville);
+        const imgR = `https://sim-bourse.local/livres/dag-${usedChains}-t2-recto.jpg`;
+        const imgV = `https://sim-bourse.local/livres/dag-${usedChains}-t2-verso.jpg`;
+        await client.query(
+          `INSERT INTO livres_scolaires (
+            service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+            etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+            programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+            situation_troc, troc_status, gps, ville, quartier, is_available,
+            images_urls, image_recto, image_verso
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
+          [
+            serviceIds.get(t2.id), t2.id,
+            `[DAG-${usedChains}-T2] ${progT2.titre_livre}`,
+            cT2, cT1 /* cherche le livre de T1 */, progT2.matiere, progT2.niveau,
+            valeur, progT2.id, gps, t2.ville, quartier,
+            [imgR, imgV], imgR, imgV,
+          ],
+        );
+        nLivres++;
+      }
+
+      // A : demande_occasion classe cT2 (SINK)
+      {
+        const prix = parseFloat(progT2.prix_officiel ?? 5000) || 5000;
+        const { gps, quartier } = randomGpsForVille(a.ville);
+        await client.query(
+          `INSERT INTO livres_scolaires_demandes (
+            user_id, titre, matiere, classe_souhaitee, niveau,
+            budget_max_xaf, gps, ville, quartier, is_active, is_satisfied
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true,false)`,
+          [
+            a.id,
+            `[DAG-${usedChains}-A] ${progT2.titre_livre}`,
+            progT2.matiere, cT2, progT2.niveau,
+            Math.round(prix * 0.7),
+            gps, a.ville, quartier,
+          ],
+        );
+        nDemandes++;
+      }
+
+      usedChains++;
+    }
+    if (usedChains >= nChains) break;
+  }
+  console.log(
+    `    → ${nLivres} livres + ${nDemandes} demandes (${usedChains}/${nChains} chaînes ouvertes V→T1→T2→A, same-city)`,
+  );
+}
+
+/**
+ * 2026-05-21 (wave 29) — Insère N chaînes troc où un trocer offre un livre
+ * en état='bon' mais ne reçoit qu'un livre en état='acceptable'. Cette
+ * chaîne DOIT être REJETÉE par la contrainte de réciprocité qualitative
+ * (wave 29) : `find_matching_chaine` retire l'arête car le trocer
+ * subirait une dégradation qualitative.
+ *
+ * Structure :
+ *   V (vendeur) : livre 'acceptable' classe cV mode='vente'    → SOURCE
+ *   T (trocer)  : livre 'bon' classe cT mode='troc',
+ *                 cherche cV (mais cV n'est qu'acceptable)
+ *
+ * Attendu : la chaîne (V→T) est construite côté seed mais wave 29 retire
+ * l'arête sender=V (car T offre 'bon' et ne recevrait que 'acceptable').
+ *
+ * Métrique observable dans le rapport :
+ *   - nb_chaines_dégradation_rejetées doit être ≥ nChains
+ *   - Aucun trocer 'bon' ne reçoit 'acceptable' dans les chaînes créées
+ */
+async function insertDegradedRejectionSeeds(client, parents, serviceIds, nChains) {
+  if (nChains <= 0) return;
+  const progR = await client.query(`
+    SELECT id, classe, matiere, titre_livre, niveau,
+           COALESCE(prix_officiel, 5000) AS prix_officiel
+    FROM programmes_scolaires
+    WHERE matiere IN ('Mathématiques', 'Mathematics', 'Math', 'Maths')
+      AND is_active = true
+      AND classe IN ('6ème','5ème','4ème','3ème','6e','5e','4e','3e')
+    ORDER BY classe LIMIT 20
+  `);
+  const classes = [...new Set(progR.rows.map(r => r.classe))].slice(0, 2);
+  if (classes.length < 2) {
+    console.warn('    ⚠ Pas assez de classes — degraded seed skipped.');
+    return;
+  }
+  const eligibleParents = parents.filter(p => p.role === 'user');
+  const byVille = {};
+  for (const p of eligibleParents) (byVille[p.ville] = byVille[p.ville] || []).push(p);
+  const villesAssezGrosses = Object.keys(byVille).filter(v => byVille[v].length >= 2);
+  if (villesAssezGrosses.length === 0) return;
+
+  let nLivres = 0;
+  let used = 0;
+  for (const ville of villesAssezGrosses) {
+    const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
+    while (pool.length >= 2 && used < nChains) {
+      const [v, t] = pool.splice(0, 2);
+      const progV = progR.rows.find(r => r.classe === classes[0]);
+      const progT = progR.rows.find(r => r.classe === classes[1]);
+      const valeurV = Math.round(parseFloat(progV.prix_officiel) * 0.4); // état acceptable
+      const valeurT = Math.round(parseFloat(progT.prix_officiel) * 0.6); // état bon
+      const gpsV = randomGpsForVille(v.ville);
+      const gpsT = randomGpsForVille(t.ville);
+
+      // V : livre 'acceptable' mode='vente' classe cV
       await client.query(
         `INSERT INTO livres_scolaires (
           service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
           etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
           programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-          situation_troc, troc_status, gps, ville, quartier, is_available
-        ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,
-          'offre_demande','pending',$10,$11,$12,true
-        )`,
-        [
-          serviceIds.get(p.id),
-          p.id,
-          `[DAG-${i}] ${prog.titre_livre}`,
-          classeActuelle,
-          classeSouhaitee,
-          prog.matiere,
-          prog.niveau,
-          valeurCalculee,
-          prog.id,
-          gps,
-          p.ville,
-          quartier,
-        ],
-      );
-      inserted++;
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'acceptable','acceptable','vente',$8,$9,0.4,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true,$14,$15,$16)`,
+        [serviceIds.get(v.id), v.id, `[DEGRADE-${used}-V-accept] ${progV.titre_livre}`,
+          classes[0], classes[0], progV.matiere, progV.niveau, valeurV, valeurV, progV.id,
+          gpsV.gps, v.ville, gpsV.quartier,
+          [`https://sim-bourse.local/livres/degrade-${used}-v-r.jpg`, `https://sim-bourse.local/livres/degrade-${used}-v-v.jpg`],
+          `https://sim-bourse.local/livres/degrade-${used}-v-r.jpg`,
+          `https://sim-bourse.local/livres/degrade-${used}-v-v.jpg`]);
+      nLivres++;
+      // T : livre 'bon' mode='troc' classe cT, cherche cV
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
+        [serviceIds.get(t.id), t.id, `[DEGRADE-${used}-T-bon] ${progT.titre_livre}`,
+          classes[1], classes[0], progT.matiere, progT.niveau, valeurT, progT.id,
+          gpsT.gps, t.ville, gpsT.quartier,
+          [`https://sim-bourse.local/livres/degrade-${used}-t-r.jpg`, `https://sim-bourse.local/livres/degrade-${used}-t-v.jpg`],
+          `https://sim-bourse.local/livres/degrade-${used}-t-r.jpg`,
+          `https://sim-bourse.local/livres/degrade-${used}-t-v.jpg`]);
+      nLivres++;
+      used++;
     }
+    if (used >= nChains) break;
   }
-  console.log(`    → ${inserted} livres DAG-friendly insérés (${nChains} chaînes 3-hop)`);
+  console.log(`    → ${nLivres} livres dégradation insérés (${used} chaînes DOIVENT être rejetées par wave 29)`);
+}
+
+/**
+ * 2026-05-21 (wave 29) — Insère N chaînes troc où un trocer offre un livre
+ * en état='acceptable' et reçoit un livre en état='bon'. Cette chaîne
+ * DOIT être ACCEPTÉE par la contrainte de réciprocité qualitative
+ * (upgrade gratuit autorisé).
+ *
+ * Structure : symétrique de degraded mais inversée (V offre 'bon', T 'acceptable').
+ *
+ * Métrique observable :
+ *   - Chaîne créée avec succès (upgrade légitime)
+ *   - Le trocer 'acceptable' a reçu 'bon' = ratio favorable
+ */
+async function insertAcceptableUpgradeSeeds(client, parents, serviceIds, nChains) {
+  if (nChains <= 0) return;
+  const progR = await client.query(`
+    SELECT id, classe, matiere, titre_livre, niveau,
+           COALESCE(prix_officiel, 5000) AS prix_officiel
+    FROM programmes_scolaires
+    WHERE matiere IN ('Mathématiques', 'Mathematics', 'Math', 'Maths')
+      AND is_active = true
+      AND classe IN ('6ème','5ème','4ème','3ème','6e','5e','4e','3e')
+    ORDER BY classe LIMIT 20
+  `);
+  const classes = [...new Set(progR.rows.map(r => r.classe))].slice(0, 2);
+  if (classes.length < 2) return;
+  const eligibleParents = parents.filter(p => p.role === 'user');
+  const byVille = {};
+  for (const p of eligibleParents) (byVille[p.ville] = byVille[p.ville] || []).push(p);
+  const villesAssezGrosses = Object.keys(byVille).filter(v => byVille[v].length >= 2);
+  if (villesAssezGrosses.length === 0) return;
+
+  let nLivres = 0;
+  let used = 0;
+  for (const ville of villesAssezGrosses) {
+    const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
+    while (pool.length >= 2 && used < nChains) {
+      const [v, t] = pool.splice(0, 2);
+      const progV = progR.rows.find(r => r.classe === classes[0]);
+      const progT = progR.rows.find(r => r.classe === classes[1]);
+      const valeurV = Math.round(parseFloat(progV.prix_officiel) * 0.6); // état bon
+      const valeurT = Math.round(parseFloat(progT.prix_officiel) * 0.4); // état acceptable
+      const gpsV = randomGpsForVille(v.ville);
+      const gpsT = randomGpsForVille(t.ville);
+
+      // V : livre 'bon' mode='vente' classe cV
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true,$14,$15,$16)`,
+        [serviceIds.get(v.id), v.id, `[UPGRADE-${used}-V-bon] ${progV.titre_livre}`,
+          classes[0], classes[0], progV.matiere, progV.niveau, valeurV, valeurV, progV.id,
+          gpsV.gps, v.ville, gpsV.quartier,
+          [`https://sim-bourse.local/livres/upgrade-${used}-v-r.jpg`, `https://sim-bourse.local/livres/upgrade-${used}-v-v.jpg`],
+          `https://sim-bourse.local/livres/upgrade-${used}-v-r.jpg`,
+          `https://sim-bourse.local/livres/upgrade-${used}-v-v.jpg`]);
+      nLivres++;
+      // T : livre 'acceptable' mode='troc' classe cT, cherche cV (livre 'bon')
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'acceptable','acceptable','troc',NULL,$8,0.4,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
+        [serviceIds.get(t.id), t.id, `[UPGRADE-${used}-T-accept] ${progT.titre_livre}`,
+          classes[1], classes[0], progT.matiere, progT.niveau, valeurT, progT.id,
+          gpsT.gps, t.ville, gpsT.quartier,
+          [`https://sim-bourse.local/livres/upgrade-${used}-t-r.jpg`, `https://sim-bourse.local/livres/upgrade-${used}-t-v.jpg`],
+          `https://sim-bourse.local/livres/upgrade-${used}-t-r.jpg`,
+          `https://sim-bourse.local/livres/upgrade-${used}-t-v.jpg`]);
+      nLivres++;
+      used++;
+    }
+    if (used >= nChains) break;
+  }
+  console.log(`    → ${nLivres} livres upgrade insérés (${used} chaînes DOIVENT être acceptées par wave 29)`);
 }
 
 /**
@@ -347,16 +617,31 @@ async function insertMixedChainSeeds(client, parents, serviceIds, nChains) {
     [classes[1]]: progR.rows.find(r => r.classe === classes[1]),
   };
 
+  // ✅ FIX 2026-05-19 — Triplets V/T/A groupés par MÊME VILLE (contrainte
+  // MAX_EDGE_DISTANCE_KM=20km du DAG).
   const eligibleParents = parents.filter(p => p.role === 'user');
-  if (eligibleParents.length < nChains * 3) {
-    nChains = Math.floor(eligibleParents.length / 3);
+  const byVille = {};
+  for (const p of eligibleParents) {
+    (byVille[p.ville] = byVille[p.ville] || []).push(p);
   }
-  const shuffled = [...eligibleParents].sort(() => Math.random() - 0.5);
+  const triplets = [];
+  for (const ville of Object.keys(byVille)) {
+    const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
+    while (pool.length >= 3 && triplets.length < nChains) {
+      triplets.push(pool.splice(0, 3));
+    }
+    if (triplets.length >= nChains) break;
+  }
+  nChains = triplets.length;
+  if (nChains === 0) {
+    console.warn(`    ⚠ Aucune ville avec ≥3 parents — mixed seed skipped.`);
+    return;
+  }
 
   let nLivres = 0;
   let nDemandes = 0;
   for (let i = 0; i < nChains; i++) {
-    const [vendeur, trocer, acheteur] = shuffled.slice(i * 3, i * 3 + 3);
+    const [vendeur, trocer, acheteur] = triplets[i];
     if (!vendeur || !trocer || !acheteur) break;
 
     const cV = classes[0]; // classe du livre du vendeur (= cherché par trocer)
@@ -369,18 +654,22 @@ async function insertMixedChainSeeds(client, parents, serviceIds, nChains) {
       const prix = parseFloat(progV.prix_officiel ?? 5000) || 5000;
       const valeur = Math.round(prix * 0.6);
       const { gps, quartier } = randomGpsForVille(vendeur.ville);
+      const imgR = `https://sim-bourse.local/livres/mix-${i}-v-recto.jpg`;
+      const imgV = `https://sim-bourse.local/livres/mix-${i}-v-verso.jpg`;
       await client.query(
         `INSERT INTO livres_scolaires (
           service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
           etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
           programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-          situation_troc, troc_status, gps, ville, quartier, is_available
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true)`,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true,$14,$15,$16)`,
         [
           serviceIds.get(vendeur.id), vendeur.id,
           `[MIX-${i}-V] ${progV.titre_livre}`,
           cV, cV /* vendeur ne cherche rien */, progV.matiere, progV.niveau,
           valeur, valeur, progV.id, gps, vendeur.ville, quartier,
+          [imgR, imgV], imgR, imgV,
         ],
       );
       nLivres++;
@@ -391,18 +680,22 @@ async function insertMixedChainSeeds(client, parents, serviceIds, nChains) {
       const prix = parseFloat(progT.prix_officiel ?? 5000) || 5000;
       const valeur = Math.round(prix * 0.6);
       const { gps, quartier } = randomGpsForVille(trocer.ville);
+      const imgR = `https://sim-bourse.local/livres/mix-${i}-t-recto.jpg`;
+      const imgV = `https://sim-bourse.local/livres/mix-${i}-t-verso.jpg`;
       await client.query(
         `INSERT INTO livres_scolaires (
           service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
           etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
           programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
-          situation_troc, troc_status, gps, ville, quartier, is_available
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true)`,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
         [
           serviceIds.get(trocer.id), trocer.id,
           `[MIX-${i}-T] ${progT.titre_livre}`,
           cT, cV /* trocer cherche le livre du vendeur */, progT.matiere, progT.niveau,
           valeur, progT.id, gps, trocer.ville, quartier,
+          [imgR, imgV], imgR, imgV,
         ],
       );
       nLivres++;
@@ -497,6 +790,22 @@ async function main() {
     if (N_FORCE_MIXED > 0) {
       console.log(`  • Insertion ${N_FORCE_MIXED} chaînes mixtes V→T→A forcées…`);
       await insertMixedChainSeeds(client, parents, serviceIds, N_FORCE_MIXED);
+    }
+
+    // ✅ 2026-05-21 (wave 29) — Tests réciprocité qualitative par état.
+    //   SIM_FORCE_DAG_DEGRADED=5 : chaînes où trocer 'bon' recevrait 'acceptable'
+    //     → DOIT être rejetée par wave 29 (no dégradation autorisée)
+    //   SIM_FORCE_DAG_UPGRADE=5  : chaînes où trocer 'acceptable' recevrait 'bon'
+    //     → DOIT être acceptée (upgrade gratuit autorisé)
+    const N_FORCE_DEGRADED = parseInt(process.env.SIM_FORCE_DAG_DEGRADED ?? '0', 10);
+    if (N_FORCE_DEGRADED > 0) {
+      console.log(`  • Insertion ${N_FORCE_DEGRADED} chaînes dégradation 'bon'→'acceptable' (DOIVENT être rejetées)…`);
+      await insertDegradedRejectionSeeds(client, parents, serviceIds, N_FORCE_DEGRADED);
+    }
+    const N_FORCE_UPGRADE = parseInt(process.env.SIM_FORCE_DAG_UPGRADE ?? '0', 10);
+    if (N_FORCE_UPGRADE > 0) {
+      console.log(`  • Insertion ${N_FORCE_UPGRADE} chaînes upgrade 'acceptable'→'bon' (DOIVENT être acceptées)…`);
+      await insertAcceptableUpgradeSeeds(client, parents, serviceIds, N_FORCE_UPGRADE);
     }
 
     console.log(`  • Insertion ${N_DEMANDES} demandes occasion…`);

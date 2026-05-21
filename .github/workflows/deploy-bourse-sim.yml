@@ -1,0 +1,125 @@
+name: Deploy Bourse Sim staging (Fly)
+
+# Plan B — utilisé quand le build local Windows échoue (LNK1285) ou que le
+# remote builder Fly timeoute (deadline_exceeded ~30 min sur cargo).
+#
+# Ne touche JAMAIS la prod `yukpo-fly-backend` :
+#   - Trigger UNIQUEMENT sur push à la branche `bourse-sim`
+#   - Cible FLY_APP=yukpo-bourse-sim (app + DB dédiées, fork point-in-time)
+#   - Config backend/fly.staging.toml (auto_stop, 1 VM min, billing désactivé)
+#
+# Le runner ubuntu-latest a 16 GB RAM + Linux glibc (pas de MSVC LNK1285),
+# donc cargo build passe en ~8-12 min sans incident.
+on:
+  push:
+    branches: [bourse-sim]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-bourse-sim.yml'
+  workflow_dispatch:
+
+env:
+  FLY_APP: yukpo-bourse-sim
+  FLY_REGION: cdg
+  FLY_CONFIG: fly.staging.toml
+
+concurrency:
+  group: deploy-bourse-sim-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: flyctl deploy staging (build local sur runner GH 16 GB RAM)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly auth + scope (refuse if FLY_APP=prod)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_BOURSE_SIM }}
+        run: |
+          flyctl auth whoami
+          if [ "$FLY_APP" = "yukpo-fly-backend" ]; then
+            echo "FATAL: ce workflow ne doit JAMAIS pointer sur la prod"
+            exit 1
+          fi
+          echo "Cible : $FLY_APP (staging)"
+
+      - name: Free runner disk space (avoid 'no space left' during big Rust build)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/microsoft /usr/local/share/boost /usr/local/share/powershell || true
+          sudo apt-get clean
+          docker system prune -af 2>/dev/null || true
+          df -h
+
+      - name: Diagnostic env (pre-deploy)
+        run: |
+          set +e
+          echo "=== pwd / ls ==="
+          pwd && ls -la
+          ls -la backend/ | head -10
+          echo "=== binaries ==="
+          which flyctl && flyctl version
+          which docker && docker version 2>/dev/null | head -5
+          echo "=== resources ==="
+          df -h | head -5 && free -h
+
+      - name: Deploy to Fly staging (capture log + upload to 0x0.st on failure)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_BOURSE_SIM }}
+          NO_COLOR: "1"
+        run: |
+          set +e
+          cd backend
+          flyctl deploy \
+            --app "$FLY_APP" \
+            --config "$FLY_CONFIG" \
+            --local-only \
+            --dockerfile Dockerfile.fly \
+            --strategy rolling \
+            --wait-timeout 900 \
+            --verbose > /tmp/deploy-output.log 2>&1
+          DEPLOY_EXIT=$?
+          echo "=== deploy exit code: $DEPLOY_EXIT ==="
+          echo "=== last 200 lines of deploy output ==="
+          tail -200 /tmp/deploy-output.log || true
+          if [ $DEPLOY_EXIT -ne 0 ]; then
+            echo "=== uploading full log to 0x0.st for diagnosis ==="
+            curl -fsSL -F "file=@/tmp/deploy-output.log" https://0x0.st || true
+          fi
+          exit $DEPLOY_EXIT
+
+      - name: Smoke test /health on staging
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_BOURSE_SIM }}
+        run: |
+          sleep 20
+          HEALTH_URL="https://${FLY_APP}.fly.dev/health"
+          echo "Testing $HEALTH_URL"
+          for i in 1 2 3 4 5 6 7 8; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo 000)
+            if [[ "$CODE" == "200" ]]; then
+              echo "Health OK (attempt $i, HTTP $CODE)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $CODE — retry in 15s"
+            sleep 15
+          done
+          echo "Health check failed after 8 attempts — staging not up"
+          flyctl logs --app "$FLY_APP" --no-tail | tail -100 || true
+          exit 1
+
+      - name: Show staging app status
+        if: always()
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN_BOURSE_SIM }}
+        run: |
+          flyctl status --app "$FLY_APP" || true
+          flyctl machine list --app "$FLY_APP" || true

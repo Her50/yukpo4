@@ -25,7 +25,7 @@ pub struct LivreScolaire {
     pub etat_livre: String, // "Neuf", "Très bon", "Bon", "Acceptable"
     pub description_etat: Option<String>,
     #[sqlx(default)]
-    pub images_urls: Vec<String>, // URLs des images du livre (stocké en array PostgreSQL ou JSON)
+    pub images_urls: Vec<String>, // URLs des images du livre — OBLIGATOIRE pour troc/vente_occasion (scan recto/verso). Vec non-nullable : tout livre listé DOIT avoir au moins ses images recto/verso.
     pub video_url: Option<String>, // URL vidéo d'appréciation de l'état
 
     // ✅ V2: Images recto/verso
