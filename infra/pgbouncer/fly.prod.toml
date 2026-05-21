@@ -1,0 +1,49 @@
+# PgBouncer pour PROD — yukpo-fly-backend → yukpo-fly-postgres
+# Cible : 10 000 req/s simultanées avec pool transaction
+#
+# Architecture :
+#   yukpo-fly-backend (25 VMs × 20 pool = 500 conn frontend)
+#         ↓
+#   yukpo-fly-pgbouncer (2 VMs × MAX_CLIENT_CONN=10000)
+#         ↓ pool transaction (DEFAULT_POOL_SIZE=80)
+#   yukpo-fly-postgres (max_connections=1000 après ALTER SYSTEM)
+
+app = "yukpo-fly-pgbouncer"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  POOL_MODE = "transaction"
+  MAX_CLIENT_CONN = "10000"
+  DEFAULT_POOL_SIZE = "80"
+  RESERVE_POOL_SIZE = "20"
+  RESERVE_POOL_TIMEOUT = "3"
+  QUERY_TIMEOUT = "120"
+  QUERY_WAIT_TIMEOUT = "30"
+  STATS_PERIOD = "60"
+
+[[services]]
+  internal_port = 6432
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 2
+
+  [[services.ports]]
+    port = 6432
+    handlers = ["tls"]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[checks]
+  [checks.tcp]
+    grace_period = "20s"
+    interval = "10s"
+    port = 6432
+    timeout = "3s"
+    type = "tcp"

@@ -12,14 +12,18 @@ ENV RESERVE_POOL_SIZE=10
 ENV RESERVE_POOL_TIMEOUT=3
 ENV SERVER_LIFETIME=3600
 ENV SERVER_IDLE_TIMEOUT=600
-ENV QUERY_TIMEOUT=20
-ENV QUERY_WAIT_TIMEOUT=10
+ENV QUERY_TIMEOUT=120
+ENV QUERY_WAIT_TIMEOUT=30
 ENV LOG_CONNECTIONS=1
 ENV LOG_DISCONNECTIONS=1
 ENV LOG_POOLER_ERRORS=1
 ENV STATS_PERIOD=60
 ENV IGNORE_STARTUP_PARAMETERS=extra_float_digits,application_name,search_path
-ENV LISTEN_ADDR=0.0.0.0
+# ✅ 2026-05-21 — Fly internal network est IPv6. LISTEN_ADDR=0.0.0.0 (IPv4
+# uniquement) cause "Connection refused" depuis les autres apps Fly qui
+# résolvent l'hostname .internal vers une IPv6. `*` écoute sur TOUTES les
+# interfaces (IPv4 + IPv6).
+ENV LISTEN_ADDR=*
 ENV LISTEN_PORT=6432
 
 # ✅ 2026-05-21 — Support prepared statements en mode transaction.
@@ -30,6 +34,17 @@ ENV LISTEN_PORT=6432
 # car sqlx re-utilise un prepared statement sur une connexion server qui
 # vient d'être réassignée (donc le prepared n'existe plus).
 ENV MAX_PREPARED_STATEMENTS=200
+
+# ✅ 2026-05-21 — Désactive TLS entre PgBouncer et Fly Postgres : le Postgres
+# Fly interne n'accepte pas TLS sur l'hostname .internal, donc sans ce flag
+# PgBouncer essaie TLS et échoue → "server does not support TLS".
+ENV SERVER_TLS_SSLMODE=disable
+
+# ✅ 2026-05-21 — Auth SCRAM-SHA-256 obligatoire pour Postgres-flex 17.
+# MD5 (default edoburu) provoque "wrong password type" car le password
+# stocké en pg_shadow est en SCRAM. Avec AUTH_TYPE=scram-sha-256, PgBouncer
+# transmet le challenge SCRAM tel quel entre client et serveur.
+ENV AUTH_TYPE=scram-sha-256
 
 EXPOSE 6432
 
