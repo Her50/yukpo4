@@ -125,10 +125,37 @@ pub async fn ensure_bourse_prod_ready(pool: &PgPool) {
                 ON livres_scolaires(user_id, created_at DESC)
                 WHERE is_active = true AND is_available = true"#,
         ),
+        // ─── Migration 20260521_002 : index direct scan matching ───────
+        // La requête find_matching_chaine (troc_intelligent_service.rs:356)
+        // fait ORDER BY created_at DESC LIMIT 300 sur tout livre actif sauf
+        // initiateur. idx_livres_matching_dag (leading=classe_actuelle) ne
+        // sert pas car la requête n'a pas de filtre sur classe_actuelle ici.
+        // idx_livres_user_active (leading=user_id) ne sert pas non plus car
+        // user_id != $1 est une inégalité. Sans index dédié sur created_at,
+        // chaque /match fait un seqscan partiel sur tous les livres actifs
+        // → 15s par requête sous charge concurrente.
+        (
+            "idx_livres_matching_scan",
+            r#"CREATE INDEX IF NOT EXISTS idx_livres_matching_scan
+                ON livres_scolaires(created_at DESC)
+                WHERE is_active = true
+                  AND is_available = true
+                  AND COALESCE(etat_classification, 'acceptable') != 'rejete'
+                  AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')"#,
+        ),
         (
             "idx_demandes_active_classe_matiere",
             r#"CREATE INDEX IF NOT EXISTS idx_demandes_active_classe_matiere
                 ON livres_scolaires_demandes(classe_souhaitee, matiere, user_id)
+                WHERE is_active = true
+                  AND is_satisfied = false
+                  AND matched_chaine_id IS NULL"#,
+        ),
+        // Index direct pour le scan ORDER BY created_at ASC sur demandes.
+        (
+            "idx_demandes_matching_scan",
+            r#"CREATE INDEX IF NOT EXISTS idx_demandes_matching_scan
+                ON livres_scolaires_demandes(created_at ASC)
                 WHERE is_active = true
                   AND is_satisfied = false
                   AND matched_chaine_id IS NULL"#,
