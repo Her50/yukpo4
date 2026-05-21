@@ -105,6 +105,35 @@ pub async fn ensure_bourse_prod_ready(pool: &PgPool) {
             r#"CREATE INDEX IF NOT EXISTS idx_lssd_active ON livres_scolaires_demandes(is_active, classe_souhaitee) WHERE is_active = TRUE AND is_satisfied = FALSE"#,
         ),
 
+        // ─── Migration 20260521_001 : index composite matching DAG ─────
+        // Optimise find_matching_chaine SELECT (cf. troc_intelligent_service.rs:307+)
+        // qui filtre is_active+is_available+user_id+etat_classification+mode_listing.
+        // Sans cet index, table scan 1000+ rows à chaque /match → pool saturé
+        // sous charge 10k req/s. Avec : index seek 0(log N).
+        (
+            "idx_livres_matching_dag",
+            r#"CREATE INDEX IF NOT EXISTS idx_livres_matching_dag
+                ON livres_scolaires(classe_actuelle, classe_souhaitee, matiere, mode_listing, user_id)
+                WHERE is_active = true
+                  AND is_available = true
+                  AND COALESCE(etat_classification, 'acceptable') != 'rejete'
+                  AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')"#,
+        ),
+        (
+            "idx_livres_user_active",
+            r#"CREATE INDEX IF NOT EXISTS idx_livres_user_active
+                ON livres_scolaires(user_id, created_at DESC)
+                WHERE is_active = true AND is_available = true"#,
+        ),
+        (
+            "idx_demandes_active_classe_matiere",
+            r#"CREATE INDEX IF NOT EXISTS idx_demandes_active_classe_matiere
+                ON livres_scolaires_demandes(classe_souhaitee, matiere, user_id)
+                WHERE is_active = true
+                  AND is_satisfied = false
+                  AND matched_chaine_id IS NULL"#,
+        ),
+
         // ─── Migration 20260519_001 (re-affirmation) : is_packaged ─────
         (
             "commande_livres_neufs.is_packaged",

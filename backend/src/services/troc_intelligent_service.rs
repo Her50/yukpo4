@@ -303,7 +303,17 @@ impl TrocIntelligentService {
 
         let initiateur_id = livre_offert.user_id;
 
-        // Récupérer TOUS les livres actifs disponibles (sauf ceux de l'initiateur)
+        // ✅ 2026-05-21 (scalabilité 10k req/s) — LIMIT réduit 500→300 :
+        // chaque /match charge 300 livres + 300 demandes. À 10k req/s, le DB
+        // ne supporte pas le 500. 300 reste ≥ assez pour saturer un DAG
+        // local de 10 participants tout en réduisant la charge de 40%.
+        // Filtre WHERE optimisé pour usage de l'index composite (cf. migration
+        // 20260521_idx_matching).
+        // Optionnel : étendre LIMIT via env var pour benchmarks haute densité.
+        let match_scan_limit: i64 = std::env::var("MATCHING_SCAN_LIMIT")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(300);
         let all_livres = sqlx::query_as::<_, LivreScolaire>(
             r#"
             SELECT * FROM livres_scolaires
@@ -312,10 +322,11 @@ impl TrocIntelligentService {
             AND COALESCE(etat_classification, 'acceptable') != 'rejete'
             AND COALESCE(mode_listing, 'troc') IN ('troc', 'vente')
             ORDER BY created_at DESC
-            LIMIT 500
+            LIMIT $2
             "#,
         )
         .bind(initiateur_id)
+        .bind(match_scan_limit)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération livres: {}", e)))?;
@@ -341,6 +352,7 @@ impl TrocIntelligentService {
         // jamais être sender, juste receiver final de la chaîne.
         // ⚠️ Doit être chargé AVANT la construction de `livres_par_user`
         // (qui prend des références) pour éviter une réallocation du Vec.
+        // ✅ 2026-05-21 (scalabilité 10k req/s) — LIMIT 500→300 (idem livres).
         let demandes_ouvertes = sqlx::query_as::<_, LivreScolaireDemande>(
             r#"
             SELECT * FROM livres_scolaires_demandes
@@ -350,10 +362,11 @@ impl TrocIntelligentService {
               AND expires_at > NOW()
               AND user_id != $1
             ORDER BY created_at ASC
-            LIMIT 500
+            LIMIT $2
             "#,
         )
         .bind(initiateur_id)
+        .bind(match_scan_limit)
         .fetch_all(&*self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération demandes: {}", e)))?;

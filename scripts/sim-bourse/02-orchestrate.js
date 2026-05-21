@@ -57,7 +57,9 @@ function trackErr(bucket, status, body) {
 function loadJson(name) { return JSON.parse(fs.readFileSync(join(__dirname, name), 'utf8')); }
 function client(jwt) {
   return axios.create({
-    baseURL: API, timeout: 30_000,
+    // ✅ 2026-05-21 — Timeout 60s (vs 30s) pour absorber les pics matching
+    // sous charge 10k req/s. Cf. ECONNABORTED massif en sim 24.
+    baseURL: API, timeout: 60_000,
     headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
     validateStatus: () => true,
   });

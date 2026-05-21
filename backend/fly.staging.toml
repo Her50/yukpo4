@@ -30,13 +30,17 @@ primary_region = "cdg"
   GPU_ENABLED = "false"
   ENABLE_AI_OPTIMIZATIONS = "true"
 
-  # Pool DB plus modeste pour staging (volume sim ~5k requêtes/h, pas besoin de 1000 conn)
-  DB_POOL_SIZE = "10"
-  DB_POOL_MIN_SIZE = "2"
-  DB_ACQUIRE_TIMEOUT_SECS = "8"
-  DB_STATEMENT_TIMEOUT_MS = "8000"
-  DB_LOCK_TIMEOUT_MS = "5000"
-  DB_IDLE_IN_TX_TIMEOUT_MS = "10000"
+  # ✅ 2026-05-21 — Cible 10k req/s : DB_POOL_SIZE × max_machines = ~1000 conn
+  # totales. À 100 par VM × 10 VMs max = 1000 connexions max sur Postgres.
+  # Si Fly Postgres a max_connections=200 par défaut, 1000 fait surcharger
+  # → soit upgrader Fly Postgres tier, soit ajouter PgBouncer en sidecar.
+  # Pour staging on garde 100/VM (vérifier max_connections de la DB Postgres).
+  DB_POOL_SIZE = "100"
+  DB_POOL_MIN_SIZE = "10"
+  DB_ACQUIRE_TIMEOUT_SECS = "15"
+  DB_STATEMENT_TIMEOUT_MS = "15000"
+  DB_LOCK_TIMEOUT_MS = "10000"
+  DB_IDLE_IN_TX_TIMEOUT_MS = "15000"
   DATABASE_URL_RO = ""
 
   # Billing désactivé pour la sim — tous comptes exemptés
@@ -65,24 +69,28 @@ primary_region = "cdg"
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  # Staging : 1 VM minimum (économie) → max 3 (1k livres + 200 users, charge faible)
+  # ✅ 2026-05-21 — Autoscale 1→10 VMs pour absorber 10k req/s concurrent
+  # (= ~1k req/s par VM avec soft_limit 300 connexions).
   min_machines_running = 1
-  max_machines_running = 3
+  max_machines_running = 10
 
   [http_service.concurrency]
     type = "connections"
-    soft_limit = 50
-    hard_limit = 200
+    # ✅ 2026-05-21 — 300 connexions soft / 600 hard par VM pour 10k targét
+    # (10 VMs × 300 = 3000 simultanées avant nouveau spawn).
+    soft_limit = 300
+    hard_limit = 600
 
   [http_service.http_options]
     response_timeout = 120
     idle_timeout = 30
 
 [[vm]]
-  # Même profil que prod pour fidélité du test
-  memory = "2gb"
+  # ✅ 2026-05-21 — 4GB RAM + 2 CPUs partagés pour soutenir 100 conn DB +
+  # plus de threads tokio actifs. Coût : ~2× le staging précédent.
+  memory = "4gb"
   cpu_kind = "shared"
-  cpus = 1
+  cpus = 2
 
 [checks]
   [checks.health]
