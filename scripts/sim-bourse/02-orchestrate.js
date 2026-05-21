@@ -414,12 +414,15 @@ async function phaseValidationLibraires(commandes, users, jwts) {
 
     // Récupérer les libraires éligibles (ayant déjà une ligne commande_validations
     // pour cette commande, donc reçus via broadcast initial ou super-lib).
+    // ✅ FIX 2026-05-21 — validation_statut enum n'a pas 'en_attente'.
+    // Valeurs réelles : en_cours, valide_partiel, valide_complet, abandonne, expire.
+    // Les rows fraîches créées par broadcast ont par défaut 'en_cours'.
     const eligibleR = await pool.query(
       `SELECT lp.user_id
        FROM commande_validations cv
        JOIN librairie_partners lp ON lp.id = cv.librairie_id
        WHERE cv.commande_id = $1
-         AND cv.statut IN ('en_cours', 'en_attente')
+         AND cv.statut = 'en_cours'::validation_statut
          AND lp.est_actif = true`,
       [c.id],
     );
