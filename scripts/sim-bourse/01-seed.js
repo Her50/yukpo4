@@ -387,6 +387,182 @@ async function insertDagChainSeeds(client, parents, serviceIds, nChains) {
 }
 
 /**
+ * 2026-05-21 (wave 29) — Insère N chaînes troc où un trocer offre un livre
+ * en état='bon' mais ne reçoit qu'un livre en état='acceptable'. Cette
+ * chaîne DOIT être REJETÉE par la contrainte de réciprocité qualitative
+ * (wave 29) : `find_matching_chaine` retire l'arête car le trocer
+ * subirait une dégradation qualitative.
+ *
+ * Structure :
+ *   V (vendeur) : livre 'acceptable' classe cV mode='vente'    → SOURCE
+ *   T (trocer)  : livre 'bon' classe cT mode='troc',
+ *                 cherche cV (mais cV n'est qu'acceptable)
+ *
+ * Attendu : la chaîne (V→T) est construite côté seed mais wave 29 retire
+ * l'arête sender=V (car T offre 'bon' et ne recevrait que 'acceptable').
+ *
+ * Métrique observable dans le rapport :
+ *   - nb_chaines_dégradation_rejetées doit être ≥ nChains
+ *   - Aucun trocer 'bon' ne reçoit 'acceptable' dans les chaînes créées
+ */
+async function insertDegradedRejectionSeeds(client, parents, serviceIds, nChains) {
+  if (nChains <= 0) return;
+  const progR = await client.query(`
+    SELECT id, classe, matiere, titre_livre, niveau,
+           COALESCE(prix_officiel, 5000) AS prix_officiel
+    FROM programmes_scolaires
+    WHERE matiere IN ('Mathématiques', 'Mathematics', 'Math', 'Maths')
+      AND is_active = true
+      AND classe IN ('6ème','5ème','4ème','3ème','6e','5e','4e','3e')
+    ORDER BY classe LIMIT 20
+  `);
+  const classes = [...new Set(progR.rows.map(r => r.classe))].slice(0, 2);
+  if (classes.length < 2) {
+    console.warn('    ⚠ Pas assez de classes — degraded seed skipped.');
+    return;
+  }
+  const eligibleParents = parents.filter(p => p.role === 'user');
+  const byVille = {};
+  for (const p of eligibleParents) (byVille[p.ville] = byVille[p.ville] || []).push(p);
+  const villesAssezGrosses = Object.keys(byVille).filter(v => byVille[v].length >= 2);
+  if (villesAssezGrosses.length === 0) return;
+
+  let nLivres = 0;
+  let used = 0;
+  for (const ville of villesAssezGrosses) {
+    const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
+    while (pool.length >= 2 && used < nChains) {
+      const [v, t] = pool.splice(0, 2);
+      const progV = progR.rows.find(r => r.classe === classes[0]);
+      const progT = progR.rows.find(r => r.classe === classes[1]);
+      const valeurV = Math.round(parseFloat(progV.prix_officiel) * 0.4); // état acceptable
+      const valeurT = Math.round(parseFloat(progT.prix_officiel) * 0.6); // état bon
+      const gpsV = randomGpsForVille(v.ville);
+      const gpsT = randomGpsForVille(t.ville);
+
+      // V : livre 'acceptable' mode='vente' classe cV
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'acceptable','acceptable','vente',$8,$9,0.4,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true,$14,$15,$16)`,
+        [serviceIds.get(v.id), v.id, `[DEGRADE-${used}-V-accept] ${progV.titre_livre}`,
+          classes[0], classes[0], progV.matiere, progV.niveau, valeurV, valeurV, progV.id,
+          gpsV.gps, v.ville, gpsV.quartier,
+          [`https://sim-bourse.local/livres/degrade-${used}-v-r.jpg`, `https://sim-bourse.local/livres/degrade-${used}-v-v.jpg`],
+          `https://sim-bourse.local/livres/degrade-${used}-v-r.jpg`,
+          `https://sim-bourse.local/livres/degrade-${used}-v-v.jpg`]);
+      nLivres++;
+      // T : livre 'bon' mode='troc' classe cT, cherche cV
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','troc',NULL,$8,0.6,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
+        [serviceIds.get(t.id), t.id, `[DEGRADE-${used}-T-bon] ${progT.titre_livre}`,
+          classes[1], classes[0], progT.matiere, progT.niveau, valeurT, progT.id,
+          gpsT.gps, t.ville, gpsT.quartier,
+          [`https://sim-bourse.local/livres/degrade-${used}-t-r.jpg`, `https://sim-bourse.local/livres/degrade-${used}-t-v.jpg`],
+          `https://sim-bourse.local/livres/degrade-${used}-t-r.jpg`,
+          `https://sim-bourse.local/livres/degrade-${used}-t-v.jpg`]);
+      nLivres++;
+      used++;
+    }
+    if (used >= nChains) break;
+  }
+  console.log(`    → ${nLivres} livres dégradation insérés (${used} chaînes DOIVENT être rejetées par wave 29)`);
+}
+
+/**
+ * 2026-05-21 (wave 29) — Insère N chaînes troc où un trocer offre un livre
+ * en état='acceptable' et reçoit un livre en état='bon'. Cette chaîne
+ * DOIT être ACCEPTÉE par la contrainte de réciprocité qualitative
+ * (upgrade gratuit autorisé).
+ *
+ * Structure : symétrique de degraded mais inversée (V offre 'bon', T 'acceptable').
+ *
+ * Métrique observable :
+ *   - Chaîne créée avec succès (upgrade légitime)
+ *   - Le trocer 'acceptable' a reçu 'bon' = ratio favorable
+ */
+async function insertAcceptableUpgradeSeeds(client, parents, serviceIds, nChains) {
+  if (nChains <= 0) return;
+  const progR = await client.query(`
+    SELECT id, classe, matiere, titre_livre, niveau,
+           COALESCE(prix_officiel, 5000) AS prix_officiel
+    FROM programmes_scolaires
+    WHERE matiere IN ('Mathématiques', 'Mathematics', 'Math', 'Maths')
+      AND is_active = true
+      AND classe IN ('6ème','5ème','4ème','3ème','6e','5e','4e','3e')
+    ORDER BY classe LIMIT 20
+  `);
+  const classes = [...new Set(progR.rows.map(r => r.classe))].slice(0, 2);
+  if (classes.length < 2) return;
+  const eligibleParents = parents.filter(p => p.role === 'user');
+  const byVille = {};
+  for (const p of eligibleParents) (byVille[p.ville] = byVille[p.ville] || []).push(p);
+  const villesAssezGrosses = Object.keys(byVille).filter(v => byVille[v].length >= 2);
+  if (villesAssezGrosses.length === 0) return;
+
+  let nLivres = 0;
+  let used = 0;
+  for (const ville of villesAssezGrosses) {
+    const pool = [...byVille[ville]].sort(() => Math.random() - 0.5);
+    while (pool.length >= 2 && used < nChains) {
+      const [v, t] = pool.splice(0, 2);
+      const progV = progR.rows.find(r => r.classe === classes[0]);
+      const progT = progR.rows.find(r => r.classe === classes[1]);
+      const valeurV = Math.round(parseFloat(progV.prix_officiel) * 0.6); // état bon
+      const valeurT = Math.round(parseFloat(progT.prix_officiel) * 0.4); // état acceptable
+      const gpsV = randomGpsForVille(v.ville);
+      const gpsT = randomGpsForVille(t.ville);
+
+      // V : livre 'bon' mode='vente' classe cV
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'bon','bon','vente',$8,$9,0.6,$10,true,'completed',0.95,'offre_demande','pending',$11,$12,$13,true,$14,$15,$16)`,
+        [serviceIds.get(v.id), v.id, `[UPGRADE-${used}-V-bon] ${progV.titre_livre}`,
+          classes[0], classes[0], progV.matiere, progV.niveau, valeurV, valeurV, progV.id,
+          gpsV.gps, v.ville, gpsV.quartier,
+          [`https://sim-bourse.local/livres/upgrade-${used}-v-r.jpg`, `https://sim-bourse.local/livres/upgrade-${used}-v-v.jpg`],
+          `https://sim-bourse.local/livres/upgrade-${used}-v-r.jpg`,
+          `https://sim-bourse.local/livres/upgrade-${used}-v-v.jpg`]);
+      nLivres++;
+      // T : livre 'acceptable' mode='troc' classe cT, cherche cV (livre 'bon')
+      await client.query(
+        `INSERT INTO livres_scolaires (
+          service_id, user_id, titre, classe_actuelle, classe_souhaitee, matiere, niveau,
+          etat_livre, etat_classification, mode_listing, prix_detecte, valeur_calculee, ratio_etat,
+          programme_scolaire_id, est_au_programme, ia_analysis_status, ia_confidence,
+          situation_troc, troc_status, gps, ville, quartier, is_available,
+          images_urls, image_recto, image_verso
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,'acceptable','acceptable','troc',NULL,$8,0.4,$9,true,'completed',0.95,'offre_demande','pending',$10,$11,$12,true,$13,$14,$15)`,
+        [serviceIds.get(t.id), t.id, `[UPGRADE-${used}-T-accept] ${progT.titre_livre}`,
+          classes[1], classes[0], progT.matiere, progT.niveau, valeurT, progT.id,
+          gpsT.gps, t.ville, gpsT.quartier,
+          [`https://sim-bourse.local/livres/upgrade-${used}-t-r.jpg`, `https://sim-bourse.local/livres/upgrade-${used}-t-v.jpg`],
+          `https://sim-bourse.local/livres/upgrade-${used}-t-r.jpg`,
+          `https://sim-bourse.local/livres/upgrade-${used}-t-v.jpg`]);
+      nLivres++;
+      used++;
+    }
+    if (used >= nChains) break;
+  }
+  console.log(`    → ${nLivres} livres upgrade insérés (${used} chaînes DOIVENT être acceptées par wave 29)`);
+}
+
+/**
  * 2026-05-19 — Insère N chaînes MIXTES de 3 parents distincts jouant chacun
  * un rôle différent dans la même chaîne. Validation que le DAG peut composer
  * vendeur (source) + trocer (milieu) + acheteur (sink).
@@ -614,6 +790,22 @@ async function main() {
     if (N_FORCE_MIXED > 0) {
       console.log(`  • Insertion ${N_FORCE_MIXED} chaînes mixtes V→T→A forcées…`);
       await insertMixedChainSeeds(client, parents, serviceIds, N_FORCE_MIXED);
+    }
+
+    // ✅ 2026-05-21 (wave 29) — Tests réciprocité qualitative par état.
+    //   SIM_FORCE_DAG_DEGRADED=5 : chaînes où trocer 'bon' recevrait 'acceptable'
+    //     → DOIT être rejetée par wave 29 (no dégradation autorisée)
+    //   SIM_FORCE_DAG_UPGRADE=5  : chaînes où trocer 'acceptable' recevrait 'bon'
+    //     → DOIT être acceptée (upgrade gratuit autorisé)
+    const N_FORCE_DEGRADED = parseInt(process.env.SIM_FORCE_DAG_DEGRADED ?? '0', 10);
+    if (N_FORCE_DEGRADED > 0) {
+      console.log(`  • Insertion ${N_FORCE_DEGRADED} chaînes dégradation 'bon'→'acceptable' (DOIVENT être rejetées)…`);
+      await insertDegradedRejectionSeeds(client, parents, serviceIds, N_FORCE_DEGRADED);
+    }
+    const N_FORCE_UPGRADE = parseInt(process.env.SIM_FORCE_DAG_UPGRADE ?? '0', 10);
+    if (N_FORCE_UPGRADE > 0) {
+      console.log(`  • Insertion ${N_FORCE_UPGRADE} chaînes upgrade 'acceptable'→'bon' (DOIVENT être acceptées)…`);
+      await insertAcceptableUpgradeSeeds(client, parents, serviceIds, N_FORCE_UPGRADE);
     }
 
     console.log(`  • Insertion ${N_DEMANDES} demandes occasion…`);
