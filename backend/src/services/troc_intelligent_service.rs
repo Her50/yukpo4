@@ -948,13 +948,25 @@ impl TrocIntelligentService {
             }
         }
 
-        // Construire les participants (vendeurs en premier)
+        // Construire les participants (ordre topologique : sources → milieu → sinks)
+        // ✅ 2026-05-21 — Wave 24 fix : la validation chaîne exige que toute
+        // demande d'achat (livre_offert_id < 0 = sink) soit en DERNIÈRE
+        // position. Le sort précédent triait uniquement vendeurs-d'abord mais
+        // laissait les sinks (users sans transfer sortant) au milieu →
+        // 400 BAD_REQUEST "Demande d'achat doit être en dernière position".
+        // Tri 3-rangs : vendeur (0) → trocer (1) → sink (2), puis par ordre.
         let mut participants: Vec<(i32, i32)> = participants_map.into_iter().collect();
         participants.sort_by(|a, b| {
-            let a_is_vendeur = vendeurs.contains(&a.0);
-            let b_is_vendeur = vendeurs.contains(&b.0);
-            // Vendeurs d'abord, puis par ordre d'ajout
-            b_is_vendeur.cmp(&a_is_vendeur).then_with(|| a.1.cmp(&b.1))
+            let rank = |uid: i32| -> u8 {
+                if vendeurs.contains(&uid) {
+                    0
+                } else if !transfers.iter().any(|t| t.sender_id == uid) {
+                    2 // sink : reçoit mais n'envoie pas → demande d'achat
+                } else {
+                    1 // trocer milieu
+                }
+            };
+            rank(a.0).cmp(&rank(b.0)).then_with(|| a.1.cmp(&b.1))
         });
 
         // ✅ 2026-05-16 — Map user_id → demande_id pour les acheteurs sinks.

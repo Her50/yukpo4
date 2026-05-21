@@ -147,7 +147,12 @@ async function phaseMatching(users, jwts) {
                     { livre_id: m.id, max_participants: 10 },
                   );
                   if (r2.status === 200) {
-                    const c = r2.data?.chaines ?? r2.data?.chains ?? r2.data?.matchings ?? [];
+                    // ✅ FIX 2026-05-20 — La réponse est { success, matchings: { chaines: [...], matches: [...] } }
+                    // donc on lit r2.data.matchings.chaines (et non r2.data.matchings qui est un objet).
+                    const c = r2.data?.matchings?.chaines
+                      ?? r2.data?.chaines
+                      ?? r2.data?.chains
+                      ?? [];
                     for (const chain of c) {
                       chains.push({ proposed_by_user: u.id, livre_id: m.id, chain });
                     }
@@ -201,7 +206,14 @@ async function phaseCreateChaines(chainsProposed, jwts) {
     const { proposed_by_user, chain } = uniqueChains[i];
     const participants = chain.participants ?? [];
     if (participants.length < 2) continue;
-    const r = await client(jwts[proposed_by_user]).post('/api/troc-livres/chaine', { participants });
+    // ✅ FIX 2026-05-21 — Backend exige que le caller soit participant. Le
+    // proposer peut ne pas figurer dans la chaîne finale (ex: chaîne
+    // composée à partir de SES livres mais sans lui en participant si livre
+    // pas retenu). On utilise le JWT du PREMIER participant pour être sûr.
+    const callerUserId = participants.some(p => p.user_id === proposed_by_user)
+      ? proposed_by_user
+      : participants[0].user_id;
+    const r = await client(jwts[callerUserId]).post('/api/troc-livres/chaine', { participants });
     if (r.status >= 200 && r.status < 300) ok++; else err++;
     if (samples.length < 5) samples.push({ status: r.status, n_participants: participants.length, body: r.data });
   }
