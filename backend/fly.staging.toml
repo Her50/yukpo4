@@ -30,13 +30,14 @@ primary_region = "cdg"
   GPU_ENABLED = "false"
   ENABLE_AI_OPTIMIZATIONS = "true"
 
-  # ✅ 2026-05-21 — Cible 10k req/s : DB_POOL_SIZE × max_machines = ~1000 conn
-  # totales. À 100 par VM × 10 VMs max = 1000 connexions max sur Postgres.
-  # Si Fly Postgres a max_connections=200 par défaut, 1000 fait surcharger
-  # → soit upgrader Fly Postgres tier, soit ajouter PgBouncer en sidecar.
-  # Pour staging on garde 100/VM (vérifier max_connections de la DB Postgres).
-  DB_POOL_SIZE = "100"
-  DB_POOL_MIN_SIZE = "10"
+  # ✅ 2026-05-21 — Cible 10k req/s avec respect du plafond Fly Postgres
+  # (max_connections = 300 sur l'instance staging). Calcul :
+  #   DB_POOL_SIZE × max_machines + ~20 connexions admin/monitoring ≤ 300
+  #   → 28 × 10 = 280, +20 marge = 300. OK.
+  # Pour vraiment 10k req/s prod, PgBouncer indispensable (cible 1000+ conn
+  # côté backend → 50 vers Postgres via transaction pooling).
+  DB_POOL_SIZE = "28"
+  DB_POOL_MIN_SIZE = "4"
   DB_ACQUIRE_TIMEOUT_SECS = "15"
   DB_STATEMENT_TIMEOUT_MS = "15000"
   DB_LOCK_TIMEOUT_MS = "10000"

@@ -9,10 +9,13 @@ use crate::models::troc_livre::{
 };
 use crate::utils::classe_normalization::{canonical, classe_match_variants};
 use log::{self, info};
+use once_cell::sync::Lazy;
 #[allow(unused_imports)]
 use sqlx::{PgPool, Row};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
 
 /// Rayon géographique maximal d'une chaîne de troc (en km).
 /// Au-delà de cette distance, une arête est rejetée pour éviter
@@ -21,6 +24,27 @@ const MAX_CHAIN_RADIUS_KM: f64 = 30.0;
 
 /// Distance maximale entre deux nœuds consécutifs (arête) dans une chaîne.
 const MAX_EDGE_DISTANCE_KM: f64 = 20.0;
+
+/// ✅ 2026-05-21 (scalabilité 10k req/s) — Cache mémoire des résultats de
+/// `find_matching_chaine` par livre_offert_id. TTL court (30s) car la DB
+/// change rapidement. Évite le rescan complet 500 livres + 500 demandes
+/// quand le même livre est interrogé en boucle (cas typique : retry
+/// frontend ou utilisateur qui rafraîchit).
+///
+/// Politique : LRU-like simple avec invalidation par âge. Pas de LRU strict
+/// (pas crucial à cette échelle). Si la map grossit > 1000 entrées, on la
+/// purge complètement (évite croissance illimitée).
+const MATCHING_CACHE_TTL_SECS: u64 = 30;
+const MATCHING_CACHE_MAX_ENTRIES: usize = 1000;
+
+#[derive(Clone)]
+struct CachedMatching {
+    chaines: Vec<MatchingChaine>,
+    inserted_at: Instant,
+}
+
+static MATCHING_CACHE: Lazy<Mutex<HashMap<i32, CachedMatching>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub struct TrocIntelligentService {
     pool: Arc<PgPool>,
@@ -288,6 +312,21 @@ impl TrocIntelligentService {
             "[TROC_INTELLIGENT] V3: Recherche chaîne DAG pour livre: {}",
             livre_offert_id
         );
+
+        // ✅ 2026-05-21 (scalabilité) — Cache hit ? Vérifier avant tout calcul.
+        {
+            let cache = MATCHING_CACHE.lock().await;
+            if let Some(entry) = cache.get(&livre_offert_id) {
+                if entry.inserted_at.elapsed() < Duration::from_secs(MATCHING_CACHE_TTL_SECS) {
+                    info!(
+                        "[TROC_INTELLIGENT] Cache HIT pour livre {} (âge {:?}s)",
+                        livre_offert_id,
+                        entry.inserted_at.elapsed().as_secs()
+                    );
+                    return Ok(entry.chaines.clone());
+                }
+            }
+        }
 
         let max_nodes = max_participants.unwrap_or(10) as usize;
 
@@ -1014,7 +1053,15 @@ impl TrocIntelligentService {
                 "[TROC_INTELLIGENT/DEBUG] ❌ DAG trop court ({} arêtes < 2) — chaîne abandonnée",
                 dag_edges.len()
             );
-            // Pas assez d'arêtes pour former une chaîne intéressante
+            // ✅ Cache aussi le résultat vide (évite recompute si requêté en boucle)
+            let mut cache = MATCHING_CACHE.lock().await;
+            cache.insert(
+                livre_offert_id,
+                CachedMatching {
+                    chaines: vec![],
+                    inserted_at: Instant::now(),
+                },
+            );
             return Ok(vec![]);
         }
 
@@ -1173,7 +1220,30 @@ impl TrocIntelligentService {
             distance_totale_km
         );
 
-        Ok(vec![matching])
+        let result = vec![matching];
+
+        // ✅ 2026-05-21 (scalabilité) — Store cache avec garde de croissance.
+        {
+            let mut cache = MATCHING_CACHE.lock().await;
+            if cache.len() >= MATCHING_CACHE_MAX_ENTRIES {
+                // Purge totale si trop d'entrées (évite croissance illimitée
+                // sans LRU strict). Coût rare, accepté.
+                log::info!(
+                    "[TROC_INTELLIGENT] Cache matching purgé ({} entrées)",
+                    cache.len()
+                );
+                cache.clear();
+            }
+            cache.insert(
+                livre_offert_id,
+                CachedMatching {
+                    chaines: result.clone(),
+                    inserted_at: Instant::now(),
+                },
+            );
+        }
+
+        Ok(result)
     }
 
     /// Calcule la distance entre deux livres via leur GPS
