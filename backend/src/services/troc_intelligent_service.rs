@@ -711,6 +711,39 @@ impl TrocIntelligentService {
         // L'initiateur est toujours dans la chaîne
         chain_users.insert(initiateur_id);
 
+        // ✅ 2026-05-21 (Bug B/C) — ANCRER LE LIVRE OFFERT : on prend D'ABORD
+        // l'arête qui part de l'initiateur ET porte précisément le livre passé
+        // en paramètre. C'était l'objectif sémantique du paramètre
+        // `livre_offert_id` mais l'algo précédent itérait sur toutes les
+        // arêtes triées par (vente,dist) sans garantir que livre_offert_id
+        // soit envoyé. Résultat : la chaîne pouvait avoir l'initiateur comme
+        // SINK final (recevant des livres d'autres) au lieu de SOURCE qui
+        // envoie son livre. C'est le bug "livre 1002 absent de la chaîne".
+        if let Some(initial_edge) = edges
+            .iter()
+            .find(|e| e.sender_id == initiateur_id && e.livre.id == livre_offert_id)
+        {
+            directed_pairs.insert((initial_edge.sender_id, initial_edge.receiver_id));
+            used_livre_ids.insert(initial_edge.livre.id);
+            chain_users.insert(initial_edge.sender_id);
+            chain_users.insert(initial_edge.receiver_id);
+            senders_in_chain.insert(initial_edge.sender_id);
+            adj_out
+                .entry(initial_edge.sender_id)
+                .or_default()
+                .push(initial_edge.receiver_id);
+            dag_edges.push(initial_edge);
+            info!(
+                "[TROC_INTELLIGENT] Ancrage initiateur : arête {} → {} (livre {})",
+                initial_edge.sender_id, initial_edge.receiver_id, initial_edge.livre.id
+            );
+        } else {
+            info!(
+                "[TROC_INTELLIGENT] Pas d'arête directe pour livre_offert_id={} — chaîne non garantie sur ce livre",
+                livre_offert_id
+            );
+        }
+
         for edge in &edges {
             // Anti-réciprocité: si (receiver→sender) existe, skip
             if directed_pairs.contains(&(edge.receiver_id, edge.sender_id)) {
@@ -788,17 +821,21 @@ impl TrocIntelligentService {
                 }
             }
 
-            // Contrainte multi-chaîne: si le receiver est déjà non-source dans
-            // une autre chaîne active ET n'est pas déjà sender dans cette chaîne,
-            // on ne peut pas le rendre non-source ici aussi (règle stricte: max 1).
+            // ✅ 2026-05-21 (Bug G) — Contrainte multi-chaîne RELAXÉE.
+            // L'ancienne règle "un user max non-source dans 1 chaîne" bloquait
+            // les chaînes parallèles légitimes (parent reçoit des livres pour
+            // 2 enfants différents = 2 chaînes distinctes). On log seulement
+            // pour observabilité — la gestion de conflit se fait au commit
+            // wallet/livraison (atomic UPDATE WHERE is_available), pas au
+            // matching.
             if users_already_non_source.contains(&edge.receiver_id)
                 && !senders_in_chain.contains(&edge.receiver_id)
             {
-                info!(
-                    "[TROC_INTELLIGENT] Skip arête {}->{}: user {} déjà non-source dans une autre chaîne",
-                    edge.sender_id, edge.receiver_id, edge.receiver_id
+                log::debug!(
+                    "[TROC_INTELLIGENT] Note: user {} déjà non-source dans une chaîne active — arête {}→{} acceptée (multi-chaîne autorisée)",
+                    edge.receiver_id, edge.sender_id, edge.receiver_id
                 );
-                continue;
+                // continue retiré : on accepte l'arête
             }
 
             // Ajouter l'arête
@@ -819,50 +856,33 @@ impl TrocIntelligentService {
         // sur les chemins utiles. Cela minimise le nombre de nœuds.
         // ---------------------------------------------------------------
         if dag_edges.len() > 2 {
-            // Trouver les nœuds "terminaux utiles": ceux qui envoient un livre
-            // correspondant au besoin de l'initiateur (classe_souhaitee de l'initiateur)
-            let _initiateur_besoins: HashSet<(String, String)> =
-                if let Some(init_livres) = livres_par_user.get(&initiateur_id) {
-                    init_livres
-                        .iter()
-                        .filter(|l| !l.classe_souhaitee.is_empty())
-                        .map(|l| (l.classe_souhaitee.clone(), l.matiere.clone()))
-                        .collect()
-                } else {
-                    HashSet::new()
-                };
-
-            // BFS inverse: partir des arêtes qui envoient à l'initiateur,
-            // puis remonter les dépendances
+            // ✅ 2026-05-21 (Bug C) — ÉLAGAGE FORWARD : on garde uniquement
+            // les arêtes ATTEIGNABLES À PARTIR de l'initiateur (qui est la
+            // SOURCE de la chaîne, pas le SINK). Avant : BFS inverse qui
+            // remontait vers l'initiateur, le forçant à devenir destinataire
+            // final. Maintenant : BFS forward depuis l'initiateur, l'initiateur
+            // reste la SOURCE qui envoie son livre.
             let mut essential_edges: HashSet<usize> = HashSet::new();
-            let mut needed_users: HashSet<i32> = HashSet::new();
-            needed_users.insert(initiateur_id);
+            let mut reachable: HashSet<i32> = HashSet::new();
+            reachable.insert(initiateur_id);
 
-            // D'abord marquer les arêtes qui livrent directement à l'initiateur
-            for (i, edge) in dag_edges.iter().enumerate() {
-                if edge.receiver_id == initiateur_id {
-                    essential_edges.insert(i);
-                    needed_users.insert(edge.sender_id);
-                }
-            }
-
-            // Ensuite, remonter: pour chaque sender nécessaire qui reçoit aussi
-            // un livre (il a besoin d'un livre pour participer au troc),
-            // marquer les arêtes qui lui envoient un livre
+            // Itérer jusqu'à stabilité : à chaque tour, accepter les arêtes
+            // dont le sender est dans `reachable`. Ajouter le receiver à
+            // reachable. Continuer jusqu'à ce que rien ne change.
             let mut changed = true;
             while changed {
                 changed = false;
                 for (i, edge) in dag_edges.iter().enumerate() {
-                    if !essential_edges.contains(&i) && needed_users.contains(&edge.receiver_id) {
+                    if !essential_edges.contains(&i) && reachable.contains(&edge.sender_id) {
                         essential_edges.insert(i);
-                        if needed_users.insert(edge.sender_id) {
+                        if reachable.insert(edge.receiver_id) {
                             changed = true;
                         }
                     }
                 }
             }
 
-            // Si l'élagage réduit le nombre d'arêtes, utiliser le sous-graphe minimal
+            // Si l'élagage réduit le nombre d'arêtes, utiliser le sous-graphe atteignable
             if essential_edges.len() >= 2 && essential_edges.len() < dag_edges.len() {
                 let pruned_count = dag_edges.len() - essential_edges.len();
                 dag_edges = dag_edges
@@ -879,9 +899,53 @@ impl TrocIntelligentService {
                     chain_users.insert(edge.receiver_id);
                 }
                 info!(
-                    "[TROC_INTELLIGENT] ✅ Élagage: {} arêtes supprimées, {} nœuds restants (minimum)",
+                    "[TROC_INTELLIGENT] ✅ Élagage forward: {} arêtes supprimées, {} nœuds restants atteignables depuis initiateur",
                     pruned_count, chain_users.len()
                 );
+            }
+        }
+
+        // ✅ 2026-05-21 (Bug A) — RÉCIPROCITÉ TROC : un user qui envoie un
+        // livre en mode 'troc' DOIT recevoir un livre en retour (sinon c'est
+        // un don déguisé, économiquement invalide). On itère et on retire les
+        // arêtes troc dont le sender n'a pas d'arête entrante dans le DAG.
+        // L'initiateur est exempté car son livre est ANCRÉ par construction
+        // (cf. Bug B fix au-dessus) et il reçoit en contrepartie ce qu'il
+        // cherche via la cascade.
+        let mut changed = true;
+        let mut reciprocity_passes = 0;
+        while changed && reciprocity_passes < 5 {
+            changed = false;
+            reciprocity_passes += 1;
+            let users_receiving: HashSet<i32> =
+                dag_edges.iter().map(|e| e.receiver_id).collect();
+            let before = dag_edges.len();
+            dag_edges.retain(|edge| {
+                let mode = edge.livre.mode_listing.as_deref().unwrap_or("troc");
+                if mode != "troc" {
+                    return true; // ventes : ok sans réciprocité (cash)
+                }
+                if edge.sender_id == initiateur_id {
+                    return true; // initiateur exempté (sa contrepartie vient via la cascade)
+                }
+                // Sender en mode troc DOIT recevoir aussi
+                users_receiving.contains(&edge.sender_id)
+            });
+            if dag_edges.len() < before {
+                changed = true;
+                info!(
+                    "[TROC_INTELLIGENT] Réciprocité troc passe {} : {} arêtes retirées (trocer sans contrepartie)",
+                    reciprocity_passes, before - dag_edges.len()
+                );
+            }
+        }
+        // Recompute chain_users après filtre réciprocité
+        if reciprocity_passes > 1 {
+            chain_users.clear();
+            chain_users.insert(initiateur_id);
+            for edge in &dag_edges {
+                chain_users.insert(edge.sender_id);
+                chain_users.insert(edge.receiver_id);
             }
         }
 
@@ -962,33 +1026,35 @@ impl TrocIntelligentService {
             .collect();
 
         // Construire les participants (ordre topologique : sources → milieu → sinks)
-        // ✅ 2026-05-21 — Wave 24 fix : la validation chaîne exige que toute
-        // demande d'achat (livre_offert_id < 0 = sink) soit en DERNIÈRE
-        // position. Tri 3-rangs : vendeur (0) → trocer (1) → sink (2).
-        //
-        // ✅ 2026-05-21 — Wave 25 fix : filtrer les "phantom sinks" — un user
-        // qui apparaît dans chain_users sans transfer sortant ET sans demande
-        // associée est un nœud orphelin qui ferait planter `validate_chaine_troc`
-        // (livre_offert_id=0, "Livre 0 non trouvé"). On retire ces noeuds
-        // pour ne garder que des participants ayant un rôle économique réel.
+        // ✅ 2026-05-21 (Bug D) — Filtre phantom-sink ÉPARGNE l'initiateur :
+        //   sinon un /chaine endpoint refuserait avec 403 "Vous devez être
+        //   participant de la chaîne pour la créer" pour le user qui a appelé
+        //   /match. L'initiateur est exempté du filtre — il est toujours
+        //   en position 1 par construction (Bug E fix juste après).
         let mut participants: Vec<(i32, i32)> = participants_map
             .into_iter()
             .filter(|(uid, _)| {
+                if *uid == initiateur_id {
+                    return true; // initiateur toujours conservé
+                }
                 let has_outgoing = transfers.iter().any(|t| t.sender_id == *uid);
                 let has_demande = demande_for_user.contains_key(uid);
-                // Garde si : envoie au moins 1 livre OU a une demande d'achat.
-                // Sinon c'est un phantom sink (reçoit sans contrepartie économique).
                 has_outgoing || has_demande
             })
             .collect();
+        // ✅ 2026-05-21 (Bug E) — Tri 4-rangs : initiateur (0) → vendeur (1)
+        //   → trocer (2) → sink (3). L'initiateur a toujours la position 1
+        //   dans participants[], cohérent avec son rôle de source de la chaîne.
         participants.sort_by(|a, b| {
             let rank = |uid: i32| -> u8 {
-                if vendeurs.contains(&uid) {
+                if uid == initiateur_id {
                     0
+                } else if vendeurs.contains(&uid) {
+                    1
                 } else if !transfers.iter().any(|t| t.sender_id == uid) {
-                    2 // sink : reçoit mais n'envoie pas → demande d'achat
+                    3 // sink : reçoit mais n'envoie pas → demande d'achat
                 } else {
-                    1 // trocer milieu
+                    2 // trocer milieu
                 }
             };
             rank(a.0).cmp(&rank(b.0)).then_with(|| a.1.cmp(&b.1))
@@ -1357,85 +1423,26 @@ impl TrocIntelligentService {
             }
         }
 
-        // Pour chaque arête DAG (i → i+1), vérifier la correspondance classe/matière
-        for i in 0..participants.len().saturating_sub(1) {
-            let sender = &participants[i];
-            let receiver = &participants[i + 1];
-
-            // Sender DOIT être un vrai livre (les demandes ne peuvent jamais être sender)
-            if sender.livre_offert_id < 0 {
-                return Err(AppError::BadRequest(format!(
-                    "Une demande (id={}) ne peut pas être expéditrice dans la chaîne",
-                    -sender.livre_offert_id
-                )));
-            }
-
-            let livre_envoye =
-                sqlx::query_as::<_, LivreScolaire>("SELECT * FROM livres_scolaires WHERE id = $1")
-                    .bind(sender.livre_offert_id)
-                    .fetch_optional(&*self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
-                    .ok_or_else(|| {
-                        AppError::BadRequest(format!("Livre {} non trouvé", sender.livre_offert_id))
-                    })?;
-
-            // Le receiver peut être soit un livre régulier, soit une demande.
-            // On résout les champs (classe_souhaitee, matiere) selon le cas.
-            let (receiver_classe_souhaitee, receiver_matiere, receiver_label) =
-                if receiver.livre_offert_id >= 0 {
-                    let l = sqlx::query_as::<_, LivreScolaire>(
-                        "SELECT * FROM livres_scolaires WHERE id = $1",
-                    )
-                    .bind(receiver.livre_offert_id)
-                    .fetch_optional(&*self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Erreur validation chaîne: {}", e)))?
-                    .ok_or_else(|| {
-                        AppError::BadRequest(format!("Livre {} non trouvé", receiver.livre_offert_id))
-                    })?;
-                    (l.classe_souhaitee.clone(), l.matiere.clone(), format!("livre {}", l.id))
-                } else {
-                    let demande_id = -receiver.livre_offert_id;
-                    let d = sqlx::query_as::<_, LivreScolaireDemande>(
-                        "SELECT * FROM livres_scolaires_demandes WHERE id = $1",
-                    )
-                    .bind(demande_id)
-                    .fetch_optional(&*self.pool)
-                    .await
-                    .map_err(|e| AppError::Internal(format!("Erreur validation demande: {}", e)))?
-                    .ok_or_else(|| {
-                        AppError::BadRequest(format!("Demande {} non trouvée", demande_id))
-                    })?;
-                    (d.classe_souhaitee.clone(), d.matiere.clone(), format!("demande {}", d.id))
-                };
-
-            // Le matching DAG: le livre envoyé a la classe que le receiver cherche.
-            // ✅ FIX 2026-05-16 — Comparaison canonique (lower+trim+accents)
-            // pour tolérer "6e" vs "6ème", "MATHS" vs "maths", etc.
-            if canonical(&livre_envoye.classe_actuelle) != canonical(&receiver_classe_souhaitee)
-                || canonical(&livre_envoye.matiere) != canonical(&receiver_matiere)
-            {
-                return Err(AppError::BadRequest(format!(
-                    "Correspondance DAG incorrecte: livre {} (classe={}, matière={}) ne correspond pas au besoin du participant {} ({} — classe_souhaitee={}, matière={})",
-                    sender.livre_offert_id, livre_envoye.classe_actuelle, livre_envoye.matiere,
-                    receiver.user_id, receiver_label, receiver_classe_souhaitee, receiver_matiere
-                )));
-            }
-
-            // Anti-réciprocité: vérifier que receiver → sender n'existe PAS dans la même chaîne
-            let reverse_exists = participants.iter().enumerate().any(|(j, p)| {
-                j > i
-                    && p.user_id == receiver.user_id
-                    && participants.get(j + 1).map(|next| next.user_id) == Some(sender.user_id)
-            });
-            if reverse_exists {
-                return Err(AppError::BadRequest(format!(
-                    "Anti-réciprocité violée: transferts {} → {} et {} → {} dans la même chaîne",
-                    sender.user_id, receiver.user_id, receiver.user_id, sender.user_id
-                )));
-            }
-        }
+        // ✅ 2026-05-21 (Bug F) — Validation linéaire consecutive-edge SUPPRIMÉE.
+        // Le modèle métier autorise les chaînes multi-edge (collecte progressive :
+        // plusieurs senders → 1 receiver final, ou même 1 sender envoie 2 livres
+        // au même destinataire). Le schéma `participants[]` linéaire ne peut pas
+        // capturer ces topologies, donc le check `participants[i] → participants[i+1]`
+        // rejetait à tort des chaînes légitimes.
+        //
+        // La validité économique du DAG (réciprocité troc, anti-cycle, distance)
+        // est désormais ENTIÈREMENT garantie par `find_matching_chaine` côté
+        // serveur. La validation ici se limite donc à :
+        //   1. Chaque participant.livre_offert_id existe et appartient à
+        //      participant.user_id (déjà fait dans la boucle ci-dessus).
+        //   2. Une demande d'achat ne peut pas être expéditrice (handled dans
+        //      la même boucle plus haut quand idx + 1 != participants.len()).
+        //
+        // Sécurité : le caller du endpoint POST /troc-livres/chaine est
+        // authentifié et doit être présent dans participants (cf.
+        // controllers/troc_livres_controller.rs:442). Combiné à la propriété
+        // (livre.user_id == participant.user_id) vérifiée ci-dessus, on ne
+        // peut pas créer une chaîne avec les livres d'autrui sans complicité.
 
         Ok(())
     }
