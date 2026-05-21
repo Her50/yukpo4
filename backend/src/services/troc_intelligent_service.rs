@@ -912,6 +912,15 @@ impl TrocIntelligentService {
         // L'initiateur est exempté car son livre est ANCRÉ par construction
         // (cf. Bug B fix au-dessus) et il reçoit en contrepartie ce qu'il
         // cherche via la cascade.
+        //
+        // ✅ 2026-05-21 (wave 29) — RÉCIPROCITÉ QUALITATIVE par état :
+        //   • Si un trocer envoie un livre en état='bon', il DOIT recevoir
+        //     un livre en état='bon' (qualité égale = échange équitable).
+        //   • Si un trocer envoie un livre en état='acceptable', il peut
+        //     recevoir 'bon' OU 'acceptable' (upgrade gratuit accepté).
+        //   La règle assure la satisfaction client : personne ne perd en qualité
+        //   en participant à la chaîne. Réduit la probabilité de matching mais
+        //   garantit la confiance dans la valeur de l'échange.
         let mut changed = true;
         let mut reciprocity_passes = 0;
         while changed && reciprocity_passes < 5 {
@@ -919,6 +928,19 @@ impl TrocIntelligentService {
             reciprocity_passes += 1;
             let users_receiving: HashSet<i32> =
                 dag_edges.iter().map(|e| e.receiver_id).collect();
+            // Map user → meilleur état reçu dans la chaîne ("bon" si au moins
+            // une arête entrante apporte un livre en état='bon')
+            let mut best_incoming_etat: HashMap<i32, String> = HashMap::new();
+            for edge in &dag_edges {
+                let etat = edge.livre.etat_classification.as_deref().unwrap_or("acceptable");
+                let entry = best_incoming_etat
+                    .entry(edge.receiver_id)
+                    .or_insert_with(|| etat.to_string());
+                // "bon" l'emporte sur "acceptable"
+                if entry != "bon" && etat == "bon" {
+                    *entry = "bon".to_string();
+                }
+            }
             let before = dag_edges.len();
             dag_edges.retain(|edge| {
                 let mode = edge.livre.mode_listing.as_deref().unwrap_or("troc");
@@ -929,7 +951,26 @@ impl TrocIntelligentService {
                     return true; // initiateur exempté (sa contrepartie vient via la cascade)
                 }
                 // Sender en mode troc DOIT recevoir aussi
-                users_receiving.contains(&edge.sender_id)
+                if !users_receiving.contains(&edge.sender_id) {
+                    return false;
+                }
+                // ✅ Réciprocité qualitative : si sender envoie 'bon',
+                // il DOIT recevoir 'bon' (pas dégradation acceptable).
+                let sent_etat = edge.livre.etat_classification.as_deref().unwrap_or("acceptable");
+                if sent_etat == "bon" {
+                    let received_etat = best_incoming_etat
+                        .get(&edge.sender_id)
+                        .map(|s| s.as_str())
+                        .unwrap_or("acceptable");
+                    if received_etat != "bon" {
+                        log::info!(
+                            "[TROC_INTELLIGENT] Skip arête {}→{} : sender envoie livre 'bon' mais ne reçoit que '{}' — dégradation qualitative interdite",
+                            edge.sender_id, edge.receiver_id, received_etat
+                        );
+                        return false;
+                    }
+                }
+                true
             });
             if dag_edges.len() < before {
                 changed = true;
