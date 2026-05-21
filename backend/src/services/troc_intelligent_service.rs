@@ -726,6 +726,10 @@ impl TrocIntelligentService {
                 );
                 continue;
             }
+            // ✅ 2026-05-21 — Pas de contrainte 1-in-1-out : le modèle métier
+            // autorise la « collecte progressive » (plusieurs parents livrent
+            // leurs livres au même destinataire final, qui reçoit l'agrégat).
+            // Seul l'acyclicité et l'anti-réciprocité sont nécessaires.
             // Livre déjà utilisé ?
             if used_livre_ids.contains(&edge.livre.id) {
                 continue;
@@ -948,14 +952,35 @@ impl TrocIntelligentService {
             }
         }
 
+        // ✅ 2026-05-16 — Map user_id → demande_id pour les acheteurs sinks.
+        // Si un user reçoit dans la chaîne sans jamais envoyer (= buyer), on
+        // encode l'identifiant de sa demande dans `livre_offert_id` (négatif)
+        // pour que validate_chaine_troc puisse le retrouver.
+        let demande_for_user: HashMap<i32, i32> = demandes_ouvertes
+            .iter()
+            .map(|d| (d.user_id, d.id))
+            .collect();
+
         // Construire les participants (ordre topologique : sources → milieu → sinks)
         // ✅ 2026-05-21 — Wave 24 fix : la validation chaîne exige que toute
         // demande d'achat (livre_offert_id < 0 = sink) soit en DERNIÈRE
-        // position. Le sort précédent triait uniquement vendeurs-d'abord mais
-        // laissait les sinks (users sans transfer sortant) au milieu →
-        // 400 BAD_REQUEST "Demande d'achat doit être en dernière position".
-        // Tri 3-rangs : vendeur (0) → trocer (1) → sink (2), puis par ordre.
-        let mut participants: Vec<(i32, i32)> = participants_map.into_iter().collect();
+        // position. Tri 3-rangs : vendeur (0) → trocer (1) → sink (2).
+        //
+        // ✅ 2026-05-21 — Wave 25 fix : filtrer les "phantom sinks" — un user
+        // qui apparaît dans chain_users sans transfer sortant ET sans demande
+        // associée est un nœud orphelin qui ferait planter `validate_chaine_troc`
+        // (livre_offert_id=0, "Livre 0 non trouvé"). On retire ces noeuds
+        // pour ne garder que des participants ayant un rôle économique réel.
+        let mut participants: Vec<(i32, i32)> = participants_map
+            .into_iter()
+            .filter(|(uid, _)| {
+                let has_outgoing = transfers.iter().any(|t| t.sender_id == *uid);
+                let has_demande = demande_for_user.contains_key(uid);
+                // Garde si : envoie au moins 1 livre OU a une demande d'achat.
+                // Sinon c'est un phantom sink (reçoit sans contrepartie économique).
+                has_outgoing || has_demande
+            })
+            .collect();
         participants.sort_by(|a, b| {
             let rank = |uid: i32| -> u8 {
                 if vendeurs.contains(&uid) {
@@ -968,15 +993,6 @@ impl TrocIntelligentService {
             };
             rank(a.0).cmp(&rank(b.0)).then_with(|| a.1.cmp(&b.1))
         });
-
-        // ✅ 2026-05-16 — Map user_id → demande_id pour les acheteurs sinks.
-        // Si un user reçoit dans la chaîne sans jamais envoyer (= buyer), on
-        // encode l'identifiant de sa demande dans `livre_offert_id` (négatif)
-        // pour que validate_chaine_troc puisse le retrouver.
-        let demande_for_user: HashMap<i32, i32> = demandes_ouvertes
-            .iter()
-            .map(|d| (d.user_id, d.id))
-            .collect();
 
         // Re-numéroter
         let participant_chaines: Vec<ParticipantChaine> = participants
