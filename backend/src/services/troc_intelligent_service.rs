@@ -1522,13 +1522,15 @@ impl TrocIntelligentService {
                     )));
                 }
             } else {
-                // Cas demande : ne peut occuper QUE la dernière position
-                if idx + 1 != participants.len() {
-                    return Err(AppError::BadRequest(format!(
-                        "Demande d'achat (livre_offert_id={}) doit être en dernière position, trouvée à l'index {}",
-                        participant.livre_offert_id, idx
-                    )));
-                }
+                // ✅ 2026-05-21 (wave 31) — Plusieurs demandes d'achat acceptées
+                // dans la chaîne (collecte progressive multi-sink). L'ancienne
+                // règle "demande UNIQUEMENT en dernière position" était
+                // incompatible avec le modèle métier validé par l'utilisateur :
+                // un coursier collecte progressivement et délivre à PLUSIEURS
+                // acheteurs en fin de tournée. Validation simplifiée : on
+                // vérifie juste que la demande existe et appartient au user
+                // (sécurité préservée). L'ordre topologique reste assuré par
+                // le tri 4-rangs (initiateur/vendeur/trocer/sink) de find_matching_chaine.
                 let demande_id = -participant.livre_offert_id;
                 let demande = sqlx::query_as::<_, LivreScolaireDemande>(
                     "SELECT * FROM livres_scolaires_demandes WHERE id = $1 AND is_active = true AND is_satisfied = false"
