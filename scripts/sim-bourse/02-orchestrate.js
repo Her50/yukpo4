@@ -204,23 +204,30 @@ async function phaseCreateChaines(chainsProposed, jwts) {
     seen.add(key); return true;
   });
 
+  // ✅ FIX 2026-05-21 (sim 26) — Try/catch INDIVIDUEL : sans ça, un seul
+  // chain creation qui timeout fait crasher la phase entière (ECONNABORTED).
+  // Maintenant on compte ces échecs comme `err` et on poursuit.
+  let timeouts = 0;
   for (let i = 0; i < uniqueChains.length; i++) {
     const { proposed_by_user, chain } = uniqueChains[i];
     const participants = chain.participants ?? [];
     if (participants.length < 2) continue;
-    // ✅ FIX 2026-05-21 — Backend exige que le caller soit participant. Le
-    // proposer peut ne pas figurer dans la chaîne finale (ex: chaîne
-    // composée à partir de SES livres mais sans lui en participant si livre
-    // pas retenu). On utilise le JWT du PREMIER participant pour être sûr.
     const callerUserId = participants.some(p => p.user_id === proposed_by_user)
       ? proposed_by_user
       : participants[0].user_id;
-    const r = await client(jwts[callerUserId]).post('/api/troc-livres/chaine', { participants });
-    if (r.status >= 200 && r.status < 300) ok++; else err++;
-    if (samples.length < 5) samples.push({ status: r.status, n_participants: participants.length, body: r.data });
+    try {
+      const r = await client(jwts[callerUserId]).post('/api/troc-livres/chaine', { participants });
+      if (r.status >= 200 && r.status < 300) ok++; else err++;
+      if (samples.length < 5) samples.push({ status: r.status, n_participants: participants.length, body: r.data });
+    } catch (e) {
+      err++;
+      timeouts++;
+      if (samples.length < 5) samples.push({ status: e.code || 'ERROR', n_participants: participants.length, body: e.message });
+    }
+    if ((i + 1) % 20 === 0) console.log(`    chaîne ${i + 1}/${uniqueChains.length}  (ok=${ok} err=${err} timeouts=${timeouts})`);
   }
-  log.phases.create_chaines = { unique: uniqueChains.length, created_ok: ok, errors: err, samples };
-  console.log(`  Création chaînes: ${ok} OK / ${err} err sur ${uniqueChains.length} uniques`);
+  log.phases.create_chaines = { unique: uniqueChains.length, created_ok: ok, errors: err, timeouts, samples };
+  console.log(`  Création chaînes: ${ok} OK / ${err} err / ${timeouts} timeouts sur ${uniqueChains.length} uniques`);
 }
 
 // ===========================================================================
