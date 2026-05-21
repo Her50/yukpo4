@@ -9,21 +9,47 @@ const configureAxios = () => {
   axios.defaults.maxContentLength = 200 * 1024 * 1024; // 200MB
   axios.defaults.maxBodyLength = 200 * 1024 * 1024; // 200MB
 
+  // ✅ 2026-05-21 — withCredentials envoie automatiquement le cookie httpOnly
+  // contenant le JWT. Indispensable pour la nouvelle auth web (fix XSS).
+  // Le mobile RN n'utilise pas cette config (cookies pas pratiques en natif),
+  // donc seul le frontend web bénéficie/dépend de withCredentials=true.
+  axios.defaults.withCredentials = true;
+
+  // ✅ 2026-05-21 — Wrapper global de window.fetch pour injecter automatiquement
+  // `credentials: 'include'`. Sans cela, fetch() n'envoie PAS les cookies en
+  // cross-origin → les 107 fichiers qui utilisent fetch() resteraient en
+  // session anonyme. Cette modif rend la migration cookie httpOnly transparente
+  // pour tout le code existant qui utilise fetch.
+  if (typeof window !== 'undefined' && !(window as any).__yukpo_fetch_patched) {
+    const origFetch = window.fetch.bind(window);
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const next: RequestInit = { ...(init || {}) };
+      // Ne pas écraser si l'appelant a explicitement choisi une autre valeur
+      if (next.credentials === undefined) {
+        next.credentials = 'include';
+      }
+      return origFetch(input, next);
+    };
+    (window as any).__yukpo_fetch_patched = true;
+    console.log('[axios] ✅ window.fetch patché pour envoyer les cookies (credentials=include par défaut)');
+  }
+
   // Headers par défaut
   axios.defaults.headers.common['Accept'] = 'application/json';
   axios.defaults.headers.post['Content-Type'] = 'application/json';
 
-  // Intercepteur de requête pour ajouter le token automatiquement
+  // ✅ 2026-05-21 — Plus d'injection automatique du Bearer header.
+  // Le cookie httpOnly (envoyé via withCredentials=true) suffit pour
+  // l'authentification web. Le backend lit le cookie en fallback du Bearer.
+  // Si un legacy stockage localStorage subsiste (transition), on l'envoie
+  // tout de même comme Bearer pour ne pas casser d'éventuels chemins.
   axios.interceptors.request.use(
     (config) => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const legacyToken = localStorage.getItem('token');
+      if (legacyToken && legacyToken !== 'null' && legacyToken !== 'undefined') {
+        config.headers.Authorization = `Bearer ${legacyToken}`;
       }
-      
-      // Log pour debug
       console.log(`[axios] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
-      
       return config;
     },
     (error) => {

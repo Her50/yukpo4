@@ -73,7 +73,7 @@ const LoginPage: React.FC = () => {
         console.log('[LoginPage] Donnes reues:', { token: !!data.token, tokens_balance: data.tokens_balance });
 
         if (data.token) {
-          console.log('[LoginPage] Token reu, connexion...');
+          console.log('[LoginPage] Token reu (en cookie httpOnly), connexion...');
 
           if (data.tokens_balance !== undefined) {
             localStorage.setItem('tokens_balance', data.tokens_balance.toString());
@@ -81,17 +81,19 @@ const LoginPage: React.FC = () => {
             console.log('[LoginPage] Solde initial sauvegard:', data.tokens_balance);
           }
 
+          // ✅ 2026-05-21 — Migration cookie httpOnly : le JWT est déjà posé
+          // dans un cookie côté navigateur par le backend (Set-Cookie). On NE
+          // STOCKE PLUS le JWT en localStorage (fix XSS). Si `login(token)`
+          // existait pour mettre à jour le contexte, on s'appuie maintenant
+          // sur le polling /auth/me que fait UserContext.useEffect au boot.
+          // Pour propager immédiatement la session sans recharger, on garde
+          // `login()` mais elle est devenue no-op pour le stockage du token.
           login(data.token);
 
           // Récupérer le profil pour cacher le numéro WhatsApp en local.
-          // Permet à DeliveryModal (récap d'achat) de pré-remplir le champ
-          // sans dépendre d'un claim JWT supplémentaire. Best-effort, non
-          // bloquant — si /api/user/me échoue, l'utilisateur saisira son
-          // numéro manuellement à la commande.
+          // Best-effort, non bloquant — credentials injectés par le wrapper fetch.
           try {
-            const meRes = await fetch(`${API_BASE_URL}/api/user/me`, {
-              headers: { Authorization: `Bearer ${data.token}` },
-            });
+            const meRes = await fetch(`${API_BASE_URL}/api/user/me`);
             if (meRes.ok) {
               const me = await meRes.json().catch(() => ({}));
               if (me?.phone) {
@@ -110,16 +112,14 @@ const LoginPage: React.FC = () => {
           } else if (redirectUrl) {
             target = decodeURIComponent(redirectUrl);
           } else if (appPartnerType) {
-            // Sur app standalone (pharmacie/restaurant) : si l'utilisateur est partenaire du bon type → /dashboard
-            try {
-              const decoded: any = jwtDecode(data.token);
-              const isPartnerHere =
-                decoded?.role === 'partenaire' ||
-                (decoded?.partner_type && decoded.partner_type === appPartnerType);
-              target = isPartnerHere ? '/dashboard' : ROUTES.HOME;
-            } catch {
-              target = ROUTES.HOME;
-            }
+            // Sur app standalone (pharmacie/restaurant) : utiliser data.user
+            // (renvoyé par le backend depuis 2026-05-21) au lieu de décoder
+            // le JWT (devenu invisible côté JS pour fix XSS).
+            const userInfo = data.user || {};
+            const isPartnerHere =
+              userInfo.role === 'partenaire' ||
+              (userInfo.partner_type && userInfo.partner_type === appPartnerType);
+            target = isPartnerHere ? '/dashboard' : ROUTES.HOME;
           } else {
             target = ROUTES.HOME;
           }
