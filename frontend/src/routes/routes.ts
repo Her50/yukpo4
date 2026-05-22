@@ -12,11 +12,11 @@ import SingleServicePage from '@/pages/SingleServicePage';
 import LoadTestDashboard from '@/pages/admin/LoadTestDashboard';
 import ModerationPanel from '@/pages/admin/ModerationPanel';
 import TranslateTestAdmin from '@/pages/admin/TranslateTestAdmin';
-import CreationService from '@/pages/CreationService'; // ✅ À ajouter en haut
-import PaiementPlanPage from '@/pages/PaiementPlanPage';
+import CreationService from '@/pages/CreationService';
+// 2026-05-22 : PaiementPlanPage + TranslateTestPanel supprimés du repo,
+// on retire leurs entrées de ROUTES_CONFIG plus bas.
 import GlobalPromoCatalogPage from '@/pages/promo/GlobalPromoCatalog';
 import GlobalPromoSelfServicePage from '@/pages/promo/GlobalPromoSelfService';
-import TranslateTestPanel from '@/pages/TranslateTestPanel';
 import ImmersiveVideoWizard from '@/pages/video/ImmersiveVideoWizard';
 
 
@@ -55,6 +55,7 @@ export enum ROUTES {
   SERVICE_CREATE = "/CreationService",
   IMMERSIVE_VIDEO = "/immersive-video",
   PROMO_GLOBAL = "/promo/global",
+  PROMO_CATALOG = "/promo/catalog",
 
   // Admin
   ADMIN_AUDIT_ACCESS = "/admin/audit-access",
@@ -168,18 +169,8 @@ export const ROUTES_CONFIG: RouteMeta[] = [
     component: GlobalPromoSelfServicePage,
     plan: "free",
   },
-  {
-    label: "Paiement Plan",
-    path: ROUTES.PAYMENT_PLAN,
-    roles: ["user", "client"],
-    component: PaiementPlanPage,
-  },
-  {
-    label: "Traduction IA",
-    path: ROUTES.TRANSLATE_TEST,
-    roles: ["user", "client"],
-    component: TranslateTestPanel,
-  },
+  // 2026-05-22 : entrées Paiement Plan + Traduction IA retirées (pages
+  // supprimées du repo). La route admin TRANSLATE_TEST_ADMIN reste active.
   {
     label: "Test Traduction Admin",
     path: ROUTES.TRANSLATE_TEST_ADMIN,

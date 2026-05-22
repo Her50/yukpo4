@@ -1,5 +1,5 @@
 import {
-  ArrowLeft, BookOpen, Check, ChevronRight, ClipboardCheck, Clock, FileDown,
+  AlertTriangle, ArrowLeft, BookOpen, Check, ChevronRight, ClipboardCheck, Clock, FileDown,
   Loader2, LogOut, MapPin, Megaphone, Package, Phone, Printer, RefreshCw,
   Route, Search, Send, ShoppingBag, Trash2, Truck, UserPlus, Users,
   Warehouse, X, XCircle,
@@ -43,6 +43,9 @@ interface CommandeListItem {
   nb_occasion?: number;
   secondes_restantes?: number;
   created_at?: string;
+  // 2026-05-22 — true si statut ∈ {edition, validation_budget} : auto-progress
+  // a échoué côté backend, l'admin peut la pousser via le bouton dédié.
+  est_bloquee?: boolean;
 }
 
 const STATUT_LABELS: Partial<Record<CommandeStatut, string>> = {
@@ -60,6 +63,8 @@ const STATUT_LABELS: Partial<Record<CommandeStatut, string>> = {
 };
 
 const STATUT_COLOR: Partial<Record<CommandeStatut, string>> = {
+  edition: 'bg-red-100 text-red-800 border-red-300',
+  validation_budget: 'bg-red-100 text-red-800 border-red-300',
   envoyee_super_librairie: 'bg-amber-100 text-amber-800 border-amber-300',
   envoyee_librairies: 'bg-indigo-100 text-indigo-700 border-indigo-200',
   en_validation: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -1665,8 +1670,10 @@ export const LibrairieDashboardPage: React.FC = () => {
 
   const filtered = useMemo(() => {
     if (filter === 'pending') {
+      // Bloquées (edition/validation_budget) incluses dans pending pour
+      // forcer la visibilité — sinon elles seraient cachées dans 'all' uniquement.
       return commandes.filter(c =>
-        ['envoyee_super_librairie', 'envoyee_librairies', 'en_validation', 'validee_partielle'].includes(c.statut)
+        ['edition', 'validation_budget', 'envoyee_super_librairie', 'envoyee_librairies', 'en_validation', 'validee_partielle'].includes(c.statut)
       );
     }
     if (filter === 'done') {
@@ -1676,6 +1683,40 @@ export const LibrairieDashboardPage: React.FC = () => {
     }
     return commandes;
   }, [commandes, filter]);
+
+  // 2026-05-22 — push manuel d'une commande coincée à edition / validation_budget.
+  const pushCommande = useCallback(async (commandeId: string) => {
+    try {
+      const res = await apiPost(
+        `/api/librairie-network/super-librairie/commandes/${commandeId}/push`,
+        {}
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+      }
+      if (data?.pousseee) {
+        toast({
+          title: t('librairie.push.success', 'Commande poussée vers Yukpo Librairie'),
+        });
+      } else {
+        toast({
+          title: t('librairie.push.partial', 'Commande débloquée'),
+          description: t(
+            'librairie.push.no_super_lib',
+            'Pas de super-libraire actif — reste en validation_budget'
+          ),
+        });
+      }
+      await load();
+    } catch (e: any) {
+      toast({
+        title: t('librairie.push.error', 'Échec du push'),
+        description: e?.message || '',
+        variant: 'destructive',
+      });
+    }
+  }, [load, t, toast]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
@@ -1737,6 +1778,15 @@ export const LibrairieDashboardPage: React.FC = () => {
             >
               <Users className="w-3.5 h-3.5" />
               {t('librairie.equipe')}
+            </button>
+            {/* 2026-05-22 — accès aux opérations YL (ruptures, assigner coursier,
+                inviter coursier). La page existait mais n'était pas reliée. */}
+            <button
+              onClick={() => navigate('/super-librairie/operations')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              {t('librairie.operations', 'Opérations')}
             </button>
           </div>
 
@@ -1836,13 +1886,28 @@ export const LibrairieDashboardPage: React.FC = () => {
           <div className="space-y-2">
             {filtered.map(cmd => {
               const urgent = (cmd.secondes_restantes ?? 99999) < 600 && cmd.statut === 'envoyee_super_librairie';
+              const bloquee = !!cmd.est_bloquee;
               const ref = cmd.reference_commande || `#${cmd.id.slice(0, 8)}`;
+              // 2026-05-22 — div role=button (au lieu de <button>) pour pouvoir
+              // imbriquer un vrai bouton "Pousser" sans HTML invalide.
               return (
-                <button
+                <div
                   key={cmd.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => navigate(`/librairie/commandes/${cmd.id}`)}
-                  className={`w-full text-left bg-white rounded-2xl border p-3 hover:shadow-md transition-shadow ${
-                    urgent ? 'border-amber-400 ring-1 ring-amber-300' : 'border-gray-100'
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/librairie/commandes/${cmd.id}`);
+                    }
+                  }}
+                  className={`w-full text-left bg-white rounded-2xl border p-3 hover:shadow-md transition-shadow cursor-pointer ${
+                    bloquee
+                      ? 'border-red-400 ring-1 ring-red-300'
+                      : urgent
+                        ? 'border-amber-400 ring-1 ring-amber-300'
+                        : 'border-gray-100'
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -1855,6 +1920,11 @@ export const LibrairieDashboardPage: React.FC = () => {
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border ${STATUT_COLOR[cmd.statut] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                           {STATUT_LABELS[cmd.statut] || cmd.statut}
                         </span>
+                        {bloquee && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-500 text-white">
+                            {t('librairie.bloquee', 'Bloquée')}
+                          </span>
+                        )}
                         {urgent && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-500 text-white animate-pulse">
                             <Clock className="w-2.5 h-2.5 inline mr-0.5" />
@@ -1886,10 +1956,21 @@ export const LibrairieDashboardPage: React.FC = () => {
                       <p className="text-sm font-bold text-indigo-700 mt-1.5">
                         {(cmd.budget_total || 0).toLocaleString('fr-FR')} {cmd.devise || 'XAF'}
                       </p>
+                      {bloquee && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            pushCommande(cmd.id);
+                          }}
+                          className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold"
+                        >
+                          {t('librairie.pousser', 'Pousser vers Yukpo Librairie')}
+                        </button>
+                      )}
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-400 mt-2 shrink-0" />
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

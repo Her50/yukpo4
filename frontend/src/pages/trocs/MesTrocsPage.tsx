@@ -143,7 +143,7 @@ const MesTrocsPage: React.FC = () => {
             ) : (
                 <div className="space-y-4">
                     {trocs.map((troc) => {
-                        const isInitiateur = user?.id === troc.initiateur_id;
+                        const isInitiateur = user?.id !== undefined && Number(user.id) === troc.initiateur_id;
 
                         return (
                             <Card

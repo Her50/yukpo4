@@ -252,7 +252,7 @@ export default function TaxiForm() {
                             </Button>
                             <Button
                                 type="submit"
-                                variant="primary"
+                                variant="default"
                                 disabled={loading || selectedZones.length === 0}
                             >
                                 {loading ? 'Enregistrement...' : 'Enregistrer le Taxi'}

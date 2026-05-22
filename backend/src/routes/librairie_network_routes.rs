@@ -156,6 +156,12 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/super-librairie/commandes",
             get(crate::controllers::librairie_network_controller::super_librairie_dashboard),
         )
+        // 2026-05-22 — push manuel d'une commande coincée à 'edition' /
+        // 'validation_budget' (auto_progress a échoué silencieusement).
+        .route(
+            "/api/librairie-network/super-librairie/commandes/{commande_id}/push",
+            post(crate::controllers::librairie_network_controller::super_librairie_push_commande),
+        )
         .route(
             "/api/librairie-network/super-librairie/liberer/{commande_id}",
             post(crate::controllers::librairie_network_controller::super_librairie_liberer_commande),

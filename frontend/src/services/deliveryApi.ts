@@ -252,6 +252,15 @@ export interface DeliveryProofMediaInput {
     metadata?: Record<string, unknown>;
 }
 
+// 2026-05-22 — Reconstruit (manquait, cassait le tsc). Représente une row
+// renvoyée par GET /delivery/:id/proof-media.
+export interface DeliveryProofMedia extends DeliveryProofMediaInput {
+    id: number;
+    delivery_id: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface ProofMediaResponse {
     media: DeliveryProofMedia[];
     total: number;

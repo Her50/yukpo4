@@ -191,7 +191,7 @@ const TaxiDetailsPage: React.FC = () => {
 
                 <div className="space-y-3">
                     {/* ✅ Phase 6: Bouton gestion pour propriétaire */}
-                    {user && taxi.user_id === user.id && (
+                    {user && taxi.user_id === Number(user.id) && (
                         <Button
                             variant="outline"
                             onClick={() => navigate(`/taxis/${id}/availability`)}

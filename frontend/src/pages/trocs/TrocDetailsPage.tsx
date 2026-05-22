@@ -218,7 +218,7 @@ const TrocDetailsPage: React.FC = () => {
         );
     }
 
-    const isInitiateur = user?.id === troc.troc.initiateur_id;
+    const isInitiateur = user?.id !== undefined && Number(user.id) === troc.troc.initiateur_id;
     const canAccept = !isInitiateur && troc.troc.statut === 'en_attente';
     const canRefuse = troc.troc.statut === 'en_attente';
     const canComplete = troc.troc.statut === 'accepte';

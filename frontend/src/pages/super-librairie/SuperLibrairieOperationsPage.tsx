@@ -130,6 +130,7 @@ const TabButton: React.FC<{
 // =============================================================================
 
 const RupturesTab: React.FC = () => {
+  const { t } = useTranslation();
   const [commandes, setCommandes] = useState<CommandeSuperLib[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [selected, setSelected] = useState<CommandeSuperLib | null>(null);
@@ -347,7 +348,7 @@ const RupturesDetail: React.FC<{
             </select>
             <Button
               size="sm"
-              variant="primary"
+              variant="default"
               onClick={handleMarquerRupture}
               disabled={busy !== null || selectedIds.size === 0}
             >
@@ -382,7 +383,7 @@ const RupturesDetail: React.FC<{
             </h4>
             <Button
               size="sm"
-              variant="primary"
+              variant="default"
               onClick={handleLiberer}
               disabled={busy !== null}
             >
@@ -639,7 +640,7 @@ const CoursiersTab: React.FC = () => {
                     <td className="px-3 py-2 text-right">
                       <Button
                         size="sm"
-                        variant="primary"
+                        variant="default"
                         onClick={() => handleAssign(c.user_id)}
                         disabled={assigning !== null || !packageIdInput}
                       >

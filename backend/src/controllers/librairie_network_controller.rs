@@ -792,53 +792,77 @@ pub async fn create_commande_mixte(
 ///   2. UPDATE statut='envoyee_super_librairie' + INSERT validation/notification
 ///      si un super libraire actif existe.
 ///
-/// Idempotent : si la commande n'est pas en 'edition', no-op silencieux.
-/// Erreurs : remontées au caller pour log non bloquant.
+/// Idempotent : accepte 'edition' OU 'validation_budget' en entrée (étape 1
+/// sautée si déjà en 'validation_budget'). No-op silencieux pour les autres
+/// statuts. Erreurs remontées au caller pour log non bloquant.
 async fn auto_progress_commande_mixte(
     state: &Arc<AppState>,
     commande_id: Uuid,
 ) -> Result<(), AppError> {
     use sqlx::Row;
 
-    // 1) Calculer les totaux + passer en validation_budget
-    let totaux: (f64, f64) = sqlx::query_as(
-        r#"
-        SELECT
-          COALESCE((SELECT SUM(prix_final * quantite)::DOUBLE PRECISION
-                      FROM commande_livres_neufs WHERE commande_id = $1), 0.0)
-          + COALESCE((SELECT SUM(prix * quantite)::DOUBLE PRECISION
-                      FROM commande_livres_occasion WHERE commande_id = $1), 0.0)
-          AS total,
-          0.0 AS placeholder
-        "#,
+    // 0) Lire le statut actuel pour décider du chemin
+    let current_statut: Option<String> = sqlx::query_scalar(
+        "SELECT statut::text FROM commandes_mixtes WHERE id = $1",
     )
     .bind(commande_id)
-    .fetch_one(&state.pg)
+    .fetch_optional(&state.pg)
     .await
-    .map_err(|e| AppError::Internal(format!("auto-progress totaux: {}", e)))?;
-    let total_commande = totaux.0;
-    let commission_app = total_commande * ConfigurationSysteme::COMMISSION_APP;
-    let montant_net_libraires = total_commande - commission_app;
+    .map_err(|e| AppError::Internal(format!("auto-progress lookup statut: {}", e)))?;
 
-    let updated = sqlx::query(
-        r#"
-        UPDATE commandes_mixtes
-        SET statut = 'validation_budget',
-            commission_app = $1,
-            montant_net_libraires = $2,
-            updated_at = NOW()
-        WHERE id = $3 AND statut = 'edition'
-        "#,
-    )
-    .bind(commission_app)
-    .bind(montant_net_libraires)
-    .bind(commande_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("auto-progress validation_budget: {}", e)))?;
+    let Some(statut) = current_statut else {
+        return Err(AppError::NotFound(format!("Commande {} introuvable", commande_id)));
+    };
 
-    if updated.rows_affected() == 0 {
-        return Ok(()); // déjà progressée par un autre chemin
+    // Si déjà au-delà de validation_budget, no-op.
+    if statut != "edition" && statut != "validation_budget" {
+        return Ok(());
+    }
+
+    // 1) Si en 'edition' : calculer les totaux + passer en validation_budget.
+    //    Si déjà en 'validation_budget' : skip, on garde les montants existants.
+    if statut == "edition" {
+        let totaux: (f64, f64) = sqlx::query_as(
+            r#"
+            SELECT
+              COALESCE((SELECT SUM(prix_final * quantite)::DOUBLE PRECISION
+                          FROM commande_livres_neufs WHERE commande_id = $1), 0.0)
+              + COALESCE((SELECT SUM(prix * quantite)::DOUBLE PRECISION
+                          FROM commande_livres_occasion WHERE commande_id = $1), 0.0)
+              AS total,
+              0.0 AS placeholder
+            "#,
+        )
+        .bind(commande_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("auto-progress totaux: {}", e)))?;
+        let total_commande = totaux.0;
+        let commission_app = total_commande * ConfigurationSysteme::COMMISSION_APP;
+        let montant_net_libraires = total_commande - commission_app;
+
+        let updated = sqlx::query(
+            r#"
+            UPDATE commandes_mixtes
+            SET statut = 'validation_budget',
+                commission_app = $1,
+                montant_net_libraires = $2,
+                updated_at = NOW()
+            WHERE id = $3 AND statut = 'edition'
+            "#,
+        )
+        .bind(commission_app)
+        .bind(montant_net_libraires)
+        .bind(commande_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("auto-progress validation_budget: {}", e)))?;
+
+        if updated.rows_affected() == 0 {
+            // race condition : qqn d'autre l'a progressée entre le SELECT et l'UPDATE.
+            // On continue quand même vers l'étape 2 — le UPDATE final est gardé
+            // par `statut = 'validation_budget'`.
+        }
     }
 
     // 2) Trouver le super libraire actif (Yukpo Librairie)
@@ -876,19 +900,27 @@ async fn auto_progress_commande_mixte(
         .await
         .map_err(|e| AppError::Internal(format!("auto-progress tx begin: {}", e)))?;
 
-    sqlx::query(
+    // Idempotence : le WHERE statut='validation_budget' garantit qu'un second
+    // appel concurrent ne re-route pas et ne ré-INSÈRE pas notif + validation.
+    let routed = sqlx::query(
         r#"UPDATE commandes_mixtes
            SET statut = 'envoyee_super_librairie',
                super_librairie_id = $1,
                super_librairie_timeout_at = NULL,
                updated_at = NOW()
-           WHERE id = $2"#,
+           WHERE id = $2 AND statut = 'validation_budget'"#,
     )
     .bind(sl_id)
     .bind(commande_id)
     .execute(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("auto-progress UPDATE statut: {}", e)))?;
+
+    if routed.rows_affected() == 0 {
+        // Course gagnée par un autre processus, on abandonne proprement.
+        tx.rollback().await.ok();
+        return Ok(());
+    }
 
     sqlx::query(
         r#"INSERT INTO commande_validations
@@ -1727,7 +1759,13 @@ pub async fn super_librairie_dashboard(
             ON cv.commande_id = cm.id AND cv.librairie_id = $1
         LEFT JOIN commande_livres_neufs cln ON cm.id = cln.commande_id
         LEFT JOIN commande_livres_occasion clo ON cm.id = clo.commande_id
+        -- 2026-05-22 : on inclut aussi 'edition' et 'validation_budget' pour
+        -- exposer les commandes coincées (auto_progress_commande_mixte est non
+        -- bloquante, donc si elle échoue la commande reste invisible côté YL).
+        -- Le frontend les distingue via le flag est_bloquee.
         WHERE cm.statut IN (
+            'edition',
+            'validation_budget',
             'envoyee_super_librairie',
             'envoyee_librairies',
             'en_validation',
@@ -1736,8 +1774,14 @@ pub async fn super_librairie_dashboard(
         )
         GROUP BY cm.id, cv.statut
         ORDER BY
-            -- Commandes chez nous en priorité, par timeout croissant
-            CASE WHEN cm.statut = 'envoyee_super_librairie' THEN 0 ELSE 1 END ASC,
+            -- 0 : actives (envoyee_super_librairie, timeout en cours)
+            -- 1 : bloquées (edition, validation_budget) — à pousser manuellement
+            -- 2 : autres (en validation libraires, validées)
+            CASE
+                WHEN cm.statut = 'envoyee_super_librairie' THEN 0
+                WHEN cm.statut IN ('edition', 'validation_budget') THEN 1
+                ELSE 2
+            END ASC,
             cm.super_librairie_timeout_at ASC NULLS LAST,
             cm.created_at DESC
         LIMIT $2 OFFSET $3
@@ -1773,6 +1817,12 @@ pub async fn super_librairie_dashboard(
                     .unwrap_or(None)
                     .map(|t| t.to_rfc3339()),
                 "created_at": row.try_get::<chrono::DateTime<Utc>, _>("created_at").ok().map(|t| t.to_rfc3339()),
+                // 2026-05-22 : flag UX — commande créée mais auto_progress a
+                // échoué, l'admin doit la pousser manuellement.
+                "est_bloquee": matches!(
+                    row.try_get::<Option<String>, _>("statut").unwrap_or(None).as_deref(),
+                    Some("edition") | Some("validation_budget")
+                ),
             })
         })
         .collect();
@@ -1781,6 +1831,67 @@ pub async fn super_librairie_dashboard(
         "success": true,
         "commandes": result,
         "total": result.len()
+    })))
+}
+
+/// POST /api/librairie-network/super-librairie/commandes/{commande_id}/push
+///
+/// 2026-05-22 — Pousse manuellement une commande coincée en 'edition' ou
+/// 'validation_budget' vers 'envoyee_super_librairie'. Utilisé par YL admin
+/// quand `auto_progress_commande_mixte` a échoué silencieusement (warning logs
+/// uniquement, non bloquant à la création).
+///
+/// Accès : admin/super_admin OU super-libraire enregistré OU team member actif.
+pub async fn super_librairie_push_commande(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+    Path(commande_id): Path<Uuid>,
+) -> AppResult<impl IntoResponse> {
+    ensure_super_libraire_access(&state.pg, user_id, &role).await?;
+
+    // Refuser proactivement si la commande n'est pas dans un statut poussable —
+    // évite un Ok(()) silencieux du helper et offre un message clair à l'UI.
+    let statut: Option<String> = sqlx::query_scalar(
+        "SELECT statut::text FROM commandes_mixtes WHERE id = $1",
+    )
+    .bind(commande_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("push lookup statut: {}", e)))?;
+
+    let Some(statut) = statut else {
+        return Err(AppError::NotFound(format!(
+            "Commande {} introuvable",
+            commande_id
+        )));
+    };
+
+    if statut != "edition" && statut != "validation_budget" {
+        return Err(AppError::BadRequest(format!(
+            "Commande {} déjà à statut '{}', rien à pousser",
+            commande_id, statut
+        )));
+    }
+
+    auto_progress_commande_mixte(&state, commande_id).await?;
+
+    // Relire le statut final pour confirmer à l'admin que la promotion a eu lieu.
+    let nouveau_statut: Option<String> = sqlx::query_scalar(
+        "SELECT statut::text FROM commandes_mixtes WHERE id = $1",
+    )
+    .bind(commande_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("push relire statut: {}", e)))?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "commande_id": commande_id.to_string(),
+        "statut_avant": statut,
+        "statut_apres": nouveau_statut,
+        "pousseee": nouveau_statut.as_deref() == Some("envoyee_super_librairie"),
     })))
 }
 
@@ -2519,7 +2630,21 @@ pub async fn super_librairie_wholesale_order(
             ARRAY_AGG(DISTINCT cln.classe) FILTER (WHERE cln.classe IS NOT NULL) AS classes
         FROM commande_livres_neufs cln
         JOIN commandes_mixtes cm ON cm.id = cln.commande_id
-        WHERE cm.statut IN ('validee_complete', 'validee_partielle', 'en_preparation')
+        -- 2026-05-22 : on inclut tout le pipeline "engagé" (commande reçue par
+        -- YL, en cours de validation, validée, en prépa). Le panneau Grossiste
+        -- sert à ANTICIPER les achats : restreindre à 'validee_*' rendait le
+        -- panneau systématiquement vide tant que rien n'était validé. On
+        -- exclut juste 'edition'/'validation_budget' (totaux non figés),
+        -- 'livree' (déjà servi) et 'annulee'.
+        WHERE cm.statut IN (
+              'envoyee_super_librairie',
+              'envoyee_librairies',
+              'en_validation',
+              'validee_partielle',
+              'validee_complete',
+              'en_preparation',
+              'en_livraison'
+          )
           AND (cln.statut_validation IS NULL OR cln.statut_validation::text != 'indisponible')
         GROUP BY
             LOWER(REGEXP_REPLACE(COALESCE(cln.titre, ''), '\s+', ' ', 'g')),
