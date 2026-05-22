@@ -166,7 +166,7 @@ const LoginPage: React.FC = () => {
             ? {error}
           </div>
         )}
-        <h1 className="text-3xl font-bold text-center mb-4">
+        <h1 className="text-3xl font-bold text-center mb-4 text-gray-900 dark:text-white">
           Connexion {" "}
           <span className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-600 bg-clip-text text-transparent">
             Yukpo
@@ -180,7 +180,7 @@ const LoginPage: React.FC = () => {
           <input
             type="email"
             placeholder="Adresse email"
-            className="p-3 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary"
             required
             value={email}
             onChange={e => setEmail(e.target.value)}
@@ -190,7 +190,7 @@ const LoginPage: React.FC = () => {
           <input
             type="password"
             placeholder="Mot de passe"
-            className="p-3 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary"
             required
             value={password}
             onChange={e => setPassword(e.target.value)}
