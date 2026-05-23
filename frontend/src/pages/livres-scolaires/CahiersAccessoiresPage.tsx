@@ -23,6 +23,13 @@ import { PAYS_PAR_DEFAUT, type PaysCode } from '../../data/schoolSystemsLegacy';
 import { useToast } from '../../hooks/use-toast';
 import { useParentShop, type Enfant } from '../../hooks/useParentShop';
 import { apiPost } from '../../services/apiService';
+import {
+  CATEGORY_BADGE,
+  CATEGORY_ICON,
+  CATEGORY_ORDER,
+  classifyArticle,
+  type FournitureCategory,
+} from '../../utils/fournituresCategory';
 
 interface ClasseSelectionEntry {
   classe: string;
@@ -197,6 +204,33 @@ const CahiersAccessoiresPage: React.FC = () => {
       const prix = getPriceFor(it);
       return sum + prix * it.quantite_effective;
     }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsAffiches, globalGamme, gammeOverrides]);
+
+  // ──── Groupement par catégorie avec sous-totaux ────
+  // 2026-05-23 : on regroupe les articles par catégorie (cahier / écriture /
+  // géométrie / etc.) et on calcule un sous-total par catégorie. La catégorie
+  // est déduite du nom (helper fournituresCategory) — le backend ne stocke pas
+  // cette info dans accessoires_populaires_par_classe.
+  const grouped = useMemo(() => {
+    const buckets = new Map<
+      FournitureCategory,
+      { items: typeof itemsAffiches; sousTotal: number }
+    >();
+    for (const it of itemsAffiches) {
+      const cat = classifyArticle(it.nom);
+      const prix = getPriceFor(it);
+      const sousTotalArticle = prix * it.quantite_effective;
+      const bucket = buckets.get(cat) ?? { items: [], sousTotal: 0 };
+      bucket.items.push(it);
+      bucket.sousTotal += sousTotalArticle;
+      buckets.set(cat, bucket);
+    }
+    return CATEGORY_ORDER.filter(cat => buckets.has(cat)).map(cat => ({
+      category: cat,
+      items: buckets.get(cat)!.items,
+      sousTotal: buckets.get(cat)!.sousTotal,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsAffiches, globalGamme, gammeOverrides]);
 
@@ -476,20 +510,42 @@ const CahiersAccessoiresPage: React.FC = () => {
           </div>
         )}
 
-        {/* ──── Tableau agrégé ──── */}
-        {!loading && itemsAffiches.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="px-3 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
-                {t('bourse.cahiers.section_title', { defaultValue: 'Cahiers & accessoires' })}
+        {/* ──── Tableau agrégé groupé par catégorie ──── */}
+        {!loading && grouped.length > 0 && grouped.map(group => (
+          <div
+            key={group.category}
+            className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-3"
+          >
+            <div className={`px-3 py-2 ${CATEGORY_BADGE[group.category]} border-b border-gray-100 flex items-center justify-between`}>
+              <span className="text-[12px] font-bold uppercase tracking-wide flex items-center gap-1.5">
+                <span className="text-base leading-none">{CATEGORY_ICON[group.category]}</span>
+                {t(`bourse.cahiers.cat.${group.category}`, {
+                  defaultValue: ({
+                    cahier: 'Cahiers',
+                    ecriture: 'Écriture',
+                    geometrie: 'Géométrie',
+                    ardoise: 'Ardoise',
+                    protection: 'Protection',
+                    papier: 'Papier',
+                    dictionnaire: 'Dictionnaires',
+                    rangement: 'Rangement',
+                    art: 'Art',
+                    autre: 'Autres',
+                  } as Record<FournitureCategory, string>)[group.category],
+                })}
+                <span className="text-[10px] font-semibold opacity-70">
+                  ({group.items.length})
+                </span>
               </span>
-              <span className="text-[10px] text-gray-500 font-semibold">
-                {itemsAffiches.length} {t('bourse.cahiers.articles', { defaultValue: 'articles' })}
+              <span className="text-[12px] font-bold tabular-nums">
+                {group.sousTotal > 0
+                  ? `${group.sousTotal.toLocaleString('fr-FR')} XAF`
+                  : t('bourse.cahiers.prix_pending', { defaultValue: 'Prix en attente' })}
               </span>
             </div>
 
             <ul className="divide-y divide-gray-100">
-              {itemsAffiches.map(it => {
+              {group.items.map(it => {
                 const itemGamme = getGammeFor(it.nom_normalise);
                 const prixCourant = getPriceFor(it);
                 const isPremium = itemGamme === 'premium';
@@ -620,7 +676,7 @@ const CahiersAccessoiresPage: React.FC = () => {
               })}
             </ul>
           </div>
-        )}
+        ))}
       </div>
 
       {/* CTA Ajouter au panier */}

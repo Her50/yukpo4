@@ -1007,6 +1007,15 @@ CATEGORIE_LABELS = {
 }
 
 
+import re  # utilisé plus bas pour split_article
+
+
+def split_article_canonique(article: str) -> str:
+    """Renvoie l'article sans la partie entre parenthèses (= canonique)."""
+    m = re.match(r"^(.+?)\s*\(([^)]+)\)\s*$", article)
+    return m.group(1).strip() if m else article.strip()
+
+
 def main():
     out_path = Path(__file__).parent / "referentiel_fournitures_par_classe.xlsx"
 
@@ -1014,11 +1023,13 @@ def main():
     ws = wb.active
     ws.title = "Fournitures par classe"
 
-    # En-têtes
+    # En-têtes (avec clé masquée pour VLOOKUP depuis 'Articles uniques')
     headers = [
         "Pays", "Système", "Niveau", "Classe",
         "Catégorie", "Article", "Quantité", "Spécification",
+        "Article canonique", "Clé",
         "Prix Standard (XAF)", "Prix Haut de Gamme (XAF)",
+        "Sous-total Standard", "Sous-total Haut de Gamme",
     ]
     ws.append(headers)
 
@@ -1036,11 +1047,13 @@ def main():
         cell.alignment = header_align
         cell.border = border
 
-    # Données
+    # Données (avec colonnes calculées E=Catégorie I=Canonique J=Clé +
+    # formules VLOOKUP en K/L qui pointent vers 'Articles uniques')
     row_idx = 2
     for classe, items in DATA.items():
         pays, systeme, niveau = META[classe]
         for cat, article, qte, spec in items:
+            canonique = split_article_canonique(article)
             ws.cell(row=row_idx, column=1, value=pays).border = border
             ws.cell(row=row_idx, column=2, value=systeme).border = border
             ws.cell(row=row_idx, column=3, value=niveau).border = border
@@ -1051,19 +1064,56 @@ def main():
             qte_cell.alignment = Alignment(horizontal="center")
             qte_cell.border = border
             ws.cell(row=row_idx, column=8, value=spec).border = border
-            # Colonnes prix laissées vides — à remplir par l'utilisateur
-            ws.cell(row=row_idx, column=9, value="").border = border
-            ws.cell(row=row_idx, column=10, value="").border = border
+            # Colonne 9 = Article canonique (utilisé pour la clé de lookup)
+            ws.cell(row=row_idx, column=9, value=canonique).border = border
+            # Colonne 10 = Clé concaténée : "Catégorie|Canonique|Spécification"
+            ws.cell(
+                row=row_idx, column=10,
+                value=f'=E{row_idx}&"|"&I{row_idx}&"|"&H{row_idx}',
+            ).border = border
+            # Colonne 11 = Prix Standard (VLOOKUP depuis 'Articles uniques' col A → col G)
+            ws.cell(
+                row=row_idx, column=11,
+                value=f"=IFERROR(VLOOKUP(J{row_idx},'Articles uniques'!A:H,7,FALSE),\"\")",
+            ).border = border
+            # Colonne 12 = Prix Haut de Gamme (VLOOKUP col A → col H)
+            ws.cell(
+                row=row_idx, column=12,
+                value=f"=IFERROR(VLOOKUP(J{row_idx},'Articles uniques'!A:H,8,FALSE),\"\")",
+            ).border = border
+            # Colonne 13 = Sous-total Standard (Qté × Prix Std)
+            ws.cell(
+                row=row_idx, column=13,
+                value=f'=IF(ISNUMBER(K{row_idx}),G{row_idx}*K{row_idx},"")',
+            ).border = border
+            # Colonne 14 = Sous-total Haut de Gamme (Qté × Prix HdG)
+            ws.cell(
+                row=row_idx, column=14,
+                value=f'=IF(ISNUMBER(L{row_idx}),G{row_idx}*L{row_idx},"")',
+            ).border = border
             row_idx += 1
 
-    # Largeurs colonnes
-    widths = {1: 10, 2: 12, 3: 10, 4: 18, 5: 14, 6: 60, 7: 9, 8: 30, 9: 18, 10: 22}
+    # Largeurs colonnes (colonnes 9 et 10 masquées : article canonique + clé interne)
+    widths = {
+        1: 10, 2: 12, 3: 10, 4: 18, 5: 14, 6: 50, 7: 9, 8: 24,
+        9: 1, 10: 1,  # hidden
+        11: 18, 12: 22, 13: 18, 14: 22,
+    }
     for col_idx, w in widths.items():
         ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = w
+    # Masque les colonnes I et J (canonique + clé technique)
+    ws.column_dimensions["I"].hidden = True
+    ws.column_dimensions["J"].hidden = True
+
+    # Format devise FCFA (colonnes prix + sous-totaux)
+    money_fmt = '#,##0" XAF"'
+    for r in range(2, row_idx):
+        for c in (11, 12, 13, 14):
+            ws.cell(row=r, column=c).number_format = money_fmt
 
     # Fige en-tête + filtre
     ws.freeze_panes = "A2"
-    ws.auto_filter.ref = f"A1:J{row_idx - 1}"
+    ws.auto_filter.ref = f"A1:N{row_idx - 1}"
 
     # Feuille 2 : résumé par classe (qté totale par catégorie)
     ws2 = wb.create_sheet("Résumé par classe")
@@ -1097,12 +1147,8 @@ def main():
     # ─────────────────────────────────────────────────────────────────────────
     # Feuille 3 : Articles uniques (dédoublonnés) — pour saisir prix unitaire
     # ─────────────────────────────────────────────────────────────────────────
-    # On dédoublonne par (catégorie, article_sans_matiere). La "matière" est
-    # ce qui se trouve entre parenthèses dans l'article (ex: "Cahier 80 leaves
-    # plain lines (English)" → matière = "English", canonique = "Cahier 80
-    # leaves plain lines").
-    import re
-
+    # On dédoublonne par (catégorie, article_sans_matiere, spec). La "matière"
+    # est ce qui se trouve entre parenthèses dans l'article.
     def split_article(article: str):
         """Sépare l'article en (canonique, matière entre parenthèses)."""
         m = re.match(r"^(.+?)\s*\(([^)]+)\)\s*$", article)
@@ -1114,10 +1160,6 @@ def main():
     for classe, items in DATA.items():
         for cat, article, qte, spec in items:
             canonique, matiere = split_article(article)
-            # Si la spécification mentionne une couleur ou détail très spécifique,
-            # on la garde dans la clé pour distinguer (ex: "couverture verte" vs
-            # "couverture orange"). Mais on ignore les listes de couleurs
-            # multiples (couvertures cahiers) qui sont une seule SKU avec mix.
             key = (cat, canonique, spec)
             if key not in aggregator:
                 aggregator[key] = {
@@ -1131,10 +1173,13 @@ def main():
             aggregator[key]["classes"].add(classe)
 
     ws3 = wb.create_sheet("Articles uniques")
+    # Colonne A = Clé concaténée (utilisée pour VLOOKUP depuis feuille 1)
+    # Colonnes G/H = Prix Standard / Prix Haut de Gamme à remplir
     uniq_headers = [
+        "Clé (ne pas modifier)",
         "Catégorie", "Article (canonique)", "Spécification / Couleur",
         "Matières / Variantes (info)", "Qté totale (toutes classes)",
-        "Nb classes utilisatrices", "Prix Unitaire (XAF)",
+        "Prix Standard (XAF)", "Prix Haut de Gamme (XAF)",
     ]
     ws3.append(uniq_headers)
     for col_idx in range(1, len(uniq_headers) + 1):
@@ -1144,31 +1189,40 @@ def main():
         cell.alignment = header_align
         cell.border = border
 
-    # Tri : catégorie puis canonique
     sorted_keys = sorted(aggregator.keys(), key=lambda k: (k[0], k[1], k[2]))
     row_idx = 2
+    money_fmt = '#,##0" XAF"'
     for (cat, canonique, spec) in sorted_keys:
         data = aggregator[(cat, canonique, spec)]
         variantes = ", ".join(sorted(data["variantes"])) if data["variantes"] else ""
-        ws3.cell(row=row_idx, column=1, value=CATEGORIE_LABELS[cat]).border = border
-        ws3.cell(row=row_idx, column=2, value=canonique).border = border
-        ws3.cell(row=row_idx, column=3, value=spec).border = border
-        ws3.cell(row=row_idx, column=4, value=variantes).border = border
-        qte_cell = ws3.cell(row=row_idx, column=5, value=data["qte_totale"])
+        cle = f"{CATEGORIE_LABELS[cat]}|{canonique}|{spec}"
+        ws3.cell(row=row_idx, column=1, value=cle).border = border
+        ws3.cell(row=row_idx, column=2, value=CATEGORIE_LABELS[cat]).border = border
+        ws3.cell(row=row_idx, column=3, value=canonique).border = border
+        ws3.cell(row=row_idx, column=4, value=spec).border = border
+        ws3.cell(row=row_idx, column=5, value=variantes).border = border
+        qte_cell = ws3.cell(row=row_idx, column=6, value=data["qte_totale"])
         qte_cell.alignment = Alignment(horizontal="center")
         qte_cell.border = border
-        nb_cell = ws3.cell(row=row_idx, column=6, value=len(data["classes"]))
-        nb_cell.alignment = Alignment(horizontal="center")
-        nb_cell.border = border
-        # Colonne prix unitaire — vide, à remplir par utilisateur
-        ws3.cell(row=row_idx, column=7, value="").border = border
+        # Colonnes 7 et 8 = Prix Standard et Prix Haut de Gamme (à remplir)
+        prix_std = ws3.cell(row=row_idx, column=7, value="")
+        prix_std.border = border
+        prix_std.number_format = money_fmt
+        # Fond léger jaune pour signaler que ces cellules sont à remplir
+        prix_std.fill = PatternFill(start_color="FFFBEB", end_color="FFFBEB", fill_type="solid")
+        prix_hdg = ws3.cell(row=row_idx, column=8, value="")
+        prix_hdg.border = border
+        prix_hdg.number_format = money_fmt
+        prix_hdg.fill = PatternFill(start_color="FFFBEB", end_color="FFFBEB", fill_type="solid")
         row_idx += 1
 
-    uniq_widths = {1: 14, 2: 55, 3: 32, 4: 50, 5: 16, 6: 18, 7: 20}
+    # Colonne A (clé) masquée
+    uniq_widths = {1: 1, 2: 14, 3: 55, 4: 32, 5: 50, 6: 16, 7: 20, 8: 24}
     for col_idx, w in uniq_widths.items():
         ws3.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = w
-    ws3.freeze_panes = "A2"
-    ws3.auto_filter.ref = f"A1:G{row_idx - 1}"
+    ws3.column_dimensions["A"].hidden = True
+    ws3.freeze_panes = "B2"
+    ws3.auto_filter.ref = f"B1:H{row_idx - 1}"
 
     try:
         wb.save(out_path)

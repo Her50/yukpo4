@@ -11,6 +11,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { Choix, PanierItem, TypeItem, useParentShop } from '../../hooks/useParentShop';
 import { apiGet, apiPost } from '../../services/apiService';
+import {
+  CATEGORY_BADGE,
+  CATEGORY_ICON,
+  CATEGORY_ORDER,
+  classifyArticle,
+  type FournitureCategory,
+} from '../../utils/fournituresCategory';
 
 // Picker GPS minimaliste (Google Maps + Places) — chargé à la demande pour
 // ne pas alourdir le bundle initial.
@@ -1080,11 +1087,28 @@ const RecapAchatPage: React.FC = () => {
       const safeType = normalizeType(v.sample.type);
       byType[safeType].push(v);
     }
-    // Tri intra-section alphabétique pour cohérence avec la vue par classe.
+    // Tri intra-section :
+    //  - 'livre' : alphabétique (cohérent avec la vue par classe)
+    //  - 'cahier' / 'fourniture' / 'autre' : par catégorie didactique
+    //    (cahier → écriture → géométrie → ...) puis titre alphabétique
+    //    pour que les sous-headers s'affichent groupés dans le rendu.
+    const catOrder = (titre: string): number => {
+      const cat = classifyArticle(titre);
+      const idx = CATEGORY_ORDER.indexOf(cat);
+      return idx === -1 ? 99 : idx;
+    };
     for (const tk of types) {
-      byType[tk].sort((a, b) =>
-        (a.sample.titre || '').localeCompare(b.sample.titre || '', undefined, { sensitivity: 'base' }),
-      );
+      byType[tk].sort((a, b) => {
+        if (tk !== 'livre') {
+          const dc = catOrder(a.sample.titre || '') - catOrder(b.sample.titre || '');
+          if (dc !== 0) return dc;
+        }
+        return (a.sample.titre || '').localeCompare(
+          b.sample.titre || '',
+          undefined,
+          { sensitivity: 'base' },
+        );
+      });
     }
     return types
       .map(t => ({ type: t, lignes: byType[t] }))
@@ -1745,6 +1769,46 @@ const RecapAchatPage: React.FC = () => {
                     {lignes.map((l, idx) => {
                       const r = estimateItemRange({ ...l.sample, quantite: l.totalQuantite });
                       const prixUnit = l.sample.prixNeuf ?? 0;
+                      // 2026-05-23 : mini-header de sous-catégorie didactique
+                      // pour les types cahier/fourniture/autre. La catégorie
+                      // change quand on passe d'une section logique à l'autre
+                      // (cahier → écriture → géométrie → ...). On affiche le
+                      // sous-total de la catégorie.
+                      const showSubHeader = type !== 'livre';
+                      const lignCat = showSubHeader
+                        ? classifyArticle(l.sample.titre || '')
+                        : null;
+                      const prevCat = showSubHeader && idx > 0
+                        ? classifyArticle(lignes[idx - 1].sample.titre || '')
+                        : null;
+                      const isNewCat = showSubHeader && lignCat !== prevCat;
+                      const catSubtotal = showSubHeader && lignCat
+                        ? lignes
+                            .filter(ln => classifyArticle(ln.sample.titre || '') === lignCat)
+                            .reduce((s, ln) => {
+                              const rr = estimateItemRange({
+                                ...ln.sample,
+                                quantite: ln.totalQuantite,
+                              });
+                              return s + rr.max;
+                            }, 0)
+                        : 0;
+                      const catLabel = lignCat
+                        ? t(`bourse.recap.cat_sub.${lignCat}`, {
+                            defaultValue: ({
+                              cahier: 'Cahiers',
+                              ecriture: 'Écriture',
+                              geometrie: 'Géométrie',
+                              ardoise: 'Ardoise',
+                              protection: 'Protection',
+                              papier: 'Papier',
+                              dictionnaire: 'Dictionnaires',
+                              rangement: 'Rangement',
+                              art: 'Art',
+                              autre: 'Autres',
+                            } as Record<FournitureCategory, string>)[lignCat],
+                          })
+                        : '';
                       // Pour ajuster la quantité globale d'une ligne agrégée :
                       // on ajuste UNIQUEMENT le 1er item du bucket — les autres restent
                       // en l'état. C'est le compromis le plus simple et compréhensible
@@ -1770,7 +1834,25 @@ const RecapAchatPage: React.FC = () => {
                         itemsInBucket.forEach(it => removeItem(it.id));
                       };
                       return (
-                        <div key={`${l.sample.titre}-${idx}`} className="flex items-center gap-2 px-2.5 py-2 border-t border-gray-100 first:border-t-0">
+                        <React.Fragment key={`${l.sample.titre}-${idx}`}>
+                          {isNewCat && lignCat && (
+                            <div
+                              className={`flex items-center justify-between px-3 py-1.5 ${CATEGORY_BADGE[lignCat]} border-t border-gray-100`}
+                            >
+                              <span className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
+                                <span className="text-sm leading-none">
+                                  {CATEGORY_ICON[lignCat]}
+                                </span>
+                                {catLabel}
+                              </span>
+                              {catSubtotal > 0 && (
+                                <span className="text-[10px] font-bold tabular-nums">
+                                  {catSubtotal.toLocaleString('fr-FR')} F
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        <div className="flex items-center gap-2 px-2.5 py-2 border-t border-gray-100 first:border-t-0">
                           <div className="flex-1 min-w-0">
                             <p className="text-[13px] font-semibold text-gray-900 leading-tight truncate" dir="auto">{l.sample.titre}</p>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -1829,6 +1911,7 @@ const RecapAchatPage: React.FC = () => {
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
+                        </React.Fragment>
                       );
                     })}
                   </div>
