@@ -75,9 +75,15 @@ jobs:
         run: |
           set +e
           cd backend
+          # 2026-05-23 — --no-cache requis quand on ajoute une migration .sql.
+          # sqlx::migrate!() embarque les .sql AU COMPILE TIME ; sans no-cache
+          # Docker réutilise la couche cargo build cachée (les .rs n'ont pas
+          # changé) → binaire déployé sans la nouvelle migration → table vide
+          # en prod. cf. feedback_migrations_yukpo.
           flyctl deploy \
             --app "$FLY_APP" \
             --local-only \
+            --no-cache \
             --dockerfile Dockerfile.fly \
             --strategy rolling \
             --wait-timeout 900 \

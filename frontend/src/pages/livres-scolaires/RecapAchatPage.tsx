@@ -531,7 +531,7 @@ function DeliveryModal({
   // si la modale apparaît brièvement.
   const autoConfirmRef = useRef(false);
   useEffect(() => {
-    if (autoConfirmRef.current) return;
+    if (autoConfirmRef.current) return undefined;
     const hasAddress = adresse.trim().length > 0;
     const hasGps = !!coords;
     if (hasAddress && hasGps && phoneValid) {
@@ -542,12 +542,13 @@ function DeliveryModal({
         onConfirm({
           adresse: adresse.trim(),
           telephone: telephone.trim(),
-          note: note.trim() || undefined,
+          note: note.trim(),
           gps: coords,
         });
       }, 150);
       return () => window.clearTimeout(id);
     }
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

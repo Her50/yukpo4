@@ -343,6 +343,10 @@ pub async fn fournitures_aggregees(
         if classe_trim.is_empty() {
             continue;
         }
+        // 2026-05-23 : matching tolérant (LOWER + TRIM) pour éviter qu'un
+        // léger écart de casse/whitespace côté frontend ("sil " vs "SIL") ne
+        // retourne 0 résultat. La table est seedée avec les conventions
+        // canoniques (SIL, CP, Class 1, etc.) mais on protège l'endpoint.
         let rows = sqlx::query(
             r#"SELECT id, nom, nom_normalise, gamme_defaut,
                       prix_min::float8  AS prix_min,
@@ -352,8 +356,8 @@ pub async fn fournitures_aggregees(
                       quantite_mediane,
                       occurrences
                FROM accessoires_populaires_par_classe
-               WHERE pays = $1
-                 AND classe = $2
+               WHERE LOWER(TRIM(pays)) = LOWER(TRIM($1))
+                 AND LOWER(TRIM(classe)) = LOWER(TRIM($2))
                ORDER BY occurrences DESC, nom"#,
         )
         .bind(&pays)
@@ -361,6 +365,18 @@ pub async fn fournitures_aggregees(
         .fetch_all(&state.pg)
         .await
         .unwrap_or_default();
+
+        // Log de diagnostic : combien d'articles renvoyés pour cette
+        // (pays, classe). Si 0, c'est soit la migration absente (seed pas
+        // appliqué), soit un mismatch de nomenclature. Visible dans
+        // `fly logs -a yukpo-fly-backend | grep parent.fournitures`.
+        log::info!(
+            "[parent.fournitures] pays={} classe={:?} nb_articles={} nb_enfants={}",
+            pays,
+            classe_trim,
+            rows.len(),
+            nb,
+        );
 
         for r in &rows {
             let nom: String = r.try_get("nom").unwrap_or_default();
