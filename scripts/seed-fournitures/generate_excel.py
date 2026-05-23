@@ -38,7 +38,7 @@ from pathlib import Path
 
 DATA = {
     # ────────── PRIMAIRE FRANCOPHONE ORDINAIRE ──────────
-    "SIL Ord": [
+    "SIL": [
         ("cahier", "Paquet cahiers bananier 24 cahiers", 1, "doubles lignes"),
         ("cahier", "Cahier dessin petit format", 1, ""),
         ("cahier", "Cahier 60 leaves plain lines (English)", 2, ""),
@@ -57,7 +57,7 @@ DATA = {
         ("protection", "Couverture pour cahier", 24, "6 bleues, 6 rouges, 6 jaunes, 6 vertes"),
         ("papier", "Paquet papier canson", 1, ""),
     ],
-    "CP Ord": [
+    "CP": [
         ("cahier", "Cahier ordinaire 200 pages", 2, ""),
         ("cahier", "Cahier 144 pages", 6, ""),
         ("cahier", "Cahier 80 leaves plain lines (English)", 3, ""),
@@ -82,7 +82,7 @@ DATA = {
         ("protection", "Couverture pour cahier", 20, "5 bleues, 5 rouges, 5 jaunes, 5 vertes"),
         ("protection", "Couvre-livre", 1, "paquet"),
     ],
-    "CE1 Ord": [
+    "CE1": [
         ("cahier", "Cahier français 200 pages", 1, ""),
         ("cahier", "Cahier d'exercices français 200 pages", 1, ""),
         ("cahier", "Cahier de devoirs 200 pages", 1, ""),
@@ -112,7 +112,7 @@ DATA = {
         ("rangement", "Chemise à rabat", 1, ""),
         ("protection", "Couverture pour cahier", 12, "3 vertes, 3 rouges, 3 jaunes, 3 bleues"),
     ],
-    "CE2 Ord": [
+    "CE2": [
         ("cahier", "Cahier français 200 pages", 1, ""),
         ("cahier", "Cahier d'exercices français 200 pages", 1, ""),
         ("cahier", "Cahier de devoirs 288 pages", 1, ""),
@@ -141,7 +141,7 @@ DATA = {
         ("rangement", "Chemise à rabat", 1, ""),
         ("protection", "Couverture pour cahier", 12, "3 vertes, 3 rouges, 3 jaunes, 3 bleues"),
     ],
-    "CM1 Ord": [
+    "CM1": [
         ("cahier", "Cahier français 288 pages", 1, "couverture verte"),
         ("cahier", "Cahier d'exercices français 300 pages", 1, "couverture verte"),
         ("cahier", "Cahier mathématiques 288 pages", 1, "couverture bleue"),
@@ -172,7 +172,7 @@ DATA = {
         ("rangement", "Trousse", 1, ""),
         ("rangement", "Chemise à rabat", 1, ""),
     ],
-    "CM2 Ord": [
+    "CM2": [
         ("cahier", "Cahier français 288 pages", 1, "couverture verte"),
         ("cahier", "Cahier d'exercices français 288 pages", 1, "couverture verte"),
         ("cahier", "Cahier d'exercices maths 288 pages", 1, "couverture verte"),
@@ -911,7 +911,10 @@ DATA = {
         ("dictionnaire", "English dictionary", 1, ""),
         ("dictionnaire", "French dictionary", 1, ""),
     ],
-    "Lower/Upper Sixth": [
+    # Lower Sixth et Upper Sixth partagent le même PDF (A-Level), donc même
+    # liste de fournitures dupliquée pour matcher les 2 classes distinctes
+    # de programmes_scolaires.
+    "Lower Sixth": [
         # A-Level : pas de tableau exercise books détaillé, kit générique avancé
         ("cahier", "Plain lines 500 leaves Ledger A4 (English Language)", 1, ""),
         ("cahier", "Plain lines 500 leaves Ledger A4 (French)", 1, ""),
@@ -944,15 +947,20 @@ DATA = {
     ],
 }
 
+# Upper Sixth = même contenu que Lower Sixth (PDF unique partagé A-Level)
+DATA["Upper Sixth"] = DATA["Lower Sixth"]
+
 # Mapping classe → (pays, systeme_educatif, niveau)
+# Classes nommées comme dans programmes_scolaires (sans suffixe " Ord" car le
+# système éducatif suffit à distinguer francophone ordinaire vs bilingue).
 META = {
     # Primaire francophone ordinaire
-    "SIL Ord": ("Cameroun", "francophone", "Primaire"),
-    "CP Ord": ("Cameroun", "francophone", "Primaire"),
-    "CE1 Ord": ("Cameroun", "francophone", "Primaire"),
-    "CE2 Ord": ("Cameroun", "francophone", "Primaire"),
-    "CM1 Ord": ("Cameroun", "francophone", "Primaire"),
-    "CM2 Ord": ("Cameroun", "francophone", "Primaire"),
+    "SIL": ("Cameroun", "francophone", "Primaire"),
+    "CP": ("Cameroun", "francophone", "Primaire"),
+    "CE1": ("Cameroun", "francophone", "Primaire"),
+    "CE2": ("Cameroun", "francophone", "Primaire"),
+    "CM1": ("Cameroun", "francophone", "Primaire"),
+    "CM2": ("Cameroun", "francophone", "Primaire"),
     # Primaire bilingue (NOUVELLES)
     "SIL BIL": ("Cameroun", "bilingue", "Primaire"),
     "CP BIL": ("Cameroun", "bilingue", "Primaire"),
@@ -966,22 +974,24 @@ META = {
     "Class 4": ("Cameroun", "anglophone", "Primaire"),
     "Class 5": ("Cameroun", "anglophone", "Primaire"),
     "Class 6": ("Cameroun", "anglophone", "Primaire"),
-    # Secondaire francophone
-    "6ème": ("Cameroun", "francophone", "Collège"),
-    "5ème": ("Cameroun", "francophone", "Collège"),
-    "4ème": ("Cameroun", "francophone", "Collège"),
-    "3ème": ("Cameroun", "francophone", "Collège"),
-    "2nde A-C": ("Cameroun", "francophone", "Lycée"),
-    "2nde STT": ("Cameroun", "francophone", "Lycée"),
-    "1ère": ("Cameroun", "francophone", "Lycée"),
-    # Secondaire anglophone
-    "Form 1": ("Cameroun", "anglophone", "Collège"),
-    "Form 2": ("Cameroun", "anglophone", "Collège"),
-    "Form 3 Commercial": ("Cameroun", "anglophone", "Collège"),
-    "Form 4 Commercial": ("Cameroun", "anglophone", "Lycée"),
-    "Form 4 General": ("Cameroun", "anglophone", "Lycée"),
-    "Form 5": ("Cameroun", "anglophone", "Lycée"),
-    "Lower/Upper Sixth": ("Cameroun", "anglophone", "Lycée"),
+    # Secondaire francophone (niveau='Secondaire' : collège ET lycée offrent
+    # généralement les deux cycles au Cameroun, cf. project_etab_secondaire_cm)
+    "6ème": ("Cameroun", "francophone", "Secondaire"),
+    "5ème": ("Cameroun", "francophone", "Secondaire"),
+    "4ème": ("Cameroun", "francophone", "Secondaire"),
+    "3ème": ("Cameroun", "francophone", "Secondaire"),
+    "2nde A-C": ("Cameroun", "francophone", "Secondaire"),
+    "2nde STT": ("Cameroun", "francophone", "Secondaire"),
+    "1ère": ("Cameroun", "francophone", "Secondaire"),
+    # Secondaire anglophone (idem : niveau='Secondaire')
+    "Form 1": ("Cameroun", "anglophone", "Secondaire"),
+    "Form 2": ("Cameroun", "anglophone", "Secondaire"),
+    "Form 3 Commercial": ("Cameroun", "anglophone", "Secondaire"),
+    "Form 4 Commercial": ("Cameroun", "anglophone", "Secondaire"),
+    "Form 4 General": ("Cameroun", "anglophone", "Secondaire"),
+    "Form 5": ("Cameroun", "anglophone", "Secondaire"),
+    "Lower Sixth": ("Cameroun", "anglophone", "Secondaire"),
+    "Upper Sixth": ("Cameroun", "anglophone", "Secondaire"),
 }
 
 CATEGORIE_LABELS = {
@@ -1160,12 +1170,95 @@ def main():
     ws3.freeze_panes = "A2"
     ws3.auto_filter.ref = f"A1:G{row_idx - 1}"
 
-    wb.save(out_path)
+    try:
+        wb.save(out_path)
+        excel_ok = True
+    except PermissionError:
+        excel_ok = False
+        print(f"WARN : Excel ouvert/verrouille ({out_path}), regeneration ignoree")
     total_lines = sum(len(items) for items in DATA.values())
     nb_uniq = len(aggregator)
-    print(f"OK -> {out_path}")
-    print(f"   {len(DATA)} classes, {total_lines} articles ventilés par classe")
-    print(f"   {nb_uniq} articles UNIQUES (feuille 'Articles uniques')")
+    if excel_ok:
+        print(f"OK -> {out_path}")
+        print(f"   {len(DATA)} classes, {total_lines} articles ventilés par classe")
+        print(f"   {nb_uniq} articles UNIQUES (feuille 'Articles uniques')")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Génère aussi un fichier SQL d'INSERT pour seeder
+    # accessoires_populaires_par_classe (prod). Prix laissés à NULL — à
+    # remplir plus tard quand le user aura rempli l'Excel.
+    # ─────────────────────────────────────────────────────────────────────────
+    sql_path = Path(__file__).parent / "seed_accessoires_populaires.sql"
+    pays = "CM"
+    annee_systeme = {
+        "francophone": "CM-fr",
+        "anglophone": "CM-en",
+        "bilingue": "CM-bi",
+    }
+
+    def normalize(s: str) -> str:
+        """Normalisation simple pour la déduplication (lower + trim + collapse)."""
+        return re.sub(r"\s+", " ", s.strip().lower())
+
+    lines_sql = []
+    lines_sql.append(
+        "-- =============================================================================\n"
+        "-- SEED : accessoires_populaires_par_classe — fournitures (cahiers + accessoires)\n"
+        "-- =============================================================================\n"
+        "-- Date    : 2026-05-23\n"
+        "-- Source  : 31 PDFs Soft Education 2025-2026 (extraction Claude)\n"
+        "--\n"
+        "-- 31 classes × N articles = 836 lignes. Prix laissés à NULL — à remplir\n"
+        "-- après que l'utilisateur ait complété la feuille 'Articles uniques'\n"
+        "-- de scripts/seed-fournitures/referentiel_fournitures_par_classe.xlsx.\n"
+        "--\n"
+        "-- Idempotent : ON CONFLICT sur l'unique (pays, niveau, classe, nom_normalise)\n"
+        "-- met à jour quantite_mediane et increment occurrences si déjà présent.\n"
+        "--\n"
+        "-- Pas de BEGIN/COMMIT : sqlx::migrate!() gère la transaction.\n"
+        "-- =============================================================================\n\n"
+    )
+
+    def esc(s: str) -> str:
+        return s.replace("'", "''")
+
+    for classe, items in DATA.items():
+        _, systeme, niveau = META[classe]
+        sys_id = annee_systeme.get(systeme, "CM-fr")
+        for cat, article, qte, spec in items:
+            nom_full = article + ((" — " + spec) if spec else "")
+            nom_e = esc(nom_full)
+            nom_norm_e = esc(normalize(article))
+            niveau_e = esc(niveau)
+            classe_e = esc(classe)
+            lines_sql.append(
+                f"INSERT INTO accessoires_populaires_par_classe "
+                f"(pays, systeme_id, niveau, classe, nom, nom_normalise, "
+                f"quantite_mediane, occurrences, derniere_vue) VALUES "
+                f"('{pays}', '{sys_id}', '{niveau_e}', '{classe_e}', "
+                f"'{nom_e}', '{nom_norm_e}', {qte}, 1, NOW()) "
+                f"ON CONFLICT (pays, niveau, classe, nom_normalise) DO UPDATE SET "
+                f"quantite_mediane = EXCLUDED.quantite_mediane, "
+                f"occurrences = accessoires_populaires_par_classe.occurrences + 1, "
+                f"derniere_vue = NOW();\n"
+            )
+
+    lines_sql.append(
+        "\n-- Vérification :\n"
+        "-- SELECT COUNT(*) AS total FROM accessoires_populaires_par_classe;\n"
+        "-- SELECT classe, COUNT(*) FROM accessoires_populaires_par_classe\n"
+        "--   GROUP BY classe ORDER BY classe;\n"
+    )
+
+    sql_path.write_text("".join(lines_sql), encoding="utf-8")
+
+    # Copie aussi vers backend/migrations/ pour application auto au prochain
+    # déploiement (sqlx::migrate!() embarque tous les .sql du dossier).
+    migration_path = Path(__file__).parent.parent.parent / "backend" / "migrations" / "20260523_001_seed_accessoires_par_classe.sql"
+    migration_path.write_text("".join(lines_sql), encoding="utf-8")
+
+    print(f"   SQL seed -> {sql_path} ({total_lines} INSERTs)")
+    print(f"   Migration -> {migration_path}")
 
 
 if __name__ == "__main__":
