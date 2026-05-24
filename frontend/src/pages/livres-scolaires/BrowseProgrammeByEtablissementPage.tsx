@@ -1,5 +1,5 @@
 import {
-  ArrowLeft, BookOpen, CheckSquare, ChevronRight, Copy, Loader2,
+  ArrowLeft, BookOpen, CheckSquare, ChevronRight, Loader2,
   Minus, Plus, School, ShoppingCart, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -396,22 +396,10 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
       : it));
   const setGamme = (idx: number, g: Gamme) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, gamme: g } : it));
-  const [confirmDupIdx, setConfirmDupIdx] = useState<number | null>(null);
-  const duplicateItem = (idx: number) => setConfirmDupIdx(idx);
-  const performDuplicate = () => {
-    if (confirmDupIdx === null) return;
-    const idx = confirmDupIdx;
-    const src = items[idx];
-    if (!src) { setConfirmDupIdx(null); return; }
-    setItems(prev => {
-      const s = prev[idx];
-      if (!s) return prev;
-      const copy: ProgrammeItem = { ...s, quantite: 1, selected: true };
-      return [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)];
-    });
-    toast({ title: 'Article dupliqué', description: src.titre });
-    setConfirmDupIdx(null);
-  };
+  // 2026-05-24 : feature "dupliquer un article" supprimée — redondante avec
+  // le stepper de quantité (le parent incrémente directement la qté). Le
+  // bouton Copy à droite de chaque ligne polluait l'espace au détriment du
+  // titre du livre (tronqué). État + fonctions retirés ; modale aussi.
 
   const allSelected = items.length > 0 && items.every(it => it.selected);
   const selectedCount = items.filter(it => it.selected).length;
@@ -535,39 +523,6 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      {/* Modale de confirmation de duplication */}
-      {confirmDupIdx !== null && items[confirmDupIdx] && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
-             onClick={() => setConfirmDupIdx(null)}>
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 pb-8 sm:pb-6"
-               onClick={e => e.stopPropagation()}>
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
-                <Copy className="w-5 h-5 text-amber-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-base leading-tight">Dupliquer cet article ?</h3>
-                <p className="text-sm text-gray-600 mt-0.5 truncate" title={items[confirmDupIdx]?.titre}>
-                  {items[confirmDupIdx]?.titre}
-                </p>
-              </div>
-            </div>
-            <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
-              Une copie sera ajoutée juste après — utile pour acheter le même article pour un autre enfant.
-            </p>
-            <div className="flex gap-2">
-              <button onClick={() => setConfirmDupIdx(null)}
-                className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm">
-                Annuler
-              </button>
-              <button onClick={performDuplicate}
-                className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold text-sm">
-                Dupliquer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Header */}
       <div className="bg-amber-600 px-4 pt-10 pb-5 text-white">
         <div className="max-w-2xl mx-auto">
@@ -824,7 +779,11 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                           </button>
 
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
+                            {/* 2026-05-24 : badges sur une ligne dédiée AU-DESSUS
+                                du titre pour libérer toute la largeur au libellé.
+                                Le titre passe en 2 lignes (line-clamp-2) +
+                                whitespace-normal → plus de troncature systématique. */}
+                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                               {(item.type as string) === 'workbook' && (
                                 <span className="text-[9px] font-bold bg-teal-100 text-teal-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">Wb</span>
                               )}
@@ -834,12 +793,12 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                               {lockedByPool && (
                                 <span className="text-[9px] font-bold bg-cyan-100 text-cyan-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">Troc</span>
                               )}
-                              <p className={`text-[13px] font-semibold leading-tight truncate ${
-                                lockedByPool ? 'text-cyan-800' : item.selected ? 'text-amber-900' : 'text-gray-800'
-                              }`} title={item.titre} dir="auto">
-                                {item.titre}
-                              </p>
                             </div>
+                            <p className={`text-[13px] font-semibold leading-snug line-clamp-2 break-words ${
+                              lockedByPool ? 'text-cyan-800' : item.selected ? 'text-amber-900' : 'text-gray-800'
+                            }`} title={item.titre} dir="auto">
+                              {item.titre}
+                            </p>
                             {lockedByPool && (
                               <p className="text-[10px] text-cyan-700 mt-0.5">
                                 Déjà couvert par votre échange en cours
@@ -849,13 +808,16 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                               </p>
                             )}
                             {(item.auteur || item.editeur || item.source === 'etablissement') && (
-                              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight" dir="auto">
+                              // 2026-05-24 : retire la troncature max-w-[110px] pour
+                              // auteur/éditeur (flex-wrap suffit à passer à la ligne
+                              // si nécessaire, et le titre n'est plus tronqué).
+                              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight mt-0.5" dir="auto">
                                 {item.auteur && (
-                                  <span className="truncate max-w-[110px]" title={item.auteur}>{item.auteur}</span>
+                                  <span title={item.auteur}>{item.auteur}</span>
                                 )}
                                 {item.auteur && item.editeur && <span className="text-gray-300">·</span>}
                                 {item.editeur && (
-                                  <span className="truncate max-w-[110px] text-purple-700" title={`Éditeur : ${item.editeur}`}>
+                                  <span className="text-purple-700" title={`Éditeur : ${item.editeur}`}>
                                     {item.editeur}
                                   </span>
                                 )}
@@ -900,11 +862,6 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                             );
                           })()}
 
-                          <button onClick={() => duplicateItem(i)}
-                            className="w-5 h-6 rounded bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-700 shrink-0"
-                            title="Dupliquer cet article" aria-label="Dupliquer">
-                            <Copy className="w-3 h-3" />
-                          </button>
                         </div>
 
                         {(isOccasionableType(item.type) || (isGammeableType(item.type) && item.prix && item.prix > 0)) && (

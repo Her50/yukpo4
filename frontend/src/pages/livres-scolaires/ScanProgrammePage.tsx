@@ -1,6 +1,6 @@
 import {
   AlertCircle, ArrowLeft, BookOpen, Camera, CheckSquare,
-  ChevronRight, Copy, FileText, Loader2,
+  ChevronRight, FileText, Loader2,
   Minus, Plus, Search, ShoppingCart, Upload, X
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -285,24 +285,11 @@ const ScanProgrammePage: React.FC = () => {
       : it));
   const setGamme = (idx: number, g: Gamme) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, gamme: g } : it));
-  const [confirmDupIdx, setConfirmDupIdx] = useState<number | null>(null);
-  const requestDuplicate = (idx: number) => setConfirmDupIdx(idx);
-  const performDuplicate = () => {
-    if (confirmDupIdx === null) return;
-    const idx = confirmDupIdx;
-    const src = items[idx];
-    if (!src) { setConfirmDupIdx(null); return; }
-    setItems(prev => {
-      const s = prev[idx];
-      if (!s) return prev;
-      const copy: ExtractedItem = { ...s, quantite: 1, selected: true };
-      return [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)];
-    });
-    toast({ title: t('bourse.scan.toast_duplicated'), description: src.titre });
-    setConfirmDupIdx(null);
-  };
-  // alias pour retro-compatibilité
-  const duplicateItem = (idx: number) => requestDuplicate(idx);
+  // 2026-05-24 : feature "dupliquer un article" supprimée (cohérence avec
+  // BrowseProgrammeByEtablissementPage). Redondante avec le stepper de
+  // quantité. La modale de confirmation et les fonctions associées
+  // (requestDuplicate, performDuplicate, duplicateItem, confirmDupIdx) ont
+  // été retirées — elles n'étaient plus appelées par aucun bouton.
   const allSelected = items.length > 0 && items.every(it => it.selected);
   // ✅ 2026-05-15 (Phase 2) : compte et tri ne portent QUE sur les livres
   // affichés (cahiers/fournitures gérés sur la page dédiée).
@@ -1090,39 +1077,8 @@ const ScanProgrammePage: React.FC = () => {
   /* ── RESULTS ── */
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Modale de confirmation de duplication */}
-      {confirmDupIdx !== null && items[confirmDupIdx] && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
-             onClick={() => setConfirmDupIdx(null)}>
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 pb-8 sm:pb-6"
-               onClick={e => e.stopPropagation()}>
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
-                <Copy className="w-5 h-5 text-amber-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-base leading-tight">{t('bourse.scan.duplicate_q')}</h3>
-                <p className="text-sm text-gray-600 mt-0.5 truncate" title={items[confirmDupIdx]?.titre}>
-                  {items[confirmDupIdx]?.titre}
-                </p>
-              </div>
-            </div>
-            <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
-              {t('bourse.scan.duplicate_help')}
-            </p>
-            <div className="flex gap-2">
-              <button onClick={() => setConfirmDupIdx(null)}
-                className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm">
-                {t('bourse.scan.cancel')}
-              </button>
-              <button onClick={performDuplicate}
-                className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold text-sm">
-                {t('bourse.scan.confirm_duplicate')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 2026-05-24 : modale de confirmation de duplication supprimée
+          (feature retirée, redondante avec le stepper de quantité). */}
 
       {/* Header compact — école + classe inline pour gagner de la verticalité */}
       <div className="bg-amber-600 px-4 pt-8 pb-3 text-white">
@@ -1325,10 +1281,14 @@ const ScanProgrammePage: React.FC = () => {
                             </div>
                           </button>
 
-                          {/* Titre + meta (langue d'origine, pas de transformation) */}
+                          {/* Titre + meta (langue d'origine, pas de transformation).
+                              2026-05-24 : badges sur ligne dédiée AU-DESSUS du
+                              titre pour libérer toute la largeur. Le titre passe
+                              en 2 lignes (line-clamp-2 + break-words) → fini la
+                              troncature. Auteur/éditeur sans max-w pour laisser
+                              le flex-wrap gérer. */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              {/* Petit tag livre / workbook pour différencier dans la section "Manuels & workbooks" */}
+                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                               {(item.type as string) === 'workbook' && (
                                 <span className="text-[9px] font-bold bg-teal-100 text-teal-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
                                   {t('bourse.scan.tag_workbook')}
@@ -1339,20 +1299,20 @@ const ScanProgrammePage: React.FC = () => {
                                   {t('bourse.scan.tag_book')}
                                 </span>
                               )}
-                              <p className={`text-[13px] font-semibold leading-tight truncate ${
-                                item.selected ? 'text-amber-900' : 'text-gray-800'
-                              }`} title={item.titre} dir="auto">
-                                {item.titre}
-                              </p>
                             </div>
+                            <p className={`text-[13px] font-semibold leading-snug line-clamp-2 break-words ${
+                              item.selected ? 'text-amber-900' : 'text-gray-800'
+                            }`} title={item.titre} dir="auto">
+                              {item.titre}
+                            </p>
                             {(item.auteur || item.editeur || item.source === 'suggestion') && (
-                              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight" dir="auto">
+                              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight mt-0.5" dir="auto">
                                 {item.auteur && (
-                                  <span className="truncate max-w-[110px]" title={item.auteur}>{item.auteur}</span>
+                                  <span title={item.auteur}>{item.auteur}</span>
                                 )}
                                 {item.auteur && item.editeur && <span className="text-gray-300">·</span>}
                                 {item.editeur && (
-                                  <span className="truncate max-w-[110px] text-purple-700" title={t('bourse.scan.editor_title', { name: item.editeur })}>
+                                  <span className="text-purple-700" title={t('bourse.scan.editor_title', { name: item.editeur })}>
                                     {item.editeur}
                                   </span>
                                 )}
