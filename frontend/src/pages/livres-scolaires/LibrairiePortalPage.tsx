@@ -1779,16 +1779,33 @@ export const LibrairieDashboardPage: React.FC = () => {
               <Users className="w-3.5 h-3.5" />
               {t('librairie.equipe')}
             </button>
-            {/* 2026-05-22 — accès aux opérations YL (ruptures, assigner coursier,
-                inviter coursier). La page existait mais n'était pas reliée. */}
-            <button
-              onClick={() => navigate('/super-librairie/operations')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
-            >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              {t('librairie.operations', 'Opérations')}
-            </button>
           </div>
+
+          {/* 2026-05-24 — Bandeau dédié pour l'invitation coursier, sur sa
+              propre ligne, couleur amber distincte. Avant : noyé en fin de
+              barre scrollable, invisible sur mobile sans scroll horizontal.
+              Lien direct vers l'onglet "Inviter coursier" de la page
+              SuperLibrairieOperationsPage. */}
+          <button
+            onClick={() => navigate('/super-librairie/operations?tab=invite')}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 mt-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md"
+          >
+            <span className="flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4" />
+              {t('librairie.invite_coursier', 'Inviter un coursier (lien WhatsApp)')}
+            </span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate('/super-librairie/operations')}
+            className="w-full flex items-center justify-between gap-2 px-3 py-1.5 mt-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold"
+          >
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              {t('librairie.operations', 'Opérations (ruptures, assignations)')}
+            </span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
 
           {/* Filtres */}
           <div className="inline-flex bg-white/15 backdrop-blur-sm rounded-full p-0.5 gap-0.5">

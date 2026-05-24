@@ -561,6 +561,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/parent/fournitures-aggregees",
             axum::routing::post(parent_suggestions_controller::fournitures_aggregees),
         )
+        // ✅ 2026-05-24 : endpoint diagnostic pour vérifier le seed
+        //   accessoires_populaires_par_classe (total + classes par systeme_id).
+        .route(
+            "/api/v2/parent/diag-accessoires",
+            get(parent_suggestions_controller::diag_accessoires),
+        )
         // ✅ 2026-05-15 : Lieu de livraison persistant + WhatsApp (onboarding 1er login)
         .route(
             "/api/users/me/delivery-info",

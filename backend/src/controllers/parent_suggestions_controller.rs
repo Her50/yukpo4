@@ -652,6 +652,86 @@ pub struct UserDeliveryInfo {
     pub whatsapp_number_secondary: Option<String>,
 }
 
+/// GET /api/v2/parent/diag-accessoires
+///
+/// 2026-05-24 — Endpoint de diagnostic pour vérifier si la table
+/// `accessoires_populaires_par_classe` est seedée et avec quels noms de
+/// classes. Visible par n'importe quel user authentifié (pas sensible :
+/// juste un comptage). Utilisé pour debugger "rien ne s'affiche dans la
+/// page Fournitures".
+///
+/// Réponse :
+/// ```json
+/// {
+///   "total": 864,
+///   "pays_distinct": ["CM"],
+///   "classes_par_systeme": [
+///     { "systeme_id": "CM-fr", "classes": [{"classe":"SIL","n":17}, ...] },
+///     { "systeme_id": "CM-en", "classes": [...] },
+///     { "systeme_id": "CM-bi", "classes": [...] }
+///   ]
+/// }
+/// ```
+pub async fn diag_accessoires(
+    State(state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+
+    let total: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM accessoires_populaires_par_classe",
+    )
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    let pays_rows = sqlx::query(
+        "SELECT DISTINCT pays FROM accessoires_populaires_par_classe ORDER BY pays",
+    )
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+    let pays_distinct: Vec<String> = pays_rows
+        .iter()
+        .filter_map(|r| r.try_get::<String, _>("pays").ok())
+        .collect();
+
+    let rows = sqlx::query(
+        r#"SELECT systeme_id, classe, COUNT(*) AS n
+           FROM accessoires_populaires_par_classe
+           GROUP BY systeme_id, classe
+           ORDER BY systeme_id, classe"#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    use std::collections::BTreeMap;
+    let mut par_systeme: BTreeMap<String, Vec<serde_json::Value>> = BTreeMap::new();
+    for r in &rows {
+        let sys: String = r.try_get("systeme_id").unwrap_or_default();
+        let cls: String = r.try_get("classe").unwrap_or_default();
+        let n: i64 = r.try_get("n").unwrap_or(0);
+        par_systeme.entry(sys).or_default().push(json!({
+            "classe": cls,
+            "n": n,
+        }));
+    }
+    let classes_par_systeme: Vec<serde_json::Value> = par_systeme
+        .into_iter()
+        .map(|(sys, classes)| json!({ "systeme_id": sys, "classes": classes }))
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "total": total,
+            "pays_distinct": pays_distinct,
+            "classes_par_systeme": classes_par_systeme,
+        })),
+    ))
+}
+
 /// GET /api/users/me/delivery-info
 pub async fn get_delivery_info(
     State(state): State<Arc<AppState>>,

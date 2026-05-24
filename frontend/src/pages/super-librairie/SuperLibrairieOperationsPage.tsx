@@ -11,6 +11,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons/Button';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +66,15 @@ const STATUT_COLOR: Record<string, string> = {
 
 const SuperLibrairieOperationsPage: React.FC = () => {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<Tab>('ruptures');
+  // 2026-05-24 : support ?tab=invite (etc.) pour ouvrir directement l'onglet
+  // demandé depuis un lien externe (header LibrairiePortalPage).
+  const [searchParams] = useSearchParams();
+  const initialTab: Tab = (() => {
+    const q = searchParams.get('tab');
+    if (q === 'invite' || q === 'coursiers' || q === 'ruptures') return q;
+    return 'ruptures';
+  })();
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
     <AppLayout>

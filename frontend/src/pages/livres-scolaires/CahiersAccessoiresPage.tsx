@@ -161,15 +161,24 @@ const CahiersAccessoiresPage: React.FC = () => {
     setError('');
     (async () => {
       try {
-        const res = await apiPost('/api/v2/parent/fournitures-aggregees', {
+        const payload = {
           classes: classesSelected.map(c => ({ classe: c.classe, nb_enfants: c.nb_enfants })),
           pays: paysActif,
-        });
+        };
+        // 2026-05-24 — log de diagnostic : la table seedée utilise le nom
+        // exact de classe + pays='CM'. Si la réponse renvoie items=[] alors
+        // que classesSelected n'est pas vide, c'est un mismatch silencieux.
+        // Cette trace permet de comparer à fly logs (parent.fournitures).
+        // eslint-disable-next-line no-console
+        console.debug('[fournitures] requête', payload);
+        const res = await apiPost('/api/v2/parent/fournitures-aggregees', payload);
         const data = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok || data?.success === false) {
           throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
         }
+        // eslint-disable-next-line no-console
+        console.debug('[fournitures] réponse', { nb_items: (data?.items || []).length });
         setItems((data?.items || []) as ItemAgrege[]);
         // Reset overrides quand les classes changent — sinon les overrides
         // d'une session précédente fausseraient les nouvelles agrégations.
