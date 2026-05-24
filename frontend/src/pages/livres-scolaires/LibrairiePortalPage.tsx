@@ -1,5 +1,5 @@
 import {
-  ArrowLeft, BookOpen, Check, ChevronRight, ClipboardCheck, Clock, FileDown,
+  AlertTriangle, ArrowLeft, BookOpen, Check, ChevronRight, ClipboardCheck, Clock, FileDown,
   Loader2, LogOut, MapPin, Megaphone, Package, Phone, Printer, RefreshCw,
   Route, Search, Send, ShoppingBag, Trash2, Truck, UserPlus, Users,
   Warehouse, X, XCircle,
@@ -43,6 +43,9 @@ interface CommandeListItem {
   nb_occasion?: number;
   secondes_restantes?: number;
   created_at?: string;
+  // 2026-05-22 — true si statut ∈ {edition, validation_budget} : auto-progress
+  // a échoué côté backend, l'admin peut la pousser via le bouton dédié.
+  est_bloquee?: boolean;
 }
 
 const STATUT_LABELS: Partial<Record<CommandeStatut, string>> = {
@@ -60,6 +63,8 @@ const STATUT_LABELS: Partial<Record<CommandeStatut, string>> = {
 };
 
 const STATUT_COLOR: Partial<Record<CommandeStatut, string>> = {
+  edition: 'bg-red-100 text-red-800 border-red-300',
+  validation_budget: 'bg-red-100 text-red-800 border-red-300',
   envoyee_super_librairie: 'bg-amber-100 text-amber-800 border-amber-300',
   envoyee_librairies: 'bg-indigo-100 text-indigo-700 border-indigo-200',
   en_validation: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -384,17 +389,45 @@ const InvitationsTable: React.FC = () => {
       <div className="divide-y divide-gray-100">
         {invitations.map(inv => {
           const fullUrl = `${window.location.origin}${inv.invitation_path}`;
+          const removeMember = async () => {
+            const isAccepted = inv.status === 'accepted';
+            const who = inv.nom_affiche || inv.accepted_nom || inv.accepted_email || inv.telephone || 'ce membre';
+            const msg = isAccepted
+              ? `Retirer ${who} de l'équipe ?\n\nL'utilisateur perdra immédiatement l'accès à Yukpo Librairie.`
+              : `Révoquer l'invitation pour ${who} ?\n\nLe lien WhatsApp partagé deviendra inutilisable.`;
+            if (!window.confirm(msg)) return;
+            try {
+              const res = await fetch(`/api/librairie-network/super-librairie/team/invitations/${inv.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+              });
+              const d = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(d?.message || d?.error || `HTTP ${res.status}`);
+              toast({ title: isAccepted ? 'Membre retiré' : 'Invitation révoquée' });
+              window.dispatchEvent(new CustomEvent('libraire:invitation-changed'));
+            } catch (e: any) {
+              toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+            }
+          };
           return (
             <div key={inv.id} className="p-2.5">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-xs font-semibold text-gray-900 truncate">
+                <p className="text-xs font-semibold text-gray-900 truncate flex-1 min-w-0">
                   {inv.nom_affiche || inv.accepted_nom || inv.telephone || 'Anonyme'}
                   {' '}
                   <span className="text-[10px] font-bold text-indigo-700 uppercase">{ROLE_LABELS[inv.role] || inv.role}</span>
                 </p>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${statusColor(inv.status)}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${statusColor(inv.status)} shrink-0`}>
                   {statusLabel(inv.status)}
                 </span>
+                <button
+                  onClick={removeMember}
+                  className="p-1 rounded text-red-500 hover:bg-red-50 shrink-0"
+                  title={inv.status === 'accepted' ? 'Retirer ce membre' : "Révoquer l'invitation"}
+                  aria-label="Supprimer"
+                >
+                  ×
+                </button>
               </div>
               {inv.accepted_email && (
                 <p className="text-[10px] text-emerald-700">→ {inv.accepted_email}</p>
@@ -801,6 +834,23 @@ const CampaignModal: React.FC<{ onClose: () => void; totalReachHint: number }> =
 };
 
 /* ─── TOURNÉES DE LIVRAISON ─── */
+interface RouteArticle {
+  titre: string;
+  matiere?: string;
+  classe?: string;
+  quantite: number;
+  prix?: number | null;
+  type?: string;
+}
+interface RoutePickup {
+  titre: string;
+  matiere?: string;
+  classe?: string;
+  quantite: number;
+  etat?: string | null;
+  valeur_estimee?: number | null;
+  type?: string;
+}
 interface RouteParent {
   package_ref: string;
   commande_id: string;
@@ -815,12 +865,16 @@ interface RouteParent {
   nb_occasion?: number;
   total_articles?: number;
   classes?: string[];
+  // ✅ Détails coursier — articles à déposer + livres à récupérer
+  livres_a_livrer?: RouteArticle[];
+  livres_a_recuperer?: RoutePickup[];
 }
 interface DeliveryRoute {
   city: string;
   cluster_ref: string;
   package_count: number;
   centre_gps?: string;
+  has_pickup?: boolean;
   parents: RouteParent[];
 }
 
@@ -830,6 +884,11 @@ const DeliveryRoutesPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [bucketKm, setBucketKm] = useState<number>(2);
+  // ─── Partage PDF au coursier ───
+  const printAreaRef = useRef<HTMLDivElement | null>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [coursierPhone, setCoursierPhone] = useState('');
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -847,9 +906,138 @@ const DeliveryRoutesPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
   const totalPackages = routes.reduce((s, r) => s + r.package_count, 0);
 
+  /** Génère le PDF de la tournée et tente de le partager via l'API Web Share
+   *  (qui ouvre la feuille de partage native sur Android/iOS — WhatsApp y
+   *  apparaît directement). Si l'API n'est pas dispo (desktop), on télécharge
+   *  le PDF et on ouvre wa.me pour que l'utilisateur joigne manuellement. */
+  const shareTourneeToCoursier = useCallback(async () => {
+    if (!printAreaRef.current) {
+      toast({ title: 'Zone d\'impression introuvable', variant: 'destructive' });
+      return;
+    }
+    if (routes.length === 0) {
+      toast({ title: 'Aucune tournée à partager', variant: 'destructive' });
+      return;
+    }
+    setGeneratingPdf(true);
+    try {
+      // Imports dynamiques pour ne charger jsPDF/html2canvas qu'à la demande.
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
+      // Capture la zone d'impression — multi-pages géré par découpage manuel.
+      const canvas = await html2canvas(printAreaRef.current, {
+        scale: 1.5,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW - 10; // marges 5mm
+      const imgH = (canvas.height * imgW) / canvas.width;
+
+      // Multi-page : on découpe l'image en tranches verticales si nécessaire.
+      const sliceHeightPx = (canvas.width * (pageH - 10)) / imgW;
+      let yPos = 0;
+      let pageIdx = 0;
+      while (yPos < canvas.height) {
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = Math.min(sliceHeightPx, canvas.height - yPos);
+        const ctx = slice.getContext('2d');
+        if (!ctx) break;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(canvas, 0, -yPos);
+        const sliceImg = slice.toDataURL('image/jpeg', 0.85);
+        if (pageIdx > 0) pdf.addPage();
+        const sliceImgH = (slice.height * imgW) / slice.width;
+        pdf.addImage(sliceImg, 'JPEG', 5, 5, imgW, sliceImgH);
+        yPos += sliceHeightPx;
+        pageIdx += 1;
+      }
+
+      const dateStr = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+      const fileName = `tournee-yukpo-${dateStr}.pdf`;
+      const pdfBlob = pdf.output('blob');
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      const shareTitle = 'Tournée Yukpo Librairie';
+      const shareText = `Bonjour, voici votre tournée de livraison du ${new Date().toLocaleDateString('fr-FR')} — ${totalPackages} paquet${totalPackages > 1 ? 's' : ''} à livrer. Bonne route 🚚`;
+
+      // Web Share API (préférence) : la feuille de partage native d'Android
+      // permet de choisir WhatsApp directement et d'attacher le PDF.
+      const nav = navigator as Navigator & { canShare?: (data: any) => boolean };
+      if (nav.canShare && nav.canShare({ files: [pdfFile] }) && navigator.share) {
+        try {
+          await navigator.share({ files: [pdfFile], title: shareTitle, text: shareText });
+          setShareModalOpen(false);
+          toast({ title: 'PDF partagé' });
+          return;
+        } catch (shareErr: any) {
+          // Si l'utilisateur annule la share sheet, ne pas tomber en fallback.
+          if (shareErr?.name === 'AbortError') return;
+          // Autre erreur → fallback ci-dessous.
+        }
+      }
+
+      // Fallback desktop / navigateurs sans Web Share : on télécharge le PDF
+      // et on ouvre wa.me avec un message d'instruction. Le coursier devra
+      // joindre le PDF manuellement à la conversation.
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+      const phoneClean = coursierPhone.trim();
+      if (phoneClean) {
+        // Ouvre WhatsApp avec le message pré-rempli ; l'utilisateur joint le
+        // PDF téléchargé via le trombone.
+        const waUrl = buildWhatsAppUrl(phoneClean, shareText + '\n\n(Voir le PDF en pièce jointe.)');
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+      }
+      toast({
+        title: 'PDF téléchargé',
+        description: phoneClean
+          ? 'WhatsApp ouvert — joignez le PDF via le trombone.'
+          : 'Ouvrez WhatsApp puis joignez le fichier au coursier.',
+      });
+      setShareModalOpen(false);
+    } catch (e: any) {
+      toast({
+        title: 'Erreur génération PDF',
+        description: e?.message || 'Réessayez',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }, [coursierPhone, routes.length, toast, totalPackages]);
+
   return (
     <div className="fixed inset-0 bg-gray-50 z-40 overflow-y-auto">
-      <style>{`@media print { body { background: white !important; } .no-print { display: none !important; } }`}</style>
+      <style>{`
+        @media print {
+          body { background: white !important; }
+          .no-print { display: none !important; }
+          /* Force-open les <details> du listing pour imprimer toutes les
+             lignes "À livrer" sans avoir à les ouvrir manuellement. */
+          details { display: block !important; }
+          details > summary { display: none !important; }
+          details[open] > *, details > * { display: block !important; }
+          /* Évite qu'un bloc "pickup" soit coupé en 2 pages. */
+          .print-keep-together { page-break-inside: avoid; break-inside: avoid; }
+        }
+      `}</style>
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 pt-10 pb-4 sticky top-0 z-10 no-print">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <button onClick={onClose} className="p-2 rounded-full bg-white/20"><ArrowLeft className="w-5 h-5" /></button>
@@ -866,6 +1054,15 @@ const DeliveryRoutesPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <Printer className="w-4 h-4" />
             PDF
           </button>
+          <button
+            onClick={() => setShareModalOpen(true)}
+            disabled={generatingPdf || routes.length === 0}
+            className="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 flex items-center gap-1.5 text-xs font-bold"
+            title="Partager la tournée au coursier sur WhatsApp"
+          >
+            <Send className="w-4 h-4" />
+            Coursier
+          </button>
         </div>
         <div className="max-w-3xl mx-auto mt-2 flex items-center gap-2">
           <label className="text-xs text-white/90">Rayon cluster :</label>
@@ -878,7 +1075,7 @@ const DeliveryRoutesPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-4 print-area">
+      <div ref={printAreaRef} className="max-w-3xl mx-auto px-4 py-4 print-area">
         <div className="hidden print:block mb-4">
           <h1 className="font-bold text-xl">Yukpo Librairie — Tournées de livraison</h1>
           <p className="text-xs text-gray-500">Généré le {new Date().toLocaleString('fr-FR')} · Rayon cluster : {bucketKm} km</p>
@@ -907,32 +1104,90 @@ const DeliveryRoutesPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             </div>
             <div className="divide-y divide-gray-100">
               {r.parents.map(p => (
-                <div key={p.package_ref} className="px-3 py-2 flex items-start gap-2">
-                  <span className="text-[10px] font-bold uppercase bg-orange-600 text-white px-1.5 py-0.5 rounded shrink-0 leading-none mt-0.5">
-                    {p.package_ref.split('#').pop()}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-gray-900 leading-tight">
-                      {p.nom} <span className="text-gray-400 font-normal">· {p.reference_commande}</span>
-                    </p>
-                    {p.adresse && <p className="text-[11px] text-gray-600 truncate">{p.adresse}</p>}
-                    <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                      {p.phone && <span>{p.phone}</span>}
-                      {p.classes && p.classes.length > 0 && (
-                        <span className="text-orange-700 font-semibold">{p.classes.join(' · ')}</span>
-                      )}
-                      {(p.total_articles ?? 0) > 0 && <span>{p.total_articles} articles</span>}
+                <div key={p.package_ref} className="px-3 py-2">
+                  {/* En-tête parent (compact à l'écran, plus large à l'impression) */}
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-bold uppercase bg-orange-600 text-white px-1.5 py-0.5 rounded shrink-0 leading-none mt-0.5">
+                      {p.package_ref.split('#').pop()}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-gray-900 leading-tight">
+                        {p.nom} <span className="text-gray-400 font-normal">· {p.reference_commande}</span>
+                      </p>
+                      {p.adresse && <p className="text-[11px] text-gray-600 truncate print:whitespace-normal print:overflow-visible">{p.adresse}</p>}
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5 flex-wrap">
+                        {p.phone && <span>{p.phone}</span>}
+                        {p.classes && p.classes.length > 0 && (
+                          <span className="text-orange-700 font-semibold">{p.classes.join(' · ')}</span>
+                        )}
+                        {(p.total_articles ?? 0) > 0 && <span>{p.total_articles} articles</span>}
+                        {(p.livres_a_recuperer?.length ?? 0) > 0 && (
+                          <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">
+                            📦 {p.livres_a_recuperer!.length} pickup
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    {p.phone && (
+                      <a
+                        href={buildWhatsAppUrl(p.phone, `Bonjour ${p.nom}, livraison Yukpo en route — paquet ${p.package_ref}`)}
+                        target="_blank" rel="noopener noreferrer"
+                        className="no-print px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 shrink-0"
+                      >
+                        <Send className="w-3 h-3" />
+                        WA
+                      </a>
+                    )}
                   </div>
-                  {p.phone && (
-                    <a
-                      href={buildWhatsAppUrl(p.phone, `Bonjour ${p.nom}, livraison Yukpo en route — paquet ${p.package_ref}`)}
-                      target="_blank" rel="noopener noreferrer"
-                      className="no-print px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 shrink-0"
-                    >
-                      <Send className="w-3 h-3" />
-                      WA
-                    </a>
+
+                  {/* Articles à LIVRER (toujours visible à l'impression, repliable à l'écran) */}
+                  {(p.livres_a_livrer?.length ?? 0) > 0 && (
+                    <details className="mt-1.5 ml-7 print:open" open>
+                      <summary className="text-[10px] font-bold text-gray-600 uppercase tracking-wide cursor-pointer no-print">
+                        📚 À livrer ({p.livres_a_livrer!.length})
+                      </summary>
+                      <div className="hidden print:block text-[10px] font-bold text-gray-700 uppercase mt-1 mb-1">
+                        À LIVRER ({p.livres_a_livrer!.length} article{p.livres_a_livrer!.length > 1 ? 's' : ''})
+                      </div>
+                      <ul className="text-[11px] text-gray-700 mt-1 space-y-0.5">
+                        {p.livres_a_livrer!.map((art, i) => (
+                          <li key={`liv-${i}`} className="flex items-baseline gap-1.5">
+                            <span className="font-bold tabular-nums w-6 shrink-0">×{art.quantite}</span>
+                            <span className="flex-1">
+                              {art.titre}
+                              {art.classe && <span className="text-gray-400"> · {art.classe}</span>}
+                              {art.matiere && <span className="text-gray-400"> · {art.matiere}</span>}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+
+                  {/* Livres à RÉCUPÉRER (pickup troc) — bandeau ambre proéminent */}
+                  {(p.livres_a_recuperer?.length ?? 0) > 0 && (
+                    <div className="mt-1.5 ml-7 bg-amber-50 border border-amber-300 rounded-md p-2 print:break-inside-avoid">
+                      <p className="text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1">
+                        📦 À RÉCUPÉRER chez le parent ({p.livres_a_recuperer!.length})
+                      </p>
+                      <ul className="text-[11px] text-amber-900 space-y-0.5">
+                        {p.livres_a_recuperer!.map((pickup, i) => (
+                          <li key={`pku-${i}`} className="flex items-baseline gap-1.5">
+                            <span className="font-bold tabular-nums w-6 shrink-0">×{pickup.quantite}</span>
+                            <span className="flex-1">
+                              {pickup.titre}
+                              {pickup.classe && <span className="text-amber-600"> · {pickup.classe}</span>}
+                              {pickup.etat && <span className="text-amber-600"> · état {pickup.etat}</span>}
+                            </span>
+                            {pickup.valeur_estimee && pickup.valeur_estimee > 0 && (
+                              <span className="text-[10px] font-bold text-amber-700 shrink-0">
+                                ≈ {pickup.valeur_estimee.toLocaleString('fr-FR')} F
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               ))}
@@ -940,6 +1195,71 @@ const DeliveryRoutesPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           </div>
         ))}
       </div>
+
+      {/* Modale de partage : numéro coursier + bouton partage natif */}
+      {shareModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center no-print"
+             onClick={() => !generatingPdf && setShareModalOpen(false)}>
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 pb-8 sm:pb-6"
+               onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
+                <Send className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900 text-base leading-tight">Partager au coursier</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Génère le PDF de la tournée et l'envoie via WhatsApp.
+                </p>
+              </div>
+              <button
+                onClick={() => !generatingPdf && setShareModalOpen(false)}
+                disabled={generatingPdf}
+                className="p-2 -m-2 text-gray-400 hover:text-gray-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <label className="text-xs font-semibold text-gray-700 block mb-1">
+              Numéro WhatsApp du coursier (optionnel)
+            </label>
+            <input
+              type="tel"
+              inputMode="tel"
+              placeholder="6XX XXX XXX"
+              value={coursierPhone}
+              onChange={e => setCoursierPhone(e.target.value)}
+              disabled={generatingPdf}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm min-h-[44px] focus:outline-none focus:border-emerald-500"
+            />
+            <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
+              Sur mobile, la feuille de partage Android/iOS s'ouvrira avec
+              WhatsApp et le PDF prêt à envoyer. Sur ordinateur, le PDF se
+              télécharge et WhatsApp Web s'ouvre — joignez le fichier au
+              message.
+            </p>
+
+            <button
+              onClick={shareTourneeToCoursier}
+              disabled={generatingPdf}
+              className="mt-4 w-full bg-emerald-600 disabled:bg-emerald-300 text-white font-bold py-3 rounded-xl active:bg-emerald-700 min-h-[48px] inline-flex items-center justify-center gap-2"
+            >
+              {generatingPdf ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Génération du PDF…
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Générer le PDF et partager
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1350,8 +1670,10 @@ export const LibrairieDashboardPage: React.FC = () => {
 
   const filtered = useMemo(() => {
     if (filter === 'pending') {
+      // Bloquées (edition/validation_budget) incluses dans pending pour
+      // forcer la visibilité — sinon elles seraient cachées dans 'all' uniquement.
       return commandes.filter(c =>
-        ['envoyee_super_librairie', 'envoyee_librairies', 'en_validation', 'validee_partielle'].includes(c.statut)
+        ['edition', 'validation_budget', 'envoyee_super_librairie', 'envoyee_librairies', 'en_validation', 'validee_partielle'].includes(c.statut)
       );
     }
     if (filter === 'done') {
@@ -1361,6 +1683,40 @@ export const LibrairieDashboardPage: React.FC = () => {
     }
     return commandes;
   }, [commandes, filter]);
+
+  // 2026-05-22 — push manuel d'une commande coincée à edition / validation_budget.
+  const pushCommande = useCallback(async (commandeId: string) => {
+    try {
+      const res = await apiPost(
+        `/api/librairie-network/super-librairie/commandes/${commandeId}/push`,
+        {}
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+      }
+      if (data?.pousseee) {
+        toast({
+          title: t('librairie.push.success', 'Commande poussée vers Yukpo Librairie'),
+        });
+      } else {
+        toast({
+          title: t('librairie.push.partial', 'Commande débloquée'),
+          description: t(
+            'librairie.push.no_super_lib',
+            'Pas de super-libraire actif — reste en validation_budget'
+          ),
+        });
+      }
+      await load();
+    } catch (e: any) {
+      toast({
+        title: t('librairie.push.error', 'Échec du push'),
+        description: e?.message || '',
+        variant: 'destructive',
+      });
+    }
+  }, [load, t, toast]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
@@ -1425,6 +1781,32 @@ export const LibrairieDashboardPage: React.FC = () => {
             </button>
           </div>
 
+          {/* 2026-05-24 — Bandeau dédié pour l'invitation coursier, sur sa
+              propre ligne, couleur amber distincte. Avant : noyé en fin de
+              barre scrollable, invisible sur mobile sans scroll horizontal.
+              Lien direct vers l'onglet "Inviter coursier" de la page
+              SuperLibrairieOperationsPage. */}
+          <button
+            onClick={() => navigate('/super-librairie/operations?tab=invite')}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 mt-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md"
+          >
+            <span className="flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4" />
+              {t('librairie.invite_coursier', 'Inviter un coursier (lien WhatsApp)')}
+            </span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate('/super-librairie/operations')}
+            className="w-full flex items-center justify-between gap-2 px-3 py-1.5 mt-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold"
+          >
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              {t('librairie.operations', 'Opérations (ruptures, assignations)')}
+            </span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+
           {/* Filtres */}
           <div className="inline-flex bg-white/15 backdrop-blur-sm rounded-full p-0.5 gap-0.5">
             {[
@@ -1447,6 +1829,25 @@ export const LibrairieDashboardPage: React.FC = () => {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pt-4">
+        {/* ✅ Bannière Marché Bourse — toujours visible juste sous le header.
+            Permet à la librairie d'accéder en 1 clic à la vue d'ensemble
+            des livres en troc/vente/don + matchings algo. */}
+        <button
+          onClick={() => navigate('/librairie/marche-bourse')}
+          className="w-full mb-4 flex items-center justify-between gap-3 bg-gradient-to-r from-emerald-50 to-cyan-50 border-2 border-emerald-300 rounded-2xl px-4 py-3 active:from-emerald-100 shadow-sm"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 text-white text-lg">
+              🔄
+            </div>
+            <div className="text-left min-w-0">
+              <p className="font-bold text-emerald-900 text-sm leading-tight">Marché Bourse du Livre</p>
+              <p className="text-[11px] text-emerald-700 mt-0.5">Voir les livres parents (troc/vente/don) + stats algo</p>
+            </div>
+          </div>
+          <span className="text-emerald-600 text-xl flex-shrink-0">›</span>
+        </button>
+
         {/* Refresh */}
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs text-gray-500">
@@ -1502,13 +1903,28 @@ export const LibrairieDashboardPage: React.FC = () => {
           <div className="space-y-2">
             {filtered.map(cmd => {
               const urgent = (cmd.secondes_restantes ?? 99999) < 600 && cmd.statut === 'envoyee_super_librairie';
+              const bloquee = !!cmd.est_bloquee;
               const ref = cmd.reference_commande || `#${cmd.id.slice(0, 8)}`;
+              // 2026-05-22 — div role=button (au lieu de <button>) pour pouvoir
+              // imbriquer un vrai bouton "Pousser" sans HTML invalide.
               return (
-                <button
+                <div
                   key={cmd.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => navigate(`/librairie/commandes/${cmd.id}`)}
-                  className={`w-full text-left bg-white rounded-2xl border p-3 hover:shadow-md transition-shadow ${
-                    urgent ? 'border-amber-400 ring-1 ring-amber-300' : 'border-gray-100'
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/librairie/commandes/${cmd.id}`);
+                    }
+                  }}
+                  className={`w-full text-left bg-white rounded-2xl border p-3 hover:shadow-md transition-shadow cursor-pointer ${
+                    bloquee
+                      ? 'border-red-400 ring-1 ring-red-300'
+                      : urgent
+                        ? 'border-amber-400 ring-1 ring-amber-300'
+                        : 'border-gray-100'
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -1521,6 +1937,11 @@ export const LibrairieDashboardPage: React.FC = () => {
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border ${STATUT_COLOR[cmd.statut] || 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                           {STATUT_LABELS[cmd.statut] || cmd.statut}
                         </span>
+                        {bloquee && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-500 text-white">
+                            {t('librairie.bloquee', 'Bloquée')}
+                          </span>
+                        )}
                         {urgent && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-500 text-white animate-pulse">
                             <Clock className="w-2.5 h-2.5 inline mr-0.5" />
@@ -1552,10 +1973,21 @@ export const LibrairieDashboardPage: React.FC = () => {
                       <p className="text-sm font-bold text-indigo-700 mt-1.5">
                         {(cmd.budget_total || 0).toLocaleString('fr-FR')} {cmd.devise || 'XAF'}
                       </p>
+                      {bloquee && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            pushCommande(cmd.id);
+                          }}
+                          className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold"
+                        >
+                          {t('librairie.pousser', 'Pousser vers Yukpo Librairie')}
+                        </button>
+                      )}
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-400 mt-2 shrink-0" />
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

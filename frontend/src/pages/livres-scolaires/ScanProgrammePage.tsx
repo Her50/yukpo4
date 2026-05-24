@@ -1,6 +1,6 @@
 import {
   AlertCircle, ArrowLeft, BookOpen, Camera, CheckSquare,
-  ChevronRight, Copy, FileText, Image as ImageIcon, Loader2,
+  ChevronRight, FileText, Loader2,
   Minus, Plus, Search, ShoppingCart, Upload, X
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -12,9 +12,11 @@ import {
   Systeme, TypeItem, useParentShop,
   Enfant,
 } from '../../hooks/useParentShop';
+import { useUserTrocPool } from '../../hooks/useUserTrocPool';
 import {
   getSystemesForPays, getSystemeById, LISTE_PAYS_UNIQUES, type PaysCode,
 } from '../../data/schoolSystems';
+import { isMaternelleOuPrimaire } from '../../data/etablissementSetup';
 import { apiGet } from '../../services/apiService';
 import GammeSelector, { Gamme, priceForGamme } from '../../components/livres-scolaires/GammeSelector';
 
@@ -30,6 +32,10 @@ interface ExtractedItem {
   selected: boolean;
   /** Choix d'achat — par défaut 'neuf'. Toggle dispo uniquement pour les livres. */
   choix: 'neuf' | 'occasion';
+  /** Intention de troc : si l'utilisateur veut donner son ancien livre en
+   *  échange (capture photo recto/verso à la validation pour évaluer la
+   *  valeur). Implique choix='occasion'. Sinon : achat d'occasion classique. */
+  troc_intent?: boolean;
   /** Gamme choisie — uniquement pour fournitures/cahiers/accessoires.
    *  Le prix effectif est `prix × ratio(gamme)`. Défaut 'standard' (ratio 1.0). */
   gamme?: Gamme;
@@ -72,6 +78,42 @@ const effectivePrice = (it: ExtractedItem): number => {
   return isGammeableType(it.type)
     ? priceForGamme(it.prix, it.gamme || 'standard')
     : it.prix;
+};
+
+/**
+ * ✅ 2026-05-16 — Prix dynamique selon le choix actif. Aligné avec
+ * RecapAchatPage:ItemCard + BrowseProgrammeByEtablissementPage.
+ * Ratios: livre_scolaire.rs (BON=70%, ACCEPTABLE=45%, CREDIT=70%).
+ */
+const priceTextForItem = (it: ExtractedItem): { text: string; subtext?: string } => {
+  const base = it.prix ?? 0;
+  if (isOccasionableType(it.type)) {
+    if (base <= 0) return { text: '—' };
+    const RATIO_OCC_MIN = 0.45;
+    const RATIO_OCC_MAX = 0.70;
+    const RATIO_CREDIT = 0.70;
+    if (it.choix === 'occasion' && it.troc_intent) {
+      const gapMin = Math.max(0, Math.round(base * (RATIO_OCC_MIN - RATIO_OCC_MAX * RATIO_CREDIT)));
+      const gapMax = Math.round(base * (RATIO_OCC_MAX - RATIO_OCC_MIN * RATIO_CREDIT));
+      return {
+        text: gapMin > 0
+          ? `${gapMin.toLocaleString('fr-FR')} – ${gapMax.toLocaleString('fr-FR')} F`
+          : `≤ ${gapMax.toLocaleString('fr-FR')} F`,
+        subtext: 'reste après échange',
+      };
+    }
+    if (it.choix === 'occasion') {
+      const min = Math.round(base * RATIO_OCC_MIN);
+      const max = Math.round(base * RATIO_OCC_MAX);
+      return {
+        text: `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} F`,
+        subtext: 'selon état',
+      };
+    }
+    return { text: `${base.toLocaleString('fr-FR')} F` };
+  }
+  const v = effectivePrice(it);
+  return { text: v > 0 ? `${v.toLocaleString('fr-FR')} F` : '—' };
 };
 
 interface ScanDetection {
@@ -138,6 +180,8 @@ const ScanProgrammePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { enfants, addItems, addEnfant } = useParentShop();
+  // Pool troc du parent pour détecter cross-flow (livre déjà en échange)
+  const { findMatchInPool } = useUserTrocPool();
 
   const enfantId = searchParams.get('enfantId') || enfants[0]?.id || '';
   const [selectedEnfantId, setSelectedEnfantId] = useState(enfantId);
@@ -163,6 +207,11 @@ const ScanProgrammePage: React.FC = () => {
   const classe = serieCode ? `${classeNom} ${serieCode}` : classeNom;
   const systeme: Systeme = currentSystemeObj?.langue === 'en' ? 'anglophone' : 'francophone';
   const niveau = niveauNom;
+  // ✅ FIX 2026-05-19 (bug G frontend) — verrou Occasion/Échange masqué pour
+  // maternelle/primaire. Cohérent avec le rejet backend 400 BadRequest pour
+  // ces niveaux en mode occasion/troc/echange. Test sur niveauNom ET classeNom
+  // pour couvrir les deux situations (sélecteur niveau + lecture classe).
+  const isOccasionableNiveau = !isMaternelleOuPrimaire(niveauNom) && !isMaternelleOuPrimaire(classeNom);
 
   const [items, setItems] = useState<ExtractedItem[]>([]);
   const [detection, setDetection] = useState<ScanDetection | null>(null);
@@ -172,7 +221,6 @@ const ScanProgrammePage: React.FC = () => {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
 
   const handlePaysChange = (p: PaysCode) => {
     setPays(p);
@@ -227,38 +275,37 @@ const ScanProgrammePage: React.FC = () => {
    *  par rapport à un toggle conditionnel. Utilisé par les boutons 2-segments. */
   const setChoix = (idx: number, choix: 'neuf' | 'occasion') =>
     setItems(prev => prev.map((it, i) => i === idx && isOccasionableType(it.type)
-      ? { ...it, choix }
+      ? { ...it, choix, troc_intent: choix === 'neuf' ? false : it.troc_intent }
+      : it));
+  /** Bascule entre "occasion sans échange" et "occasion avec échange (troc)".
+   *  Force choix='occasion' si pas déjà le cas. */
+  const setTrocIntent = (idx: number, intent: boolean) =>
+    setItems(prev => prev.map((it, i) => i === idx && isOccasionableType(it.type)
+      ? { ...it, choix: 'occasion' as const, troc_intent: intent }
       : it));
   const setGamme = (idx: number, g: Gamme) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, gamme: g } : it));
-  const [confirmDupIdx, setConfirmDupIdx] = useState<number | null>(null);
-  const requestDuplicate = (idx: number) => setConfirmDupIdx(idx);
-  const performDuplicate = () => {
-    if (confirmDupIdx === null) return;
-    const idx = confirmDupIdx;
-    const src = items[idx];
-    if (!src) { setConfirmDupIdx(null); return; }
-    setItems(prev => {
-      const s = prev[idx];
-      if (!s) return prev;
-      const copy: ExtractedItem = { ...s, quantite: 1, selected: true };
-      return [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)];
-    });
-    toast({ title: t('bourse.scan.toast_duplicated'), description: src.titre });
-    setConfirmDupIdx(null);
-  };
-  // alias pour retro-compatibilité
-  const duplicateItem = (idx: number) => requestDuplicate(idx);
+  // 2026-05-24 : feature "dupliquer un article" supprimée (cohérence avec
+  // BrowseProgrammeByEtablissementPage). Redondante avec le stepper de
+  // quantité. La modale de confirmation et les fonctions associées
+  // (requestDuplicate, performDuplicate, duplicateItem, confirmDupIdx) ont
+  // été retirées — elles n'étaient plus appelées par aucun bouton.
   const allSelected = items.length > 0 && items.every(it => it.selected);
-  const selectedCount = items.filter(it => it.selected).length;
-  const occasionCount = items.filter(it => it.selected && it.choix === 'occasion').length;
+  // ✅ 2026-05-15 (Phase 2) : compte et tri ne portent QUE sur les livres
+  // affichés (cahiers/fournitures gérés sur la page dédiée).
+  const selectedCount = items.filter(it => it.selected && categorieDe(it.type) === 'livres').length;
+  const occasionCount = items.filter(it => it.selected && it.choix === 'occasion' && categorieDe(it.type) === 'livres').length;
   const totalEstime = items
     .filter(it => it.selected && it.prix && it.prix > 0)
     .reduce((sum, it) => sum + effectivePrice(it) * (it.quantite ?? 1), 0);
 
-  /** Items regroupés par rubrique dans l'ordre fixe : livres → cahiers → fournitures.
-   *  On conserve l'index original pour rester compatible avec les handlers
-   *  toggleItem(i)/adjustQuantite(i)/duplicateItem(i) etc. */
+  /** Items regroupés par rubrique. On conserve l'index original pour rester
+   *  compatible avec les handlers toggleItem(i)/adjustQuantite(i)/duplicateItem(i).
+   *  ✅ 2026-05-15 (Phase 2) : on n'affiche QUE la section livres ici. Les
+   *  cahiers/fournitures extraits par le scan sont gérés sur la page dédiée
+   *  /cahiers-accessoires (accessible après validation de la commande).
+   *  Les items non-livres restent dans `items` (state) au cas où on voudrait
+   *  les exploiter ailleurs, mais ne sont pas rendus dans ce tableau. */
   const groupedItems: { cat: CategorieAffichage; entries: { item: ExtractedItem; idx: number }[] }[] = (() => {
     const buckets: Record<CategorieAffichage, { item: ExtractedItem; idx: number }[]> = {
       livres: [], cahiers: [], fournitures: [],
@@ -266,10 +313,17 @@ const ScanProgrammePage: React.FC = () => {
     items.forEach((item, idx) => {
       buckets[categorieDe(item.type)].push({ item, idx });
     });
-    return (['livres', 'cahiers', 'fournitures'] as CategorieAffichage[])
+    return (['livres'] as CategorieAffichage[])
       .filter(cat => buckets[cat].length > 0)
       .map(cat => ({ cat, entries: buckets[cat] }));
   })();
+
+  /** Compte de cahiers/fournitures détectés par le scan mais non affichés ici.
+   *  Sert à inviter l'user à utiliser la page dédiée /cahiers-accessoires. */
+  const nbFournituresDetectees = items.filter(it => {
+    const c = categorieDe(it.type);
+    return c === 'cahiers' || c === 'fournitures';
+  }).length;
 
   /** Enrichit les items dont le prix est manquant via le matching IA backend
    *  (POST /api/bourse-livre/v2/match-programmes-by-title : pg_trgm + IA Claude
@@ -519,7 +573,10 @@ const ScanProgrammePage: React.FC = () => {
   const submit = () => submitWithFiles(files);
 
   const doAddToCart = (enfantId: string) => {
-    const selected = items.filter(it => it.selected);
+    // ✅ 2026-05-15 (Phase 2) : on ajoute UNIQUEMENT les livres au panier.
+    // Les cahiers/fournitures extraits par le scan sont à gérer sur la
+    // page dédiée /cahiers-accessoires (CTA dans Recap).
+    const selected = items.filter(it => it.selected && categorieDe(it.type) === 'livres');
     if (!selected.length) { toast({ title: t('bourse.scan.toast_select_one'), variant: 'destructive' }); return; }
     setSaving(true);
     addItems(selected.map(it => ({
@@ -532,11 +589,40 @@ const ScanProgrammePage: React.FC = () => {
       prixNeuf: effectivePrice(it) || it.prix,
       quantite: it.quantite ?? 1,
       choix: it.choix,
+      troc_intent: it.choix === 'occasion' ? !!it.troc_intent : undefined,
       gamme: isGammeableType(it.type) ? (it.gamme || 'standard') : undefined,
     })));
     setSaving(false);
-    toast({ title: t(selected.length > 1 ? 'bourse.scan.toast_added_other' : 'bourse.scan.toast_added_one', { count: selected.length }) });
-    setStep('next-action');
+
+    // ✅ 2026-05-17 — Toast intelligent + routing différencié.
+    const trocCount = selected.filter(it => it.choix === 'occasion' && it.troc_intent).length;
+    const occasionAchatCount = selected.filter(it => it.choix === 'occasion' && !it.troc_intent).length;
+    const neufCount = selected.filter(it => it.choix === 'neuf').length;
+    const parts: string[] = [];
+    if (neufCount > 0) parts.push(`${neufCount} neuf${neufCount > 1 ? 's' : ''}`);
+    if (occasionAchatCount > 0) parts.push(`${occasionAchatCount} occasion${occasionAchatCount > 1 ? 's' : ''}`);
+    if (trocCount > 0) parts.push(`${trocCount} à échanger`);
+    toast({
+      title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''}`,
+      description: parts.join(' · '),
+      duration: 2500,
+    });
+    console.log('[scan] doAddToCart →', { trocCount, occasionAchatCount, neufCount, enfantId });
+    if (trocCount > 0) {
+      // Flux bourse → /troc-prep avec mémoire pour rediriger vers /recap
+      // après publication. Titres à scanner stockés en sessionStorage.
+      try {
+        const titres = selected
+          .filter(it => it.choix === 'occasion' && it.troc_intent)
+          .map(it => it.titre);
+        sessionStorage.setItem('troc_prep_origin', 'bourse_flow');
+        sessionStorage.setItem('troc_prep_titres_a_scanner', JSON.stringify(titres));
+      } catch {}
+      setTimeout(() => navigate('/troc-prep', { replace: false }), 50);
+      return;
+    }
+    // Pas de troc : direct au panier
+    setTimeout(() => navigate('/recap', { replace: false }), 50);
   };
 
   const addToCart = () => {
@@ -561,7 +647,6 @@ const ScanProgrammePage: React.FC = () => {
       return;
     }
     const newEnfant: Enfant = addEnfant({
-      prenom: classeRetenue,
       systeme,
       niveau: niveauNom || '',
       classe: classeRetenue,
@@ -578,10 +663,9 @@ const ScanProgrammePage: React.FC = () => {
   if (step === 'pick') {
     return (
       <div className="min-h-screen bg-amber-600 flex flex-col">
-        {/* inputs cachés */}
+        {/* inputs cachés — galerie et fileRef fusionnés : un seul input
+            qui accepte images + PDF (depuis l'appareil ou la galerie). */}
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
-          onChange={e => handleFiles(e.target.files)} />
-        <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden"
           onChange={e => handleFiles(e.target.files)} />
         <input ref={fileRef} type="file" accept="image/*,.pdf" multiple className="hidden"
           onChange={e => handleFiles(e.target.files)} />
@@ -619,56 +703,21 @@ const ScanProgrammePage: React.FC = () => {
             <ChevronRight className="w-5 h-5 text-amber-400 shrink-0" />
           </button>
 
-          {/* Galerie */}
+          {/* Depuis mes fichiers — fusion ancien "galerie" + "pdf/fichier"
+              (image + PDF + Excel acceptés). Un seul bouton car l'action
+              est la même : choisir un fichier déjà sur l'appareil. */}
           <button
-            onClick={() => galleryRef.current?.click()}
+            onClick={() => fileRef.current?.click()}
             className="flex items-center gap-5 bg-blue-50 border-2 border-blue-200 rounded-2xl px-5 py-5 active:bg-blue-100 text-left"
           >
             <div className="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center shrink-0">
-              <ImageIcon className="w-7 h-7 text-white" />
+              <Upload className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.from_gallery')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.from_gallery_desc')}</p>
+              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.from_files')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.from_files_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-blue-400 shrink-0" />
-          </button>
-
-          {/* PDF / Fichier */}
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-5 bg-emerald-50 border-2 border-emerald-200 rounded-2xl px-5 py-5 active:bg-emerald-100 text-left"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center shrink-0">
-              <FileText className="w-7 h-7 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.pdf_file')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.pdf_file_desc')}</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-emerald-400 shrink-0" />
-          </button>
-
-          {/* Séparateur */}
-          <div className="flex items-center gap-3 my-1">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-[11px] text-gray-400 uppercase tracking-wide">{t('bourse.home.or')}</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
-
-          {/* Recherche par école — pas besoin de scanner */}
-          <button
-            onClick={() => navigate('/programme-ecole')}
-            className="flex items-center gap-5 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-5 active:bg-purple-100 text-left"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-purple-500 flex items-center justify-center shrink-0">
-              <Search className="w-7 h-7 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.search_school')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.search_school_desc')}</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-purple-400 shrink-0" />
           </button>
 
           <p className="text-center text-xs text-gray-400 mt-2">
@@ -686,8 +735,6 @@ const ScanProgrammePage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
-          onChange={e => handleFiles(e.target.files)} />
-        <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden"
           onChange={e => handleFiles(e.target.files)} />
         <input ref={fileRef} type="file" accept="image/*,.pdf" multiple className="hidden"
           onChange={e => handleFiles(e.target.files)} />
@@ -1030,117 +1077,55 @@ const ScanProgrammePage: React.FC = () => {
   /* ── RESULTS ── */
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Modale de confirmation de duplication */}
-      {confirmDupIdx !== null && items[confirmDupIdx] && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
-             onClick={() => setConfirmDupIdx(null)}>
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 pb-8 sm:pb-6"
-               onClick={e => e.stopPropagation()}>
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
-                <Copy className="w-5 h-5 text-amber-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-base leading-tight">{t('bourse.scan.duplicate_q')}</h3>
-                <p className="text-sm text-gray-600 mt-0.5 truncate" title={items[confirmDupIdx]?.titre}>
-                  {items[confirmDupIdx]?.titre}
-                </p>
-              </div>
-            </div>
-            <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
-              {t('bourse.scan.duplicate_help')}
-            </p>
-            <div className="flex gap-2">
-              <button onClick={() => setConfirmDupIdx(null)}
-                className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm">
-                {t('bourse.scan.cancel')}
-              </button>
-              <button onClick={performDuplicate}
-                className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold text-sm">
-                {t('bourse.scan.confirm_duplicate')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 2026-05-24 : modale de confirmation de duplication supprimée
+          (feature retirée, redondante avec le stepper de quantité). */}
 
-      <div className="bg-amber-600 px-4 pt-10 pb-5 text-white">
+      {/* Header compact — école + classe inline pour gagner de la verticalité */}
+      <div className="bg-amber-600 px-4 pt-8 pb-3 text-white">
         <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => setStep('details')} className="p-2 rounded-full bg-white/20">
-            <ArrowLeft className="w-5 h-5 text-white" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider">YUKPO</span>
-            <h1 className="font-bold text-lg leading-tight mt-0.5">
-              {t(items.length > 1 ? 'bourse.scan.results_count_other' : 'bourse.scan.results_count_one', { count: items.length })}
-            </h1>
-            <p className="text-amber-100 text-xs">{t('bourse.scan.select_to_buy')}</p>
+          <div className="flex items-center gap-2 mb-1.5">
+            <button onClick={() => setStep('details')} className="p-1.5 -ml-1 rounded-full bg-white/20">
+              <ArrowLeft className="w-4 h-4 text-white" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 text-[10px] text-amber-100">
+                <span className="font-bold bg-white/20 px-1.5 py-0.5 rounded">YUKPO</span>
+                <span>·</span>
+                <span>{t(items.length > 1 ? 'bourse.scan.results_count_other' : 'bourse.scan.results_count_one', { count: items.length })}</span>
+              </div>
+              {/* École + classe inline (truncate pour tenir sur la largeur). Cohérences
+                  signalées par un point rouge sans bandeau séparé. */}
+              {detection && (detection.etablissement || detection.classe) && (
+                <p className="font-bold text-sm leading-tight truncate mt-0.5">
+                  {detection.etablissement && (
+                    <span className="text-white">{detection.etablissement}</span>
+                  )}
+                  {detection.etablissement && detection.classe && (
+                    <span className="text-amber-200 mx-1">·</span>
+                  )}
+                  {detection.classe && (
+                    <span className={detection.classe_coherente === false ? 'text-red-200 underline decoration-red-300' : 'text-white'}>
+                      {detection.classe}
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+            <LanguageSwitcherBourse tone="white" />
           </div>
-          <LanguageSwitcherBourse tone="white" />
-        </div>
-        <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2">
-          <span className="text-white text-sm font-medium">{t(selectedCount > 1 ? 'bourse.scan.selected_other' : 'bourse.scan.selected_one', { count: selectedCount })}</span>
-          <button onClick={allSelected ? deselectAll : selectAll}
-            className="flex items-center gap-1 text-amber-100 text-xs font-semibold">
-            {allSelected ? <Minus className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
-            {allSelected ? t('bourse.scan.deselect_all') : t('bourse.scan.select_all')}
-          </button>
-        </div>
+          {/* Mini-ligne incohérence si détectée (compact) */}
+          {detection && (detection.session_coherente === false || detection.classe_coherente === false) && (
+            <p className="text-[10px] text-red-100 mt-1">
+              ⚠ {t('bourse.scan.incoherence_warning')}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="px-4 pt-4 pb-36 max-w-2xl mx-auto">
-        {/* Bandeau de vérification post-scan (métadonnées détectées par l'IA) */}
-        {detection && (detection.etablissement || detection.ville || detection.session || detection.classe) && (
-          <div className="mb-4 bg-white rounded-2xl border border-gray-200 p-4">
-            <div className="flex items-start gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-              <p className="text-sm font-semibold text-gray-900">{t('bourse.scan.verify_detected')}</p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              {detection.etablissement && (
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <p className="text-gray-500">{t('bourse.scan.school')}</p>
-                  <p className="font-semibold text-gray-800 truncate">{detection.etablissement}</p>
-                </div>
-              )}
-              {detection.ville && (
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <p className="text-gray-500">{t('bourse.scan.city')}</p>
-                  <p className="font-semibold text-gray-800 truncate">{detection.ville}</p>
-                </div>
-              )}
-              {detection.session && (
-                <div className={`rounded-lg p-2 ${detection.session_coherente === false ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
-                  <p className="text-gray-500">{t('bourse.scan.session')}</p>
-                  <p className={`font-semibold truncate ${detection.session_coherente === false ? 'text-red-700' : 'text-gray-800'}`}>
-                    {detection.session}
-                    {detection.session_coherente === false && detection.session_attendue && (
-                      <span className="block text-[10px] text-red-500 font-normal">{t('bourse.scan.session_expected', { session: detection.session_attendue })}</span>
-                    )}
-                  </p>
-                </div>
-              )}
-              {detection.classe && (
-                <div className={`rounded-lg p-2 ${detection.classe_coherente === false ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
-                  <p className="text-gray-500">{t('bourse.scan.class')}</p>
-                  <p className={`font-semibold truncate ${detection.classe_coherente === false ? 'text-red-700' : 'text-gray-800'}`}>
-                    {detection.classe}
-                    {detection.classe_coherente === false && (
-                      <span className="block text-[10px] text-red-500 font-normal">{t('bourse.scan.class_mismatch', { niveau })}</span>
-                    )}
-                  </p>
-                </div>
-              )}
-            </div>
-            {(detection.session_coherente === false || detection.classe_coherente === false) && (
-              <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
-                {t('bourse.scan.incoherence_warning')}
-              </p>
-            )}
-          </div>
-        )}
+      <div className="px-4 pt-3 pb-36 max-w-2xl mx-auto">
+        <p className="text-[11px] text-gray-500 leading-snug px-1 mb-2">
+          {t('bourse.rentree.choices_hint')}
+        </p>
 
         {/* Aucune classe enregistrée → sélection de classe inline */}
         {enfants.length === 0 && currentNiveauObj && (
@@ -1201,6 +1186,35 @@ const ScanProgrammePage: React.FC = () => {
           </div>
         )}
 
+        {/* Bandeau "X / Y sélectionnés · Tout (dé)cocher" juste avant le
+            tableau — déplacé ici depuis l'en-tête pour que le bouton soit
+            proche de l'action qu'il déclenche. */}
+        {items.length > 0 && (
+          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-3 py-2 mb-2">
+            <span className="text-xs font-semibold text-gray-700">
+              {t(selectedCount > 1 ? 'bourse.scan.selected_other' : 'bourse.scan.selected_one', { count: selectedCount })}
+            </span>
+            <button onClick={allSelected ? deselectAll : selectAll}
+              className="flex items-center gap-1 text-xs font-bold text-amber-700 active:text-amber-800 min-h-[36px] px-2">
+              {allSelected ? <Minus className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
+              {allSelected ? t('bourse.scan.deselect_all') : t('bourse.scan.select_all')}
+            </button>
+          </div>
+        )}
+
+        {/* ✅ 2026-05-13 : Total estimé sticky au-dessus du premier tableau.
+            Réactif : recalculé à chaque coche/décoche/changement de quantité. */}
+        {items.length > 0 && totalEstime > 0 && (
+          <div className="sticky top-0 z-20 mb-2 bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
+            <span className="text-[10px] text-amber-700 uppercase font-bold tracking-wide">
+              {t('bourse.scan.total_estimated')}
+            </span>
+            <span className="text-base font-bold text-amber-700 tabular-nums">
+              {formatPrix(totalEstime, pays)}
+            </span>
+          </div>
+        )}
+
         {/* Tableau regroupé par rubrique : Manuels → Cahiers → Fournitures.
             Lignes ~38-44px, toggle Neuf/Occasion à 2 segments toujours visible. */}
         {items.length > 0 && (
@@ -1223,25 +1237,58 @@ const ScanProgrammePage: React.FC = () => {
                   </div>
 
                   <div className="divide-y divide-gray-100">
-                    {entries.map(({ item, idx: i }) => (
+                    {entries.map(({ item, idx: i }) => {
+                      // ✅ Cross-flow : ce livre est-il déjà dans le pool
+                      // troc du parent ? Si oui, on bloque la case et on
+                      // affiche un badge — pas besoin de l'acheter.
+                      const trocMatch = isOccasionableType(item.type)
+                        ? findMatchInPool({
+                            titre: item.titre,
+                            matiere: item.matiere,
+                            // classeCible = la classe en cours de scan = la classe à venir de l'enfant.
+                            // Le pool est matché sur classe_souhaitee (next-class). Ex : scan d'un programme 5ème
+                            // grise les livres pour lesquels le parent a déjà déposé un 6ème en troc (6ème→5ème).
+                            classeCible: classe,
+                          })
+                        : null;
+                      const lockedByPool = !!trocMatch;
+                      return (
                       <div key={i}
-                        className={`px-2.5 py-1.5 transition-colors ${
-                          item.selected ? 'bg-amber-50/60' : 'bg-white hover:bg-gray-50'
+                        className={`px-3 py-3 transition-colors ${
+                          lockedByPool
+                            ? 'bg-cyan-50/80'
+                            : item.selected
+                            ? 'bg-amber-50/60'
+                            : 'bg-white hover:bg-gray-50'
                         }`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-3">
                           {/* Checkbox */}
-                          <button onClick={() => toggleItem(i)} className="shrink-0" aria-label={t('bourse.scan.select_aria')}>
+                          <button
+                            onClick={() => !lockedByPool && toggleItem(i)}
+                            disabled={lockedByPool}
+                            className="shrink-0"
+                            aria-label={t('bourse.scan.select_aria')}
+                            title={lockedByPool ? 'Déjà couvert par votre échange en cours' : undefined}
+                          >
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
-                              item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
+                              lockedByPool
+                                ? 'bg-cyan-500 border-cyan-500 opacity-60'
+                                : item.selected
+                                ? 'bg-amber-500 border-amber-500'
+                                : 'border-gray-300'
                             }`}>
-                              {item.selected && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                              {(item.selected || lockedByPool) && <span className="text-white text-xs font-bold leading-none">✓</span>}
                             </div>
                           </button>
 
-                          {/* Titre + meta (langue d'origine, pas de transformation) */}
+                          {/* Titre + meta (langue d'origine, pas de transformation).
+                              2026-05-24 : badges sur ligne dédiée AU-DESSUS du
+                              titre pour libérer toute la largeur. Le titre passe
+                              en 2 lignes (line-clamp-2 + break-words) → fini la
+                              troncature. Auteur/éditeur sans max-w pour laisser
+                              le flex-wrap gérer. */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              {/* Petit tag livre / workbook pour différencier dans la section "Manuels & workbooks" */}
+                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                               {(item.type as string) === 'workbook' && (
                                 <span className="text-[9px] font-bold bg-teal-100 text-teal-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
                                   {t('bourse.scan.tag_workbook')}
@@ -1252,20 +1299,20 @@ const ScanProgrammePage: React.FC = () => {
                                   {t('bourse.scan.tag_book')}
                                 </span>
                               )}
-                              <p className={`text-[13px] font-semibold leading-tight truncate ${
-                                item.selected ? 'text-amber-900' : 'text-gray-800'
-                              }`} title={item.titre} dir="auto">
-                                {item.titre}
-                              </p>
                             </div>
+                            <p className={`text-[13px] font-semibold leading-snug line-clamp-2 break-words ${
+                              item.selected ? 'text-amber-900' : 'text-gray-800'
+                            }`} title={item.titre} dir="auto">
+                              {item.titre}
+                            </p>
                             {(item.auteur || item.editeur || item.source === 'suggestion') && (
-                              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight" dir="auto">
+                              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight mt-0.5" dir="auto">
                                 {item.auteur && (
-                                  <span className="truncate max-w-[110px]" title={item.auteur}>{item.auteur}</span>
+                                  <span title={item.auteur}>{item.auteur}</span>
                                 )}
                                 {item.auteur && item.editeur && <span className="text-gray-300">·</span>}
                                 {item.editeur && (
-                                  <span className="truncate max-w-[110px] text-purple-700" title={t('bourse.scan.editor_title', { name: item.editeur })}>
+                                  <span className="text-purple-700" title={t('bourse.scan.editor_title', { name: item.editeur })}>
                                     {item.editeur}
                                   </span>
                                 )}
@@ -1292,12 +1339,23 @@ const ScanProgrammePage: React.FC = () => {
                               aria-label={t('bourse.scan.increase')}>+</button>
                           </div>
 
-                          {/* Prix unitaire — collapsé si inconnu pour libérer la place au titre */}
-                          {(effectivePrice(item) || 0) > 0 && (
-                            <span className="text-right text-[12px] font-bold text-amber-700 tabular-nums shrink-0">
-                              {formatPrix(effectivePrice(item) || undefined, pays)}
-                            </span>
-                          )}
+                          {/* Prix unitaire dynamique selon Neuf/Occasion/Échange */}
+                          {(() => {
+                            const pd = priceTextForItem(item);
+                            if (pd.text === '—') return null;
+                            return (
+                              <div className="flex flex-col items-end shrink-0 leading-tight">
+                                <span className="text-right text-[11px] font-bold text-amber-700 tabular-nums whitespace-nowrap">
+                                  {pd.text}
+                                </span>
+                                {pd.subtext && (
+                                  <span className="text-[8px] text-gray-500 italic leading-none mt-0.5">
+                                    {pd.subtext}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Dupliquer : masqué pour libérer la largeur du titre.
                               Garde la fonction (long-press / menu contextuel à venir si besoin). */}
@@ -1306,7 +1364,7 @@ const ScanProgrammePage: React.FC = () => {
                         {/* Toggle Neuf ⇄ Occasion (livres) ou Gamme (fournitures) — sur ligne 2.
                             Les 2 segments toujours visibles → affordance claire */}
                         {(isOccasionableType(item.type) || isGammeableType(item.type)) && (
-                          <div className="flex items-center gap-2 mt-1 ml-7">
+                          <div className="flex items-center gap-3 mt-2 ml-7">
                             {isOccasionableType(item.type) && (
                               <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
                                 <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">{t('bourse.scan.state')}</span>
@@ -1319,16 +1377,39 @@ const ScanProgrammePage: React.FC = () => {
                                   }`}
                                   title={t('bourse.scan.buy_new')}
                                 >{t('bourse.scan.new')}</button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setChoix(i, 'occasion'); }}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                    item.choix === 'occasion'
-                                      ? 'bg-orange-500 text-white shadow-sm'
-                                      : 'text-gray-500 hover:bg-gray-200'
-                                  }`}
-                                  title={t('bourse.scan.buy_used')}
-                                >{t('bourse.scan.used')}</button>
+                                {/* ✅ FIX 2026-05-19 (bug G) — Occasion/Échange masqués pour
+                                    maternelle/primaire (verrou métier + backend 400). */}
+                                {isOccasionableNiveau && (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setTrocIntent(i, false); }}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                        item.choix === 'occasion' && !item.troc_intent
+                                          ? 'bg-orange-500 text-white shadow-sm'
+                                          : 'text-gray-500 hover:bg-gray-200'
+                                      }`}
+                                      title={t('bourse.scan.buy_used')}
+                                    >{t('bourse.scan.used')}</button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setTrocIntent(i, true); }}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                        item.choix === 'occasion' && item.troc_intent
+                                          ? 'bg-cyan-600 text-white shadow-sm'
+                                          : 'text-gray-500 hover:bg-gray-200'
+                                      }`}
+                                      title={t('bourse.scan.troc_title')}
+                                    >{t('bourse.scan.troc_short')}</button>
+                                  </>
+                                )}
                               </div>
+                            )}
+                            {/* Mini-descriptif contextuel selon le mode actif */}
+                            {isOccasionableType(item.type) && item.selected && (
+                              <p className="text-[10px] text-gray-500 leading-snug flex-1 min-w-0">
+                                {item.choix === 'neuf' && t('bourse.scan.help_neuf')}
+                                {item.choix === 'occasion' && !item.troc_intent && t('bourse.scan.help_occasion')}
+                                {item.choix === 'occasion' && item.troc_intent && t('bourse.scan.help_troc')}
+                              </p>
                             )}
                             {isGammeableType(item.type) && (
                               <div className="inline-flex items-center gap-1">
@@ -1344,8 +1425,16 @@ const ScanProgrammePage: React.FC = () => {
                             )}
                           </div>
                         )}
+                        {/* Badge cross-flow : déjà dans le pool troc */}
+                        {lockedByPool && trocMatch && (
+                          <p className="text-[10px] text-cyan-800 bg-cyan-100 px-2 py-1 rounded mt-1 ml-7 leading-snug">
+                            📦 Déjà dans votre échange en cours ({trocMatch.troc_status}).
+                            {trocMatch.valeur ? ` Crédit estimé : ${Math.round(Math.max(0, trocMatch.valeur * 0.75 - 40)).toLocaleString('fr-FR')} XAF.` : ''}
+                          </p>
+                        )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
               );
