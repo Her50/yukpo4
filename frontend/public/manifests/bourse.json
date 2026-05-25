@@ -1,0 +1,41 @@
+{
+  "name": "Yukpo Bourse du Livre",
+  "short_name": "Bourse Livres",
+  "description": "Scannez la liste de votre enfant, trouvez et échangez ses livres scolaires",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#d97706",
+  "scope": "/",
+  "icons": [
+    { "src": "/icons-bourse/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons-bourse/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons-bourse/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons-bourse/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "categories": ["education", "books", "shopping"],
+  "shortcuts": [
+    {
+      "name": "Scanner une liste",
+      "short_name": "Scanner",
+      "description": "Scanner la liste scolaire de mon enfant",
+      "url": "/scan-programme",
+      "icons": [{ "src": "/icons-bourse/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Programme par école",
+      "short_name": "Par école",
+      "description": "Consulter le programme officiel d'une école",
+      "url": "/programme-ecole",
+      "icons": [{ "src": "/icons-bourse/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Vendre mes livres",
+      "short_name": "Vendre",
+      "description": "Mettre en vente mes livres d'occasion",
+      "url": "/vendre?mode=vente",
+      "icons": [{ "src": "/icons-bourse/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

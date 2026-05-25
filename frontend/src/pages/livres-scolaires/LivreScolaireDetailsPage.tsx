@@ -32,8 +32,10 @@ const LivreScolaireDetailsPage: React.FC = () => {
             const response = await apiGet(`/api/bourse-livre/${livreId}`);
             const data = await response.json();
 
-            if (data.success && data.data?.livre) {
-                setLivre(data.data.livre);
+            // Backend retourne { success: true, livre: {...} } à plat.
+            const livreData = data.livre || data.data?.livre;
+            if (data.success && livreData) {
+                setLivre(livreData);
             } else {
                 toast({
                     title: 'Erreur',

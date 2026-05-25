@@ -11,6 +11,10 @@ import './utils/suppressWarnings';
 // CORRECTION CRITIQUE: Importer la configuration axios avant tout
 import './config/axios';
 
+// ✅ 2026-05-15 — Capture le code parrain (?ref=XXX) dès le boot avant rendu.
+import { captureRefFromUrl } from './utils/referralStorage';
+captureRefFromUrl();
+
 // Log pour confirmer que la nouvelle version se charge
 console.log('[main] 🚀 Yukpo v2.1.4 - FORCE CACHE BUST ' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
 console.log('[main] 🔧 API Base URL configuré:', import.meta.env.VITE_API_BASE_URL || '(URLs relatives)');

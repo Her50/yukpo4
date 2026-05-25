@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light only" />
+    <meta name="theme-color" content="#d97706" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <script>
+      // ✅ 2026-05-16 — Kill-switch INLINE (avant tout bundle).
+      // Tourne en sync au tout début du parse HTML, AVANT le main-bourse.tsx.
+      // Si la version a changé : unregister SW + clear caches + reload AVANT
+      // que la moindre ligne du bundle React ne s'exécute. Garantit qu'un
+      // bundle obsolète ne corrompe jamais le state localStorage.
+      (function() {
+        var V = 'v24-2026-05-22-07h';
+        try {
+          var last = localStorage.getItem('bourse_app_version');
+          if (last === V) return;
+          console.log('[Kill-switch] Migration ' + last + ' -> ' + V);
+          // Bloque le chargement de tout module en synchrone : remplace le
+          // contenu de la page par un loader le temps de la purge.
+          document.documentElement.innerHTML = '<body style="background:#fff;font-family:sans-serif;padding:20px;color:#333"><p>Mise a jour en cours...</p></body>';
+          var done = function() {
+            localStorage.setItem('bourse_app_version', V);
+            location.reload();
+          };
+          var todo = 2;
+          var tick = function() { if (--todo <= 0) done(); };
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(rs) {
+              return Promise.all(rs.map(function(r) { return r.unregister(); }));
+            }).catch(function(){}).finally(tick);
+          } else { tick(); }
+          if ('caches' in window) {
+            caches.keys().then(function(ks) {
+              return Promise.all(ks.map(function(k) { return caches.delete(k); }));
+            }).catch(function(){}).finally(tick);
+          } else { tick(); }
+          // Safety : si une promesse traine, on force le reload sous 3s.
+          setTimeout(done, 3000);
+          // Bloque l'execution du module pendant la purge.
+          throw new Error('PURGE_IN_PROGRESS');
+        } catch (e) {
+          if (e && e.message === 'PURGE_IN_PROGRESS') throw e;
+          console.warn('[Kill-switch] erreur silencieuse', e);
+        }
+      })();
+    </script>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Bourse Livres" />
+    <style>html,body{background:#fff!important;color:#111!important}</style>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons-bourse/icon-192.png" />
+    <link rel="icon" type="image/png" href="/icons-bourse/icon-192.png" />
+    <title>Yukpo Bourse du Livre — Achetez, échangez, vendez</title>
+    <meta name="description" content="Scannez la liste de votre enfant, trouvez et échangez ses livres scolaires en quelques clics." />
+
+    <!-- ✅ 2026-05-16 — SEO + Open Graph (partages WhatsApp/Facebook/LinkedIn) -->
+    <link rel="canonical" href="https://bourse.yukpomnang.com/" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://bourse.yukpomnang.com/" />
+    <meta property="og:site_name" content="Yukpo Bourse du Livre" />
+    <meta property="og:title" content="Yukpo Bourse du Livre — Achetez, échangez, vendez" />
+    <meta property="og:description" content="Scannez la liste scolaire de votre enfant, trouvez et échangez ses livres en quelques clics. Économisez jusqu'à 70 % sur la rentrée." />
+    <meta property="og:image" content="https://bourse.yukpomnang.com/banniere.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Yukpo Bourse du Livre — Achetez, échangez, vendez" />
+    <meta name="twitter:description" content="Scannez la liste scolaire de votre enfant, trouvez et échangez ses livres en quelques clics." />
+    <meta name="twitter:image" content="https://bourse.yukpomnang.com/banniere.png" />
+  </head>
+  <body style="background:#fff;margin:0;padding:0">
+    <div id="diag" style="position:fixed;top:0;left:0;right:0;background:#fff;z-index:99999;padding:12px;font-family:monospace;font-size:12px;display:none"></div>
+    <div id="root" style="background:#fff"><p style="padding:20px;font-family:sans-serif;color:#333;font-size:16px">⏳ Chargement Bourse du Livre...</p></div>
+    <script>
+      var diag = document.getElementById('diag');
+      function showErr(msg) {
+        diag.style.display = 'block';
+        diag.style.background = '#fff';
+        diag.style.color = '#c00';
+        diag.style.border = '3px solid red';
+        diag.innerHTML = '<b>ERREUR:</b><br>' + String(msg).replace(/</g,'&lt;').slice(0,800);
+        document.getElementById('root').innerHTML = '';
+      }
+      window.onerror = function(msg, src, line, col, err) {
+        showErr(msg + '\n' + src + ':' + line + '\n' + (err && err.stack ? err.stack : ''));
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        showErr('Promise rejetée: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '\n' + (e.reason && e.reason.stack ? e.reason.stack : ''));
+      });
+    </script>
+    <script type="module" src="/src/main-bourse.tsx"></script>
+  </body>
+</html>

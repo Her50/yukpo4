@@ -13,26 +13,28 @@ const VITE_API_URL = import.meta.env.VITE_API_BASE_URL;
 const VITE_WS_URL = import.meta.env.VITE_WS_BASE_URL;
 const VITE_ENV = import.meta.env.VITE_ENVIRONMENT || 'production';
 
-// ✅ Logique de détection intelligente:
-// - En prod Netlify/Vercel: utilise proxy (pas de CORS)
-// - En dev/prod ailleurs: utilise le backend GCP Cloud Run
-// ✅ 2026-02-14: Migration vers GCP Cloud Run
-// Backend GCP: https://yukpo-backend-376093909298.europe-west1.run.app
-// ⚠️ CORRIGÉ 2026-02-20: URL mise à jour vers l'URL réelle qui fonctionne
-// ⚠️ AWS (ancien backend, commenté pour utilisation future):
-// - https://api.yukpomnang.com (Cloudflare → AWS ECS)
-// - https://yukpomnang-backend-alb-2043939972.us-east-1.elb.amazonaws.com (AWS ALB direct)
+// Détection environnement :
+// - En prod Netlify/Vercel (yukpomnang.com et sous-domaines) : proxy local "" → laisse
+//   netlify.toml ou vercel.json gérer le rewrite (évite CORS browser)
+// - En dev/prod ailleurs : tape directement le backend (CORS côté backend)
+//
+// Backends disponibles :
+// ✅ ACTIF — 2026-05-16 : Cloudflare proxy → Fly (api.yukpomnang.com)
+//    Cloudflare : WAF, DDoS L7, SSL Strict, rate-limit /api/auth/* (3 req/10s/IP),
+//    hides Fly origin IP. Pour rebasculer : commenter ces lignes, décommenter Fly direct.
+// 💤 Fly direct — fallback sans CF (yukpo-fly-backend.fly.dev)
+// 💤 PRINCIPAL — GCP Cloud Run (yukpo-backend-376093909298.europe-west1.run.app)
 const isNetlify = typeof window !== 'undefined' && window.location.hostname.includes('netlify.app');
 const isVercel = typeof window !== 'undefined' && (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('yukpomnang.com'));
 
-// ✅ GCP Cloud Run (nouveau backend)
-// ⚠️ CORRIGÉ 2026-02-20: URL mise à jour vers l'URL réelle qui fonctionne
-const GCP_BACKEND_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app';
-// ⚠️ AWS (ancien backend, commenté pour utilisation future)
-// const AWS_BACKEND_URL = 'https://api.yukpomnang.com';
+const BACKEND_URL = 'https://api.yukpomnang.com';
+// const BACKEND_URL = 'https://yukpo-fly-backend.fly.dev';  // 💤 Fly direct (sans CF)
+// const BACKEND_URL = 'https://yukpo-backend-376093909298.europe-west1.run.app';  // 💤 GCP (principal)
 
-export const API_BASE_URL = VITE_API_URL || ((isNetlify || isVercel) ? '' : GCP_BACKEND_URL);
-export const WS_BASE_URL = VITE_WS_URL || `wss://yukpo-backend-376093909298.europe-west1.run.app`;
+export const API_BASE_URL = VITE_API_URL || ((isNetlify || isVercel) ? '' : BACKEND_URL);
+export const WS_BASE_URL = VITE_WS_URL || 'wss://api.yukpomnang.com';
+// export const WS_BASE_URL = VITE_WS_URL || 'wss://yukpo-fly-backend.fly.dev';  // 💤 Fly direct
+// export const WS_BASE_URL = VITE_WS_URL || 'wss://yukpo-backend-376093909298.europe-west1.run.app';  // 💤 GCP
 
 // Log pour vérifier la configuration chargée (seulement en développement)
 if (import.meta.env.DEV) {

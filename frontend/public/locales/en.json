@@ -273,5 +273,24 @@
         "cfa": "CFA"
       }
     }
+  },
+  "yukpoLib": {
+    "ops": {
+      "title": "Yukpo Bookstore — Operations",
+      "subtitle": "Wholesale rupture cascade + nearby bookstore release + courier assignment",
+      "tabRuptures": "Ruptures",
+      "tabCoursiers": "Assign courier"
+    }
+  },
+  "bourseCommande": {
+    "timelineTitle": "Order tracking",
+    "avancement": "Progress",
+    "livresNeufs": "New books",
+    "livresOccasion": "Used books",
+    "refuser": "Refuse",
+    "ruptureBanner": "Some items are in wholesale rupture. Yukpo Bookstore released them to nearby bookstores (48h delay)."
+  },
+  "bookCourierFlow": {
+    "title": "My Book Deliveries"
   }
 }

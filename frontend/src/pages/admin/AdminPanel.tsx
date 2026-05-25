@@ -9,6 +9,7 @@ import ApiKeyManager from "@/components/admin/ApiKeyManager";
 import FixFrontendButton from "@/components/admin/FixFrontendButton";
 import GlobalPromoManager from '@/components/admin/GlobalPromoManager';
 import NotificationLog from "@/components/admin/NotificationLog";
+import PayoutsPanel from "@/components/admin/PayoutsPanel"; // ✅ 2026-05-15 PR #4
 import QuotaDashboard from "@/components/admin/QuotaDashboard";
 import ScheduleManager from "@/components/admin/ScheduleManager";
 import SchedulerStatusCard from "@/components/SchedulerStatusCard";
@@ -81,6 +82,18 @@ const AdminPanel: React.FC = () => {
           <a href="/admin/blocks-status">🧠 Blocs IA</a>
           <a href="/admin/translate/test">🌍 Tester traduction multilingue</a>
           <button onClick={handleExportTranslations}>📤 Générer PDF des traductions</button>
+          {/* ✅ 2026-05-16 — Accès direct admin à Yukpo Librairie pour les tests.
+              Le backend (super_librairie_dashboard) accepte explicitement les
+              rôles 'admin' et 'super_admin' et prend le 1er super-librairie
+              actif en base — pas besoin d'avoir un compte libraire dédié. */}
+          <a
+            href="https://bourse-du-livre-scolaire.yukpomnang.com/librairie"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-indigo-700 hover:text-indigo-900 font-semibold"
+          >
+            🏪 Espace Yukpo Librairie (test admin) ↗
+          </a>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -98,6 +111,13 @@ const AdminPanel: React.FC = () => {
 
         <div className="mt-10">
           <GlobalPromoManager />
+        </div>
+
+        {/* ✅ 2026-05-15 PR #4 — Payouts cash : badge "à traiter" si demandes
+            pending → l'admin voit immédiatement la file d'attente. Inclut
+            treasury summary (revenu net Yukpo vs dette wallet clients). */}
+        <div className="mt-10">
+          <PayoutsPanel />
         </div>
       </ResponsiveContainer>
     </RequireAccess>

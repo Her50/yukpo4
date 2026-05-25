@@ -6,6 +6,7 @@ import { DeliveryProvider } from '@/context/DeliveryContext';
 import { ShoppingProvider } from '@/context/ShoppingContext';
 import { Toaster } from 'react-hot-toast';
 import RequireAuth from './components/auth/RequireAuth';
+import RequireCourierValidated from './components/auth/RequireCourierValidated';
 import GPSManager from './components/GPSManager';
 import { GlobalIAStatsProvider } from './components/intelligence/GlobalIAStats';
 import { IntelligentLanguageProvider } from './components/IntelligentLanguageProvider';
@@ -15,6 +16,7 @@ import './config/axios';
 import { AuthProvider } from './contexts/AuthContext';
 import KYCVerificationPage from './pages/admin/KYCVerificationPage';
 import AdminUserRolesPage from './pages/admin/AdminUserRolesPage';
+import AdminCommandesPage from './pages/admin/AdminCommandesPage';
 import CourierAdminPage from './pages/admin/CourierAdminPage';
 import { ROUTES } from './routes/AppRoutesRegistry';
 // Pages essentielles
@@ -31,6 +33,8 @@ import CreationService from "@/pages/CreationService";
 import CreationSmartService from '@/pages/CreationSmartService';
 import CourierDashboardPage from '@/pages/delivery/CourierDashboardPage';
 import CourierMyDeliveriesPage from '@/pages/delivery/CourierMyDeliveriesPage';
+import BookDeliveryFlowPage from '@/pages/delivery/BookDeliveryFlowPage';
+import SuperLibrairieOperationsPage from '@/pages/super-librairie/SuperLibrairieOperationsPage';
 import CourierRegistrationPage from '@/pages/delivery/CourierRegistrationPage';
 import DeliveryPartnersAdminPage from '@/pages/delivery/DeliveryPartnersAdminPage';
 import DeliveryHomePage from '@/pages/delivery/DeliveryHomePage';
@@ -287,9 +291,33 @@ function App() {
                             <CourierRegistrationPage />
                           </RequireAuth>
                         } />
+                        {/* ✅ FIX 2026-05-19 — RequireCourierValidated vérifie
+                            via GET /courier/me que l'utilisateur a bien un profil
+                            `couriers.status = 'active'`. Sinon redirige vers
+                            /become-courier. Empêche un user lambda d'accéder à
+                            l'espace coursier (et de voir des paquets vides). */}
                         <Route path="/courier/my-deliveries" element={
                           <RequireAuth>
-                            <CourierMyDeliveriesPage />
+                            <RequireCourierValidated>
+                              <CourierMyDeliveriesPage />
+                            </RequireCourierValidated>
+                          </RequireAuth>
+                        } />
+                        <Route path="/courier/bourse-livre" element={
+                          <RequireAuth>
+                            <RequireCourierValidated>
+                              <BookDeliveryFlowPage />
+                            </RequireCourierValidated>
+                          </RequireAuth>
+                        } />
+                        {/* ✅ 2026-05-19 MVP2 — Dashboard Yukpo Librairie : rupture
+                            grossiste batch (marquer + libérer aux libraires_proches)
+                            + assignation manuelle coursier sur paquets `constitue`.
+                            L'accès est implicitement vérifié côté backend (super-lib
+                            ou admin) ; le RequireAuth assure juste qu'on est connecté. */}
+                        <Route path="/super-librairie/operations" element={
+                          <RequireAuth>
+                            <SuperLibrairieOperationsPage />
                           </RequireAuth>
                         } />
                         <Route path={ROUTES.DELIVERY_HOME} element={
@@ -596,6 +624,7 @@ function App() {
                             <AdminUserRolesPage />
                           </RequireAdminPage>
                         } />
+                        <Route path="/admin/commandes" element={<AdminCommandesPage />} />
                         <Route path="/admin/courier-applications" element={
                           <RequireAdminPage>
                             <CourierAdminPage />

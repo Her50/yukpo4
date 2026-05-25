@@ -9,6 +9,7 @@ import { apiGet } from '../../services/apiService';
 interface EcoleSummary {
   id: number;
   nom_etablissement: string;
+  nom_abrege: string | null;
   slug: string | null;
   ville: string | null;
   quartier: string | null;
@@ -21,8 +22,10 @@ const EcoleSearchPage: React.FC = () => {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<EcoleSummary[]>([]);
+  const [expansions, setExpansions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fastDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const smartDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -30,27 +33,50 @@ const EcoleSearchPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) {
+    // Stratégie en 2 vagues :
+    //   - vague 1 (300 ms) : pg_trgm pur — réponse quasi instantanée
+    //   - vague 2 (1100 ms) : pg_trgm + expansion LLM (sigles, variantes ortho)
+    // La 2e vague remplace les résultats si elle ramène autre chose.
+    if (fastDebounce.current) clearTimeout(fastDebounce.current);
+    if (smartDebounce.current) clearTimeout(smartDebounce.current);
+    const q = query.trim();
+    if (q.length < 2) {
       setResults([]);
+      setExpansions([]);
       return;
     }
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
+
+    let cancelled = false;
+    const fetchSearch = async (smart: boolean) => {
       try {
-        const res = await apiGet(
-          `/api/v2/etablissements/search?q=${encodeURIComponent(query.trim())}&limit=12`
-        );
+        const url = `/api/v2/etablissements/search?q=${encodeURIComponent(q)}&limit=12${smart ? '&smart=1' : ''}`;
+        const res = await apiGet(url);
         const data = await res.json().catch(() => ({}));
-        setResults(Array.isArray(data?.results) ? data.results : []);
+        if (!cancelled) {
+          setResults(Array.isArray(data?.results) ? data.results : []);
+          if (smart) {
+            setExpansions(Array.isArray(data?.expansions) ? data.expansions : []);
+          }
+        }
       } catch {
-        setResults([]);
+        if (!cancelled && !smart) setResults([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    };
+
+    fastDebounce.current = setTimeout(() => {
+      setLoading(true);
+      fetchSearch(false);
     }, 300);
+    smartDebounce.current = setTimeout(() => {
+      fetchSearch(true);
+    }, 1100);
+
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      cancelled = true;
+      if (fastDebounce.current) clearTimeout(fastDebounce.current);
+      if (smartDebounce.current) clearTimeout(smartDebounce.current);
     };
   }, [query]);
 
@@ -90,6 +116,23 @@ const EcoleSearchPage: React.FC = () => {
               </button>
             )}
           </div>
+          {/* Suggestions IA — variantes orthographiques / sigles détectés */}
+          {expansions.length > 0 && (
+            <div className="flex items-start gap-1.5 mt-2 flex-wrap">
+              <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide pt-1">
+                {t('bourse.search.also_tried')}
+              </span>
+              {expansions.slice(0, 4).map((e, i) => (
+                <button
+                  key={i}
+                  onClick={() => setQuery(e)}
+                  className="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-full px-2 py-0.5 border border-amber-200"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -107,15 +150,39 @@ const EcoleSearchPage: React.FC = () => {
             <p className="text-xs text-gray-400 mb-5">
               {t('bourse.search.not_partner_yet')}
             </p>
+            {/* ✅ 2026-05-14 : Option principale = programme national (gratuit,
+                couvre toutes les écoles publiques du pays). reset=1 force
+                Browse à oublier la classe seedée pour que l'user choisisse
+                explicitement sa classe via l'autocomplete (UX cohérent). */}
+            <button
+              onClick={() => navigate('/programme-ecole?reset=1')}
+              className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold rounded-full shadow-sm mb-3"
+            >
+              <span>🇨🇲</span>
+              {t('bourse.search.national_programme_cta', { defaultValue: 'Continuer avec le programme national' })}
+            </button>
+            <p className="text-[11px] text-gray-500 mb-4 max-w-xs mx-auto leading-snug">
+              {t('bourse.search.national_programme_hint', { defaultValue: 'La liste officielle du Ministère, valable dans toutes les écoles publiques.' })}
+            </p>
+            <div className="flex items-center justify-center gap-2 my-3">
+              <span className="h-px bg-gray-200 flex-1 max-w-[60px]" />
+              <span className="text-[10px] text-gray-400 uppercase">{t('bourse.search.or', { defaultValue: 'ou' })}</span>
+              <span className="h-px bg-gray-200 flex-1 max-w-[60px]" />
+            </div>
             <button
               onClick={() => navigate('/scan-programme')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-full"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 text-xs font-semibold rounded-full"
             >
-              <Camera className="w-4 h-4" />
+              <Camera className="w-3.5 h-3.5" />
               {t('bourse.search.scan_fallback')}
             </button>
           </div>
         )}
+
+        {/* ✅ 2026-05-14 : Plus de bandeau persistant. Le CTA programme national
+            n'apparaît QUE quand la recherche est infructueuse — c'est le
+            moment où l'user a vraiment besoin de cette alternative. Affichage
+            contextuel = UX moins bruyante. */}
 
         {results.length > 0 && (
           <div className="space-y-2">
@@ -138,6 +205,11 @@ const EcoleSearchPage: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">
                     {ecole.nom_etablissement}
+                    {ecole.nom_abrege && (
+                      <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 rounded-full px-1.5 py-0.5 align-middle">
+                        {ecole.nom_abrege}
+                      </span>
+                    )}
                   </p>
                   {(ecole.quartier || ecole.ville) && (
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">

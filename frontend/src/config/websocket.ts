@@ -1,6 +1,33 @@
 // ✅ CORRIGÉ: Utilise la configuration centralisée
 import { WS_BASE_URL, WS_ENDPOINTS } from './api.config';
 
+/**
+ * ✅ 2026-05-16 — Auth WebSocket : injecte le JWT (depuis localStorage) en
+ * query string `?token=...`. Les navigateurs n'envoient pas le header
+ * `Authorization` lors d'un handshake WebSocket — la query string est la
+ * convention universelle. Le backend la valide via `ws_auth.rs`.
+ *
+ * Idempotent : si l'URL contient déjà `?token=` ou `&token=`, on ne ré-ajoute
+ * pas. Si le user n'est pas connecté (pas de jwt en localStorage), on
+ * retourne l'URL telle quelle — le backend en mode strict refusera l'upgrade.
+ */
+export function withWsToken(url: string | null | undefined): string | null {
+  if (!url) return null;
+  // Idempotence
+  if (/[?&]token=/.test(url)) return url;
+  // Tente plusieurs clés localStorage (selon les pages, c'est 'jwt' ou 'token')
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem('jwt') || localStorage.getItem('token');
+  } catch {
+    // SSR / Private mode → pas de localStorage
+    token = null;
+  }
+  if (!token) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}token=${encodeURIComponent(token)}`;
+}
+
 // Configuration WebSocket - ACTIVÉE ET OPTIMISÉE
 export const WEBSOCKET_CONFIG = {
   // WebSockets activés avec correction HTTPS
@@ -69,17 +96,21 @@ export const WEBSOCKET_CONFIG = {
 // Fonction utilitaire pour vérifier si les WebSockets sont activés
 export const isWebSocketEnabled = () => WEBSOCKET_CONFIG.enabled;
 
-// Fonction utilitaire pour obtenir l'URL d'un WebSocket
+// Fonction utilitaire pour obtenir l'URL d'un WebSocket.
+// ✅ 2026-05-16 — Injecte automatiquement `?token=<jwt>` via withWsToken.
 export const getWebSocketUrl = (type: keyof typeof WEBSOCKET_CONFIG.urls, ...params: (string | number)[]) => {
   if (!isWebSocketEnabled()) {
     return null;
   }
 
   const urlFn = WEBSOCKET_CONFIG.urls[type];
+  let raw: string | null = null;
   if (typeof urlFn === 'function') {
-    return (urlFn as Function)(...params);
+    raw = (urlFn as Function)(...params);
+  } else {
+    raw = (urlFn as unknown as string) ?? null;
   }
-  return urlFn;
+  return withWsToken(raw);
 };
 
 // Types pour les messages WebSocket

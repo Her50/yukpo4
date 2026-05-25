@@ -277,11 +277,60 @@
     "headerSubtitle": "{{name}}",
     "headerSubtitleDefault": "Pharmacist space",
     "tab": {
+      "alerts": "Alerts",
       "orders": "Orders",
+      "archives": "Archives",
+      "pharmacovigilance": "Reports",
+      "duty": "On-duty",
       "products": "Products",
       "stats": "Stats",
       "qr": "Scanner",
       "finances": "Finances"
+    },
+    "duty": {
+      "title": "On-duty network",
+      "notice": "Active pharmacies within 25 km. Contact a peer to swap duty or request backup for a missing drug.",
+      "empty": "No nearby pharmacies detected. Check that your profile has GPS coordinates.",
+      "onDutyNow": "On duty now ({{count}})",
+      "others": "Other pharmacies ({{count}})",
+      "badge": { "onDuty": "On duty" },
+      "swapMessage": "Hi {{name}}, would you be available to swap a duty shift?",
+      "helpMessage": "Hi {{name}}, a patient is looking for a drug I don't have. Could you help?"
+    },
+    "alerts": {
+      "allergyWarning": "Declared allergy / contraindication",
+      "allergyDisclaimer": "Patient declaration to verify before dispensing."
+    },
+    "surplus": {
+      "title": "Surplus to share",
+      "notice": "Offer a near-expiry lot to a nearby colleague — or claim a drug you're missing from a colleague. Transfer is settled off-app.",
+      "propose": "Offer",
+      "myOffers": "My offers",
+      "nearbyOffers": "Near me",
+      "emptyNearby": "No surplus available within 50 km.",
+      "newTitle": "Offer a surplus",
+      "medName": "Drug",
+      "dosage": "Dosage",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "batch": "Batch #",
+      "expiry": "Expiry",
+      "priceXaf": "Price XAF/u",
+      "note": "Note",
+      "notePlaceholder": "E.g. overstock, -20% off official price",
+      "expiresIn": "Expires in {{days}}d",
+      "claim": "Claim",
+      "claimed": "Claimed — contact the source pharmacy",
+      "claimedBy": "Claimed by {{name}}",
+      "created": "Offer published",
+      "confirmDelete": "Remove this offer?",
+      "errMissing": "Drug, quantity and expiry are required.",
+      "legalDisclaimer": "Exchange between MINSANTE-licensed pharmacies. Verify batch integrity and transport conditions."
+    },
+    "prepare": {
+      "cta": "Prepare for pickup",
+      "waitingPickup": "Prepared · waiting for pickup",
+      "pickedUp": "Picked up by patient"
     },
     "orders": {
       "filter": {
@@ -464,5 +513,140 @@
     "addressRequiredDesc": "Provide the delivery address.",
     "timeRequired": "Time required",
     "timeRequiredDesc": "Choose your arrival time."
+  },
+  "pharmacie": {
+    "interactions": {
+      "checking": "Yukpo is checking interactions with your health record…",
+      "contextLabel": "{{count}} recent medication in memory",
+      "contextLabel_plural": "{{count}} recent medications in memory",
+      "disclaimer": "Informational only. Final decision belongs to your doctor or pharmacist.",
+      "severity": {
+        "mild": "Mild interaction",
+        "moderate": "Moderate interaction",
+        "major": "Major interaction",
+        "contraindicated": "Contraindication"
+      }
+    },
+    "adminRupture": {
+      "title": "National stockout radar",
+      "subtitle": "Drugs most frequently flagged unavailable by pharmacists.",
+      "back": "Back",
+      "forbidden": "Access restricted to Yukpo administrators.",
+      "filters": "Filters",
+      "period": { "1d": "24h", "7d": "7d", "30d": "30d", "90d": "90d" },
+      "cityPlaceholder": "City (optional)",
+      "thresholdHelp": "Minimum unavailability threshold",
+      "empty": "No stockout detected for this period. Good news!",
+      "unavailableCount": "{{count}} unavailable",
+      "unavailableCount_plural": "{{count}} unavailable",
+      "pharmaciesAffected": "{{count}} pharmacy affected",
+      "pharmaciesAffected_plural": "{{count}} pharmacies affected",
+      "footer": "Data sourced from pharmacist responses to Yukpo RFQ workflow."
+    },
+    "pharmacovigilance": {
+      "title": "Pharmacovigilance",
+      "cta": "New report",
+      "anonymousNotice": "Patient data is anonymized (age + gender only).",
+      "listEmpty": "No reports yet."
+    },
+    "reminders": {
+      "title": "My intake reminders",
+      "subtitle": "Automatic push notification at chosen times.",
+      "loginRequired": "Sign in to manage your reminders.",
+      "add": "Add a reminder",
+      "empty": "No reminder set. Add one to never miss a dose.",
+      "active": "{{count}} active reminder",
+      "active_plural": "{{count}} active reminders",
+      "ended": "{{count}} ended",
+      "ended_plural": "{{count}} ended",
+      "until": "until {{date}}",
+      "newTitle": "New reminder",
+      "medName": "Medication *",
+      "posology": "Posology",
+      "presets": "Quick presets",
+      "times": "Intake times *",
+      "addTime": "Add a time",
+      "endAt": "End date",
+      "optional": "optional",
+      "create": "Create reminder",
+      "created": "Reminder created",
+      "deleted": "Reminder deleted",
+      "confirmDelete": "Delete this reminder?",
+      "errMissing": "Name and at least one time required.",
+      "disclaimer": "Yukpo reminders fire to the minute as long as the app has been opened at least once and notifications are allowed on your device.",
+      "shortTitle": "My reminders",
+      "shortSubtitle": "Medication intake",
+      "refill": {
+        "label": "Auto refill",
+        "activeBadge": "every {{days}}d",
+        "disabledBadge": "off",
+        "intervalLabel": "Every",
+        "days": "days",
+        "nextIn": "Next RFQ in {{days}}d",
+        "dueNow": "Next RFQ imminent",
+        "enabled": "Automatic refill enabled",
+        "disabled": "Automatic refill disabled"
+      }
+    },
+    "allergies": {
+      "title": "My allergies & contraindications",
+      "subtitle": "Declare them once — pharmacists will be automatically warned on every request.",
+      "shortTitle": "My allergies",
+      "shortSubtitle": "Declared contraindications",
+      "loginRequired": "Sign in to manage your allergies.",
+      "declare": "Declare",
+      "kind": "Type",
+      "kinds": {
+        "allergy": "Allergy",
+        "condition": "Condition",
+        "intolerance": "Intolerance"
+      },
+      "groups": {
+        "allergies": "Declared allergies",
+        "conditions": "Conditions",
+        "intolerances": "Intolerances"
+      },
+      "label": "Substance / condition",
+      "choose": "Choose…",
+      "other": "Other (enter)",
+      "otherPlaceholder": "Enter the substance or condition",
+      "labelRequired": "Pick a substance / condition.",
+      "severityLabel": "Severity",
+      "severity": {
+        "mild": "Mild",
+        "moderate": "Moderate",
+        "severe": "Severe"
+      },
+      "note": "Note (optional)",
+      "notePlaceholder": "E.g. anaphylaxis in 2024 with Augmentin",
+      "saved": "Allergy saved",
+      "deleted": "Allergy removed",
+      "confirmDelete": "Delete this declaration?",
+      "empty": {
+        "title": "No allergy declared",
+        "body": "If you have a drug allergy, intolerance, or condition (pregnancy, asthma…), declare it so pharmacists are automatically warned."
+      },
+      "disclaimer": {
+        "title": "Self-declaration",
+        "body": "This information is passed to the pharmacist as a patient declaration, not a diagnosis. The dispensing decision is theirs."
+      },
+      "labels": {
+        "penicilline": "Penicillin / Amoxicillin",
+        "cephalosporines": "Cephalosporins",
+        "sulfamides": "Sulfonamides (Bactrim, Cotrimoxazole)",
+        "ains": "NSAIDs (Ibuprofen, Diclofenac…)",
+        "aspirine": "Aspirin",
+        "codeine": "Codeine / Opioids",
+        "iode": "Iodine (Betadine, contrast)",
+        "tetracyclines": "Tetracyclines (Doxycycline…)",
+        "quinolones": "Quinolones (Ciprofloxacin…)",
+        "grossesse": "Pregnancy",
+        "allaitement": "Breastfeeding",
+        "g6pd": "G6PD deficiency",
+        "asthme": "Asthma",
+        "insuffisance_renale": "Kidney failure",
+        "insuffisance_hepatique": "Liver failure"
+      }
+    }
   }
 }

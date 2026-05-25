@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light only" />
+    <meta name="theme-color" content="#059669" />
+    <style>html,body{background:#fff!important;color:#111!important}</style>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Pharmacie" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons-pharmacie/icon-192.png" />
+    <link rel="icon" type="image/png" href="/icons-pharmacie/icon-192.png" />
+    <title>Yukpo Pharmacie — Médicaments & pharmacies de garde</title>
+    <meta name="description" content="Trouvez vos médicaments et la pharmacie de garde la plus proche." />
+  </head>
+  <body>
+    <div id="root"><p id="loading" style="padding:20px;font-family:sans-serif;color:#555">Chargement...</p></div>
+    <script>
+      window.onerror = function(msg, src, line, col, err) {
+        document.body.innerHTML = '<div style="padding:20px;font-family:monospace"><h2 style="color:red">Erreur JS</h2><pre style="white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:6px">' + msg + '\n\n' + src + ' ligne ' + line + '\n\n' + (err ? err.stack : '') + '</pre></div>';
+      };
+      // Auto-recovery : si l'app n'a pas démarré dans les 8s (SW corrompu, bundle stale, cache pourri…),
+      // on désinscrit tous les SW + purge les caches + reload propre. Une seule tentative grâce
+      // au query string ?_recovered=… qui sert aussi de cache-buster côté navigateur/CDN.
+      (function () {
+        if (/[?&]_recovered=/.test(location.search)) return;
+        setTimeout(function () {
+          if (!document.getElementById('loading')) return; // l'app a démarré, RAS
+          var p = Promise.resolve();
+          if ('serviceWorker' in navigator) {
+            p = p.then(function () { return navigator.serviceWorker.getRegistrations(); })
+                 .then(function (regs) { return Promise.all((regs || []).map(function (r) { return r.unregister(); })); })
+                 .catch(function () {});
+          }
+          if ('caches' in window) {
+            p = p.then(function () { return caches.keys(); })
+                 .then(function (keys) { return Promise.all((keys || []).map(function (k) { return caches.delete(k); })); })
+                 .catch(function () {});
+          }
+          p.then(function () {
+            location.replace(location.pathname + (location.search ? location.search + '&' : '?') + '_recovered=' + Date.now());
+          });
+        }, 8000);
+      })();
+    </script>
+    <script type="module" src="/src/main-pharmacie.tsx"></script>
+  </body>
+</html>

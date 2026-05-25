@@ -13,7 +13,7 @@ interface ServiceType {
     color: string;
     count: number;
     route: string;
-    category: 'sante' | 'transport';
+    category: 'sante' | 'transport' | 'education' | 'emploi';
 }
 
 interface ServicesStatistics {

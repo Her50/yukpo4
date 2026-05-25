@@ -21,15 +21,22 @@ import LivreScolaireListPage from './pages/livres-scolaires/LivreScolaireListPag
 import LivreScolaireDetailsPage from './pages/livres-scolaires/LivreScolaireDetailsPage';
 import LivreScolaireFormPage from './pages/livres-scolaires/LivreScolaireFormPage';
 import MesLivresPage from './pages/livres-scolaires/MesLivresPage';
+import ParentDashboardPage from './pages/livres-scolaires/ParentDashboardPage';
+import ReferralPage from './pages/livres-scolaires/ReferralPage'; // ✅ 2026-05-15
 import ParentSelectionPage from './pages/livres-scolaires/ParentSelectionPage';
 import ScanProgrammePage from './pages/livres-scolaires/ScanProgrammePage';
 import RecapAchatPage from './pages/livres-scolaires/RecapAchatPage';
+import RentreeCenterPage from './pages/livres-scolaires/RentreeCenterPage';
 import LibrairieBulkUploadPage from './pages/livres-scolaires/LibrairieBulkUploadPage';
 import BrowseProgrammeByEtablissementPage from './pages/livres-scolaires/BrowseProgrammeByEtablissementPage';
-import TrocPrepPage from './pages/livres-scolaires/TrocPrepPage';
+import CahiersAccessoiresPage from './pages/livres-scolaires/CahiersAccessoiresPage';
+import DeliveryLocationOnboardingPage from './pages/livres-scolaires/DeliveryLocationOnboardingPage';
 import VendreLivresPage from './pages/livres-scolaires/VendreLivresPage';
 import MesCommandesPage from './pages/livres-scolaires/MesCommandesPage';
+import CommandeDetailPage from './pages/livres-scolaires/CommandeDetailPage';
+import MaCommandeTimelinePage from './pages/livres-scolaires/MaCommandeTimelinePage';
 import { LibrairieDashboardPage, LibrairieCommandeDetailPage } from './pages/livres-scolaires/LibrairiePortalPage';
+import LibrairieMarcheBoursePage from './pages/livres-scolaires/LibrairieMarcheBoursePage';
 import EcoleSearchPage from './pages/livres-scolaires/EcoleSearchPage';
 import {
   EcoleDecisionPage,
@@ -41,7 +48,11 @@ import {
   EtablissementPortalHomePage,
   EtablissementDashboardPage,
 } from './pages/livres-scolaires/EtablissementPortalPage';
+import EtablissementListeScolairePage from './pages/livres-scolaires/EtablissementListeScolairePage';
+import AdminProgrammeNationalImportPage from './pages/livres-scolaires/AdminProgrammeNationalImportPage';
 import TeamInvitationAcceptPage from './pages/livres-scolaires/TeamInvitationAcceptPage';
+import ComptePage from './pages/ComptePage';
+import RechargePage from './pages/RechargePage';
 
 // Troc
 import TrocMatchingPage from './pages/trocs/TrocMatchingPage';
@@ -110,13 +121,29 @@ function AppBourse() {
               <Route path="/parent-selection" element={<BourseLayout><ParentSelectionPage /></BourseLayout>} />
               <Route path="/scan-programme" element={<BourseLayout><ScanProgrammePage /></BourseLayout>} />
               <Route path="/programme-ecole" element={<BourseLayout><BrowseProgrammeByEtablissementPage /></BourseLayout>} />
+              <Route path="/cahiers-accessoires" element={<BourseLayout><CahiersAccessoiresPage /></BourseLayout>} />
+              <Route path="/onboarding/livraison" element={<DeliveryLocationOnboardingPage />} />
               {/* Routes Bourse du Livre accessibles sans login : auth demandée
                   uniquement au moment de la finalisation (POST commande / vente).
                   Cohérent avec une utilisation périodique de la rentrée scolaire. */}
-              <Route path="/troc-prep" element={<BourseLayout><TrocPrepPage /></BourseLayout>} />
-              <Route path="/vendre" element={<BourseLayout><VendreLivresPage /></BourseLayout>} />
+              {/* ✅ 2026-05-10 : /troc-prep est déprécié — le troc se fait désormais
+                  article-par-article depuis /rentree. On redirige les anciens
+                  liens (bookmarks parents) vers le Centre de Rentrée. */}
+              <Route path="/troc-prep" element={<Navigate to="/rentree" replace />} />
+              {/* /vendre nécessite une session auth (POST /api/bourse-livre/v2/sessions
+                  est protégé par JWT). Sans RequireAuth, le bouton scan restait
+                  désactivé silencieusement après un 401. */}
+              <Route path="/vendre" element={<BourseLayout><RequireAuth><VendreLivresPage /></RequireAuth></BourseLayout>} />
               <Route path="/mes-commandes" element={<BourseLayout><MesCommandesPage /></BourseLayout>} />
+              <Route path="/mes-commandes/:id" element={<BourseLayout><RequireAuth><CommandeDetailPage /></RequireAuth></BourseLayout>} />
+              {/* ✅ 2026-05-19 MVP3 — Timeline parent (suivi statut + refus livraison à la réception).
+                  cf. ARCHITECTURE_WORKFLOW_YUKPO_LIBRAIRIE.md §7 wireframe.
+                  /suivi/:id complémente /mes-commandes/:id (page détail existante)
+                  en mettant l'accent sur la vue temporelle + actions livraison. */}
+              <Route path="/suivi/:id" element={<BourseLayout><RequireAuth><MaCommandeTimelinePage /></RequireAuth></BourseLayout>} />
               <Route path="/recap" element={<BourseLayout><RecapAchatPage /></BourseLayout>} />
+              {/* ✅ 2026-05-10 : Centre de Rentrée — UX unique parent-centric, classe tabs, école partenaire prioritaire, troc article-par-article */}
+              <Route path="/rentree" element={<BourseLayout><RentreeCenterPage /></BourseLayout>} />
 
               {/* Livres */}
               <Route path="/search" element={<BourseLayout><LivreScolaireSearchPage /></BourseLayout>} />
@@ -129,6 +156,7 @@ function AppBourse() {
               {/* Yukpo Librairie — portail libraire (login obligatoire, pas guest) */}
               <Route path="/librairie" element={<BourseLayout><RequireAuth><LibrairieDashboardPage /></RequireAuth></BourseLayout>} />
               <Route path="/librairie/commandes/:commandeId" element={<BourseLayout><RequireAuth><LibrairieCommandeDetailPage /></RequireAuth></BourseLayout>} />
+              <Route path="/librairie/marche-bourse" element={<BourseLayout><RequireAuth><LibrairieMarcheBoursePage /></RequireAuth></BourseLayout>} />
 
               {/* ✅ 2026-05-07 : Pages Officielles Établissements */}
               {/* Côté parent (mode invité OK) */}
@@ -141,6 +169,21 @@ function AppBourse() {
               {/* Côté admin établissement (login requis) */}
               <Route path="/etablissement-portal" element={<BourseLayout><RequireAuth><EtablissementPortalHomePage /></RequireAuth></BourseLayout>} />
               <Route path="/etablissement-portal/:etabId" element={<BourseLayout><RequireAuth><EtablissementDashboardPage /></RequireAuth></BourseLayout>} />
+              <Route path="/etablissement-portal/:etabId/liste-scolaire" element={<BourseLayout><RequireAuth><EtablissementListeScolairePage /></RequireAuth></BourseLayout>} />
+              <Route path="/admin-yukpo/programme-national/import" element={<BourseLayout><RequireAuth><AdminProgrammeNationalImportPage /></RequireAuth></BourseLayout>} />
+              {/* Compte / profil parent — accès au solde de crédits, recharge, infos compte */}
+              <Route path="/compte" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />
+              <Route path="/profil" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />
+              <Route path="/recharge" element={<BourseLayout><RequireAuth><RechargePage /></RequireAuth></BourseLayout>} />
+              {/* Tableau de bord parent — solde Yukpo + crédit estimé/libéré + commandes + colis */}
+              <Route path="/tableau-de-bord" element={<BourseLayout><RequireAuth><ParentDashboardPage /></RequireAuth></BourseLayout>} />
+
+              {/* ✅ 2026-05-15 — Page parrainage dédiée et partageable.
+                  PAS DE RequireAuth : si un filleul arrive ici via le lien
+                  partagé (avec ?ref=XXX), il voit le pitch d'invitation
+                  avant de s'inscrire. Si user connecté, il voit sa propre
+                  carte parrainage + retrait cash. */}
+              <Route path="/parrainage" element={<BourseLayout><ReferralPage /></BourseLayout>} />
 
               {/* Acceptation d'invitation d'équipe (lien WhatsApp) */}
               <Route path="/team/accept" element={<TeamInvitationAcceptPage />} />

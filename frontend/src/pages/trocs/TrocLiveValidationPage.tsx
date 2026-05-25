@@ -2,6 +2,7 @@
 
 import { Camera, Upload, Video, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -10,6 +11,7 @@ import { apiGet, apiPost } from '../../services/apiService';
 import { Loader2 } from 'lucide-react';
 
 const TrocLiveValidationPage: React.FC = () => {
+    const { t } = useTranslation();
     const { trocId } = useParams<{ trocId: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -39,8 +41,8 @@ const TrocLiveValidationPage: React.FC = () => {
         } catch (error: any) {
             console.error('[TrocLiveValidationPage] Erreur:', error);
             toast({
-                title: 'Erreur',
-                description: 'Impossible de charger les données du troc',
+                title: t('bourse.videoValidation.generic_error'),
+                description: t('bourse.videoValidation.toast_load_error_desc'),
                 variant: 'destructive',
             });
         } finally {
@@ -55,8 +57,8 @@ const TrocLiveValidationPage: React.FC = () => {
         // Vérifier le type de fichier
         if (!file.type.startsWith('video/')) {
             toast({
-                title: 'Erreur',
-                description: 'Veuillez sélectionner un fichier vidéo',
+                title: t('bourse.videoValidation.generic_error'),
+                description: t('bourse.videoValidation.toast_no_file_desc'),
                 variant: 'destructive',
             });
             return;
@@ -65,8 +67,8 @@ const TrocLiveValidationPage: React.FC = () => {
         // Vérifier la taille (max 100MB)
         if (file.size > 100 * 1024 * 1024) {
             toast({
-                title: 'Erreur',
-                description: 'Le fichier vidéo est trop volumineux (max 100MB)',
+                title: t('bourse.videoValidation.generic_error'),
+                description: t('bourse.videoValidation.toast_too_big_desc'),
                 variant: 'destructive',
             });
             return;
@@ -125,20 +127,20 @@ const TrocLiveValidationPage: React.FC = () => {
 
             if (data.success) {
                 toast({
-                    title: 'Succès',
-                    description: 'Vidéo de validation enregistrée avec succès !',
+                    title: t('bourse.videoValidation.toast_success_title'),
+                    description: t('bourse.videoValidation.toast_success_desc'),
                 });
                 setTimeout(() => {
                     navigate(`/trocs/${trocId}`);
                 }, 1500);
             } else {
-                throw new Error(data.error || 'Erreur lors de l\'upload');
+                throw new Error(data.error || t('bourse.videoValidation.toast_upload_failed_desc'));
             }
         } catch (error: any) {
             console.error('[TrocLiveValidationPage] Erreur upload:', error);
             toast({
-                title: 'Erreur',
-                description: error.message || 'Impossible d\'uploader la vidéo',
+                title: t('bourse.videoValidation.generic_error'),
+                description: error.message || t('bourse.videoValidation.toast_upload_failed_desc'),
                 variant: 'destructive',
             });
             setStep('review');
@@ -159,7 +161,7 @@ const TrocLiveValidationPage: React.FC = () => {
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
                         <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto mb-4" />
-                        <p className="text-gray-600">Chargement...</p>
+                        <p className="text-gray-600">{t('bourse.videoValidation.loading')}</p>
                     </div>
                 </div>
             </div>
@@ -172,9 +174,9 @@ const TrocLiveValidationPage: React.FC = () => {
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
                         <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto mb-4" />
-                        <p className="text-gray-600">Upload en cours...</p>
+                        <p className="text-gray-600">{t('bourse.videoValidation.uploading')}</p>
                         <p className="text-sm text-gray-500 mt-2">
-                            Veuillez patienter, la vidéo est en cours d'envoi
+                            {t('bourse.videoValidation.uploading_wait')}
                         </p>
                     </div>
                 </div>
@@ -189,10 +191,10 @@ const TrocLiveValidationPage: React.FC = () => {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Video className="h-6 w-6" />
-                            Vidéo sélectionnée
+                            {t('bourse.videoValidation.video_selected')}
                         </CardTitle>
                         <CardDescription>
-                            Votre vidéo de validation est prête à être envoyée
+                            {t('bourse.videoValidation.video_ready')}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -223,7 +225,7 @@ const TrocLiveValidationPage: React.FC = () => {
                                 className="flex-1"
                             >
                                 <X className="h-4 w-4 mr-2" />
-                                Choisir une autre vidéo
+                                {t('bourse.videoValidation.choose_other')}
                             </Button>
                             <Button
                                 onClick={handleUploadVideo}
@@ -233,12 +235,12 @@ const TrocLiveValidationPage: React.FC = () => {
                                 {uploading ? (
                                     <>
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Upload en cours...
+                                        {t('bourse.videoValidation.uploading')}
                                     </>
                                 ) : (
                                     <>
                                         <Upload className="h-4 w-4 mr-2" />
-                                        Envoyer la vidéo
+                                        {t('bourse.videoValidation.send_video')}
                                     </>
                                 )}
                             </Button>
@@ -256,10 +258,10 @@ const TrocLiveValidationPage: React.FC = () => {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Camera className="h-6 w-6" />
-                            Uploader une vidéo
+                            {t('bourse.videoValidation.upload_title')}
                         </CardTitle>
                         <CardDescription>
-                            Sélectionnez une vidéo de validation préalablement enregistrée
+                            {t('bourse.videoValidation.upload_desc')}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -278,22 +280,21 @@ const TrocLiveValidationPage: React.FC = () => {
                                 <Video className="h-16 w-16 text-gray-400" />
                                 <div>
                                     <p className="text-lg font-semibold text-gray-700">
-                                        Cliquez pour sélectionner une vidéo
+                                        {t('bourse.videoValidation.click_to_select')}
                                     </p>
                                     <p className="text-sm text-gray-500 mt-2">
-                                        Formats acceptés: MP4, MOV, AVI (max 100MB)
+                                        {t('bourse.videoValidation.formats')}
                                     </p>
                                 </div>
                                 <Button variant="outline" type="button">
-                                    Choisir un fichier
+                                    {t('bourse.videoValidation.choose_file')}
                                 </Button>
                             </label>
                         </div>
 
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                             <p className="text-sm text-yellow-800">
-                                <strong>💡 Astuce:</strong> Pour un meilleur résultat, utilisez l'application mobile
-                                qui permet d'enregistrer directement depuis la caméra.
+                                {t('bourse.videoValidation.mobile_tip')}
                             </p>
                         </div>
 
@@ -302,7 +303,7 @@ const TrocLiveValidationPage: React.FC = () => {
                             onClick={() => setStep('info')}
                             className="w-full"
                         >
-                            Retour
+                            {t('bourse.videoValidation.back')}
                         </Button>
                     </CardContent>
                 </Card>
@@ -317,16 +318,16 @@ const TrocLiveValidationPage: React.FC = () => {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Camera className="h-6 w-6" />
-                        Validation vidéo du livre
+                        {t('bourse.videoValidation.title')}
                     </CardTitle>
                     <CardDescription>
-                        Enregistrez une vidéo pour valider l'état du livre
+                        {t('bourse.videoValidation.subtitle')}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {trocData && (
                         <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600 mb-1">Livre à valider:</p>
+                            <p className="text-sm text-gray-600 mb-1">{t('bourse.videoValidation.book_to_validate')}</p>
                             <p className="text-lg font-semibold">
                                 {trocData.livre_offert?.titre || 'Livre'}
                             </p>
@@ -334,48 +335,42 @@ const TrocLiveValidationPage: React.FC = () => {
                     )}
 
                     <div>
-                        <h3 className="text-lg font-semibold mb-3">📋 Instructions</h3>
+                        <h3 className="text-lg font-semibold mb-3">{t('bourse.videoValidation.instructions_title')}</h3>
                         <p className="text-gray-600 mb-4">
-                            Pour valider l'état du livre, vous devez enregistrer une vidéo montrant :
+                            {t('bourse.videoValidation.instructions_intro')}
                         </p>
                         <ul className="space-y-2 text-gray-700">
                             <li className="flex items-start gap-2">
                                 <span>✓</span>
-                                <span>La couverture du livre (recto et verso)</span>
+                                <span>{t('bourse.videoValidation.instructions_cover')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span>✓</span>
-                                <span>Les pages importantes (première et dernière page)</span>
+                                <span>{t('bourse.videoValidation.instructions_pages')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span>✓</span>
-                                <span>Les dommages éventuels (coins abîmés, pages déchirées, etc.)</span>
+                                <span>{t('bourse.videoValidation.instructions_damages')}</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span>✓</span>
-                                <span>Le dos du livre (reliure)</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span>✓</span>
-                                <span>L'état général du livre</span>
+                                <span>{t('bourse.videoValidation.instructions_overall')}</span>
                             </li>
                         </ul>
                     </div>
 
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-yellow-900 mb-2">⚠️ Important</h3>
+                        <h3 className="font-semibold text-yellow-900 mb-2">{t('bourse.videoValidation.important_title')}</h3>
                         <ul className="text-sm text-yellow-800 space-y-1">
-                            <li>• La vidéo doit durer entre 30 et 60 secondes</li>
-                            <li>• Assurez-vous d'avoir un bon éclairage</li>
-                            <li>• Montrez clairement tous les détails</li>
-                            <li>• Formats acceptés: MP4, MOV, AVI (max 100MB)</li>
+                            <li>• {t('bourse.videoValidation.important_note_1')}</li>
+                            <li>• {t('bourse.videoValidation.important_note_2')}</li>
+                            <li>• {t('bourse.videoValidation.important_note_3')}</li>
                         </ul>
                     </div>
 
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <p className="text-sm text-blue-800">
-                            <strong>💡 Note:</strong> Pour une meilleure expérience, utilisez l'application mobile
-                            qui permet d'enregistrer directement depuis la caméra avec des instructions guidées.
+                            {t('bourse.videoValidation.mobile_hint')}
                         </p>
                     </div>
 
@@ -386,14 +381,14 @@ const TrocLiveValidationPage: React.FC = () => {
                             className="flex-1"
                         >
                             <X className="h-4 w-4 mr-2" />
-                            Annuler
+                            {t('bourse.videoValidation.cancel')}
                         </Button>
                         <Button
                             onClick={handleStartRecording}
                             className="flex-1"
                         >
                             <Video className="h-4 w-4 mr-2" />
-                            Uploader une vidéo
+                            {t('bourse.videoValidation.upload_title')}
                         </Button>
                     </div>
                 </CardContent>

@@ -411,7 +411,7 @@ const ParentSelectionPage: React.FC = () => {
           <div className="mb-4">
             <AddEnfantForm
               onAdd={({ classe, systeme, niveau, pays, systemeId, serie }) => {
-                const e = addEnfant({ prenom: classe, systeme, niveau, classe, pays, systemeId, serie });
+                const e = addEnfant({ systeme, niveau, classe, pays, systemeId, serie });
                 setActiveEnfantId(e.id);
                 setShowAddForm(false);
               }}

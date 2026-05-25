@@ -277,11 +277,60 @@
     "headerSubtitle": "{{name}}",
     "headerSubtitleDefault": "Espace pharmacien",
     "tab": {
+      "alerts": "Alertes",
       "orders": "Commandes",
+      "archives": "Archives",
+      "pharmacovigilance": "Signalements",
+      "duty": "Garde",
       "products": "Produits",
       "stats": "Stats",
       "qr": "Scanner",
       "finances": "Finances"
+    },
+    "duty": {
+      "title": "Réseau de garde",
+      "notice": "Pharmacies actives dans un rayon de 25 km. Contactez un confrère pour échanger une garde ou demander un dépannage.",
+      "empty": "Aucune pharmacie voisine détectée. Vérifiez que votre fiche contient bien des coordonnées GPS.",
+      "onDutyNow": "De garde maintenant ({{count}})",
+      "others": "Autres pharmacies ({{count}})",
+      "badge": { "onDuty": "De garde" },
+      "swapMessage": "Bonjour {{name}}, seriez-vous disponible pour un échange de garde ?",
+      "helpMessage": "Bonjour {{name}}, un patient cherche un médicament que je n'ai pas. Pourriez-vous m'aider ?"
+    },
+    "alerts": {
+      "allergyWarning": "Allergie / contre-indication déclarée",
+      "allergyDisclaimer": "Déclaration patient à vérifier avant dispense."
+    },
+    "surplus": {
+      "title": "Surplus à échanger",
+      "notice": "Proposez à un confrère voisin un lot proche péremption — ou récupérez chez un confrère un médicament qui vous manque. Le transfert se règle hors-app.",
+      "propose": "Proposer",
+      "myOffers": "Mes annonces",
+      "nearbyOffers": "Près de chez moi",
+      "emptyNearby": "Aucun surplus disponible dans un rayon de 50 km.",
+      "newTitle": "Proposer un surplus",
+      "medName": "Médicament",
+      "dosage": "Dosage",
+      "quantity": "Quantité",
+      "unit": "Unité",
+      "batch": "N° lot",
+      "expiry": "Péremption",
+      "priceXaf": "Prix FCFA/u",
+      "note": "Note",
+      "notePlaceholder": "Ex : surstock, je propose -20% prix officiel",
+      "expiresIn": "Périme dans {{days}} j",
+      "claim": "Réclamer",
+      "claimed": "Annonce réclamée — contactez la pharmacie source",
+      "claimedBy": "Réclamé par {{name}}",
+      "created": "Annonce créée",
+      "confirmDelete": "Retirer cette annonce ?",
+      "errMissing": "Médicament, quantité et péremption requis.",
+      "legalDisclaimer": "Échange entre pharmacies titulaires d'agrément MINSANTE. Vérifiez intégrité du lot et conditions de transport."
+    },
+    "prepare": {
+      "cta": "Préparer à l'avance",
+      "waitingPickup": "Préparé · en attente du retrait",
+      "pickedUp": "Retiré par le patient"
     },
     "orders": {
       "filter": {
@@ -464,5 +513,145 @@
     "addressRequiredDesc": "Indiquez l'adresse de livraison.",
     "timeRequired": "Heure requise",
     "timeRequiredDesc": "Choisissez votre heure d'arrivée."
+  },
+  "pharmacie": {
+    "interactions": {
+      "checking": "Yukpo vérifie les interactions avec votre carnet santé…",
+      "contextLabel": "{{count}} médicament récent en mémoire",
+      "contextLabel_plural": "{{count}} médicaments récents en mémoire",
+      "disclaimer": "Indicatif. La décision finale appartient à votre médecin ou à votre pharmacien.",
+      "severity": {
+        "mild": "Interaction mineure",
+        "moderate": "Interaction modérée",
+        "major": "Interaction importante",
+        "contraindicated": "Contre-indication"
+      }
+    },
+    "adminRupture": {
+      "title": "Radar de rupture nationale",
+      "subtitle": "Médicaments les plus signalés indisponibles par les pharmaciens.",
+      "back": "Retour",
+      "forbidden": "Accès réservé aux administrateurs Yukpo.",
+      "filters": "Filtres",
+      "period": {
+        "1d": "24 h",
+        "7d": "7 j",
+        "30d": "30 j",
+        "90d": "90 j"
+      },
+      "cityPlaceholder": "Ville (optionnel)",
+      "thresholdHelp": "Seuil minimum d'indisponibilités",
+      "empty": "Aucune rupture détectée sur la période. Bonne nouvelle !",
+      "unavailableCount": "{{count}} indisponibilité",
+      "unavailableCount_plural": "{{count}} indisponibilités",
+      "pharmaciesAffected": "{{count}} pharmacie impactée",
+      "pharmaciesAffected_plural": "{{count}} pharmacies impactées",
+      "footer": "Données issues des signalements pharmaciens via le workflow RFQ Yukpo."
+    },
+    "pharmacovigilance": {
+      "title": "Pharmacovigilance",
+      "cta": "Nouveau signalement",
+      "anonymousNotice": "Les données patient sont anonymisées (âge + genre uniquement).",
+      "listEmpty": "Aucun signalement pour le moment."
+    },
+    "reminders": {
+      "title": "Mes rappels de prise",
+      "subtitle": "Une notification automatique aux heures choisies.",
+      "shortTitle": "Mes rappels",
+      "shortSubtitle": "Prises de médicaments",
+      "loginRequired": "Connectez-vous pour gérer vos rappels.",
+      "add": "Ajouter un rappel",
+      "empty": "Aucun rappel configuré. Ajoutez-en un pour ne plus oublier vos prises.",
+      "active": "{{count}} rappel actif",
+      "active_plural": "{{count}} rappels actifs",
+      "ended": "{{count}} terminé",
+      "ended_plural": "{{count}} terminés",
+      "until": "jusqu'au {{date}}",
+      "newTitle": "Nouveau rappel",
+      "medName": "Médicament *",
+      "posology": "Posologie",
+      "presets": "Préréglages rapides",
+      "times": "Heures de prise *",
+      "addTime": "Ajouter une heure",
+      "endAt": "Date de fin",
+      "optional": "optionnel",
+      "create": "Créer le rappel",
+      "created": "Rappel créé",
+      "deleted": "Rappel supprimé",
+      "confirmDelete": "Supprimer ce rappel ?",
+      "errMissing": "Nom et au moins une heure requis.",
+      "disclaimer": "Les rappels Yukpo arrivent à la minute près tant que l'application a été ouverte au moins une fois et que les notifications sont autorisées sur votre appareil.",
+      "refill": {
+        "label": "Renouvellement auto",
+        "activeBadge": "tous les {{days}} j",
+        "disabledBadge": "désactivé",
+        "intervalLabel": "Tous les",
+        "days": "jours",
+        "nextIn": "Prochaine RFQ dans {{days}} j",
+        "dueNow": "Prochaine RFQ imminente",
+        "enabled": "Renouvellement automatique activé",
+        "disabled": "Renouvellement automatique désactivé"
+      }
+    },
+    "allergies": {
+      "title": "Mes allergies & contre-indications",
+      "subtitle": "Déclarez-les une fois pour toutes — les pharmaciens seront automatiquement alertés à chaque demande.",
+      "shortTitle": "Mes allergies",
+      "shortSubtitle": "Contre-indications déclarées",
+      "loginRequired": "Connectez-vous pour gérer vos allergies.",
+      "declare": "Déclarer",
+      "kind": "Type",
+      "kinds": {
+        "allergy": "Allergie",
+        "condition": "Condition",
+        "intolerance": "Intolérance"
+      },
+      "groups": {
+        "allergies": "Allergies déclarées",
+        "conditions": "Conditions",
+        "intolerances": "Intolérances"
+      },
+      "label": "Substance / condition",
+      "choose": "Choisissez…",
+      "other": "Autre (saisir)",
+      "otherPlaceholder": "Précisez la substance ou la condition",
+      "labelRequired": "Choisissez une substance / condition.",
+      "severityLabel": "Sévérité",
+      "severity": {
+        "mild": "Légère",
+        "moderate": "Modérée",
+        "severe": "Sévère"
+      },
+      "note": "Note (optionnel)",
+      "notePlaceholder": "Ex : œdème de Quincke en 2024 avec Augmentin",
+      "saved": "Allergie enregistrée",
+      "deleted": "Allergie supprimée",
+      "confirmDelete": "Supprimer cette déclaration ?",
+      "empty": {
+        "title": "Aucune allergie déclarée",
+        "body": "Si vous avez une allergie médicamenteuse, une intolérance ou une condition (grossesse, asthme…), déclarez-la pour que les pharmaciens en soient automatiquement avertis."
+      },
+      "disclaimer": {
+        "title": "Auto-déclaration",
+        "body": "Ces informations sont retransmises au pharmacien comme une déclaration patient, pas un diagnostic. La décision de dispense lui revient."
+      },
+      "labels": {
+        "penicilline": "Pénicilline / Amoxicilline",
+        "cephalosporines": "Céphalosporines",
+        "sulfamides": "Sulfamides (Bactrim, Cotrimoxazole)",
+        "ains": "AINS (Ibuprofène, Diclofénac…)",
+        "aspirine": "Aspirine",
+        "codeine": "Codéine / Opioïdes",
+        "iode": "Iode (Bétadine, contraste)",
+        "tetracyclines": "Tétracyclines (Doxycycline…)",
+        "quinolones": "Quinolones (Ciprofloxacine…)",
+        "grossesse": "Grossesse",
+        "allaitement": "Allaitement",
+        "g6pd": "Déficit en G6PD",
+        "asthme": "Asthme",
+        "insuffisance_renale": "Insuffisance rénale",
+        "insuffisance_hepatique": "Insuffisance hépatique"
+      }
+    }
   }
 }

@@ -51,8 +51,9 @@ const LivreScolaireListPage: React.FC = () => {
             const response = await apiGet(`/api/bourse-livre/search?${queryParams.toString()}`);
             const data = await response.json();
 
-            if (data.success && data.data) {
-                const newLivres = data.data.livres || [];
+            // Backend retourne { success: true, livres: [...] } à plat.
+            if (data.success) {
+                const newLivres = data.livres || data.data?.livres || [];
                 if (page === 1) {
                     setLivres(newLivres);
                 } else {

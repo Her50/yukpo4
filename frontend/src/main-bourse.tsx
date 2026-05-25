@@ -3,11 +3,17 @@ import { createRoot } from 'react-dom/client';
 import AppBourse from './AppBourse';
 import './i18n/i18nAutoDetector'; // i18n + détection auto langue système téléphone
 import './index.css';
+import { captureRefFromUrl } from './utils/referralStorage'; // ✅ 2026-05-15 : parrainage ?ref=XXX
+
+// ✅ 2026-05-15 — Capture le code parrain dès le boot (avant rendu), pour
+// que même si l'user n'arrive jamais sur la page d'inscription, le code soit
+// déjà tracké côté backend. Le call backend est fire-and-forget.
+captureRefFromUrl();
 
 // ✅ 2026-05-08 — Kill-switch : si l'app détecte une migration majeure (changement
 // de version), elle purge tous les Service Workers + caches + storage et recharge.
 // Bumper la constante BOURSE_APP_VERSION force la purge chez tous les clients.
-const BOURSE_APP_VERSION = 'v3-2026-05-08-09h';
+const BOURSE_APP_VERSION = 'v24-2026-05-22-07h';
 (async () => {
   try {
     const lastVersion = localStorage.getItem('bourse_app_version');
@@ -48,8 +54,18 @@ const BOURSE_APP_VERSION = 'v3-2026-05-08-09h';
 })();
 
 const showError = (msg: string) => {
+  // ✅ 2026-05-16 — Pas d'innerHTML avec interpolation : si `msg` contient
+  // un message d'erreur venant du backend qui inclut du HTML (ex: response
+  // body rendu en string dans une Error), on aurait du XSS au boot.
+  // textContent échappe automatiquement.
   document.body.style.cssText = 'margin:0;padding:20px;font-family:monospace;background:#fff';
-  document.body.innerHTML = `<h2 style="color:red">Erreur de démarrage</h2><pre style="white-space:pre-wrap;font-size:13px;color:#333;background:#f5f5f5;padding:16px;border-radius:8px">${msg}</pre>`;
+  const h2 = document.createElement('h2');
+  h2.style.color = 'red';
+  h2.textContent = 'Erreur de démarrage';
+  const pre = document.createElement('pre');
+  pre.style.cssText = 'white-space:pre-wrap;font-size:13px;color:#333;background:#f5f5f5;padding:16px;border-radius:8px';
+  pre.textContent = msg;
+  document.body.replaceChildren(h2, pre);
 };
 
 window.addEventListener('error', (e) => {

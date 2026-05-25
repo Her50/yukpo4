@@ -273,5 +273,24 @@
         "cfa": "CFA"
       }
     }
+  },
+  "yukpoLib": {
+    "ops": {
+      "title": "Yukpo Librairie — Opérations",
+      "subtitle": "Cascade rupture grossiste + libération libraires_proches + assignation coursier",
+      "tabRuptures": "Ruptures",
+      "tabCoursiers": "Assigner coursier"
+    }
+  },
+  "bourseCommande": {
+    "timelineTitle": "Suivi de ma commande",
+    "avancement": "Avancement",
+    "livresNeufs": "Livres neufs",
+    "livresOccasion": "Livres occasion",
+    "refuser": "Refuser",
+    "ruptureBanner": "Certains articles sont en rupture grossiste. Yukpo Librairie les a libérés auprès des libraires_proches (délai 48h)."
+  },
+  "bookCourierFlow": {
+    "title": "Mes livraisons Bourse du Livre"
   }
 }

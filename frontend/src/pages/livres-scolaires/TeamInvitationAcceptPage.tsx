@@ -21,8 +21,10 @@ import { apiPost } from '../../services/apiService';
 
 interface InvitationPreview {
   success: boolean;
+  source?: 'librairie' | 'etablissement';
   role?: string;
   librairie_nom?: string;
+  etablissement_nom?: string;
   already_accepted?: boolean;
   expired?: boolean;
 }
@@ -67,7 +69,12 @@ const TeamInvitationAcceptPage: React.FC = () => {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.message || d?.error || `HTTP ${res.status}`);
       toast({ title: t('librairie.invitation.accepted_title'), description: d.message });
-      navigate('/librairie');
+      // Redirige vers le bon dashboard selon la source de l'invitation.
+      if (d.source === 'etablissement' && d.etablissement_id) {
+        navigate(`/etablissement-portal/${d.etablissement_id}`);
+      } else {
+        navigate('/librairie');
+      }
     } catch (e: any) {
       toast({
         title: t('librairie.error'),
@@ -136,8 +143,20 @@ const TeamInvitationAcceptPage: React.FC = () => {
     );
   }
 
-  const teamName = preview.librairie_nom || t('librairie.invitation.invited_team');
-  const roleLabel = ROLE_LABELS[preview.role || ''] || preview.role || '';
+  const teamName = preview.etablissement_nom
+    || preview.librairie_nom
+    || t('librairie.invitation.invited_team');
+  // Pour les rôles établissement (manager/editor/viewer) on prend les libellés
+  // dédiés ; pour les rôles librairie (manager/preparer/cashier) on garde
+  // le mapping existant. Fallback : le rôle brut.
+  const ETAB_ROLE_LABELS: Record<string, string> = {
+    manager: 'Gestionnaire',
+    editor: 'Éditeur de contenu',
+    viewer: 'Consultation',
+  };
+  const roleLabel = preview.source === 'etablissement'
+    ? (ETAB_ROLE_LABELS[preview.role || ''] || preview.role || '')
+    : (ROLE_LABELS[preview.role || ''] || preview.role || '');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white p-5 flex flex-col items-center justify-center">

@@ -1,0 +1,51 @@
+nom_produit,prix,stock,unite,code_barre,categorie,description
+Doliprane 500mg boite 16 cp,1200,250,boite,3400930123456,Antalgique,Paracétamol 500mg comprimés pelliculés - douleurs et fièvre
+Doliprane 1000mg boite 8 cp,1500,180,boite,3400930223457,Antalgique,Paracétamol 1g comprimés pelliculés - douleurs intenses
+Efferalgan 500mg cp effervescents x16,1400,150,boite,3400932345678,Antalgique,Paracétamol 500mg effervescent - douleurs et fièvre
+Advil 200mg boite 20 cp,1800,120,boite,3400932456789,AINS,Ibuprofène 200mg comprimés - douleurs et inflammation
+Nurofen 400mg boite 24 cp,3500,80,boite,3400932567890,AINS,Ibuprofène 400mg comprimés - inflammation aigüe
+Spasfon Lyoc 80mg x30,2500,90,boite,3400934567812,Antispasmodique,Phloroglucinol lyophilisat oral - douleurs spasmodiques
+Spasfon comprimés enrobés x30,2200,110,boite,3400934678923,Antispasmodique,Phloroglucinol 80mg comprimés enrobés
+Smecta sachet x30,2800,140,boite,3400935789034,Antidiarrhéique,Diosmectite poudre orale - diarrhées aigües adulte enfant
+Imodium 2mg gélules x20,2400,75,boite,3400936890145,Antidiarrhéique,Lopéramide 2mg gélules - diarrhées aigües adulte
+Maalox suspension buvable 250ml,3200,60,flacon,3400937901256,Antiacide,Hydroxyde aluminium magnésium - brûlures estomac reflux
+Gaviscon menthe suspension 250ml,3800,55,flacon,3400938012367,Antiacide,Alginate sodium - reflux gastro-oesophagien
+Mopral 20mg gélules x14,4500,40,boite,3400939123478,Anti-acide,Oméprazole 20mg gélules gastrorésistantes - reflux ulcère
+Tardyferon 80mg boite 30 cp,3600,70,boite,3400930234589,Fer,Sulfate ferreux 80mg - anémie ferriprive adulte
+Fer Foldine boite 30 cp,2900,65,boite,3400931345690,Fer,Fumarate ferreux + acide folique - femme enceinte
+Magne B6 boite 50 cp,4200,85,boite,3400932456701,Magnésium,Magnésium + vitamine B6 - fatigue stress crampes
+UPSA Vitamine C 1000mg x20,2100,130,boite,3400933567812,Vitamine,Vitamine C effervescente 1g - fatigue carence
+Bétadine solution 125ml,1800,200,flacon,3400934678923,Antiseptique,Povidone iodée 10% - désinfection plaies peau
+Bétadine scrub 125ml,2400,90,flacon,3400935789034,Antiseptique,Povidone iodée moussante - lavage chirurgical
+Biafine émulsion 93g,3500,75,tube,3400936890145,Cicatrisant,Trolamine - brûlures coups de soleil érythème
+Bepanthen pommade 30g,2200,95,tube,3400937901256,Cicatrisant,Dexpanthénol 5% - irritations érosions
+Voltarène Emulgel 2% 100g,4200,60,tube,3400938012367,AINS,Diclofénac gel - douleurs musculaires articulaires
+Cetirizine Biogaran 10mg x15,1800,140,boite,3400939123478,Antihistaminique,Cétirizine 10mg - allergie rhinite urticaire
+Aerius 5mg boite 30 cp,5800,50,boite,3400930234589,Antihistaminique,Desloratadine 5mg - allergies chroniques
+Clarityne 10mg boite 14 cp,3200,65,boite,3400931345691,Antihistaminique,Loratadine 10mg - rhinite allergique
+Rhinathiol sirop 200ml adulte,2800,100,flacon,3400932456702,Expectorant,Carbocistéine 5% sirop - toux grasse adulte
+Fluimucil 200mg sachets x30,3400,70,boite,3400933567813,Expectorant,Acétylcystéine 200mg poudre orale - bronchites
+Dextrocidine 15mg/5ml sirop 200ml,2900,80,flacon,3400934678924,Antitussif,Dextrométhorphane - toux sèche d'irritation
+Ventoline 100µg suspension inhalation,3500,45,flacon,3400935789035,Bronchodilatateur,Salbutamol HFA - crise asthme (sur ordonnance)
+Amoxicilline 500mg gélules x12,3200,60,boite,3400936890146,Antibiotique,Amoxicilline 500mg - infections (sur ordonnance)
+Azithromycine 250mg x6,4800,40,boite,3400937901257,Antibiotique,Azithromycine - infections (sur ordonnance)
+Ciflox 500mg boite 14 cp,5500,35,boite,3400938012368,Antibiotique,Ciprofloxacine 500mg - infections (sur ordonnance)
+Augmentin 1g/125mg sachets x12,6500,30,boite,3400939123479,Antibiotique,Amoxicilline + acide clavulanique - infections (sur ordonnance)
+Paludrine 100mg boite 100 cp,8500,25,boite,3400930234590,Antipaludéen,Proguanil - prophylaxie paludisme (sur ordonnance)
+Coartem 20/120 boite 24 cp,4200,55,boite,3400931345692,Antipaludéen,Artéméther/luméfantrine - traitement paludisme (sur ordonnance)
+Nivaquine 100mg boite 100 cp,3600,40,boite,3400932456703,Antipaludéen,Chloroquine 100mg - paludisme (sur ordonnance)
+Test rapide paludisme x25,18500,10,boite,3400933567814,Diagnostic,TDR paludisme - dépistage rapide
+Test grossesse Clearblue 1u,2800,200,unite,3400934678925,Diagnostic,Test grossesse simple - lecture rapide
+Thermomètre digital flexible,4500,60,unite,3400935789036,Matériel,Thermomètre électronique pile incluse
+Tensiomètre OMRON M2,42000,8,unite,3400936890147,Matériel,Tensiomètre brassard automatique digital
+Sérum physiologique 5ml x40 unidoses,3200,90,boite,3400937901258,Soins,Chlorure sodium 0.9% - hygiène nez yeux nourrisson
+Coton hydrophile 100g,1200,160,paquet,3400938012369,Soins,Coton non stérile usage externe
+Compresses stériles 7.5x7.5 x10,1800,140,boite,3400939123480,Soins,Compresses non tissées stériles
+Pansements adhésifs assortis x20,1500,180,boite,3400930234591,Soins,Pansements micropore tailles assorties
+Sparadrap micropore 5m x1.25cm,1800,120,rouleau,3400931345693,Soins,Sparadrap respectueux peau sensible
+Préservatifs Durex Performa x12,4800,90,boite,3400932456704,Hygiène,Préservatifs masculin standard lubrifié
+Solution hydroalcoolique 100ml,2200,150,flacon,3400933567815,Hygiène,Gel désinfectant mains pocket
+Masques chirurgicaux type II x50,3500,200,boite,3400934678926,Hygiène,Masque jetable 3 plis filtration BFE
+Crème solaire SPF50+ 200ml,7800,40,tube,3400935789037,Hygiène,Protection solaire haute enfant adulte
+Lait corporel Mustela 500ml,9500,35,flacon,3400936890148,Hygiène,Hydratation peau nourrisson hypoallergénique
+Sirop Vitamine D nourrisson 10ml,4200,55,flacon,3400937901259,Vitamine,Cholécalciférol 10 000 UI/ml - prévention rachitisme

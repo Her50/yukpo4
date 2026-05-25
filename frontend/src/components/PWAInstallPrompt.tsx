@@ -25,7 +25,24 @@ const PWAInstallPrompt: React.FC<Props> = ({ appName, themeColor, storageKey }) 
     if (isStandalone) return; // app déjà installée et ouverte en mode app
 
     const stored = localStorage.getItem(storageKey);
-    if (stored === 'dismissed') return;
+    // ✅ 2026-05-17 — Fenêtre de silence réduite à 1h (au lieu de 7j) :
+    // si l'utilisateur ferme la croix par accident, il a une chance de revoir
+    // le bandeau dès sa prochaine session (au lieu de devoir vider le cache
+    // pour le récupérer). 1h = compromis entre "n'embête pas l'user qui dit
+    // explicitement non" et "ne disparaît pas définitivement par accident".
+    // Format stocké : 'dismissed:<timestamp_ms>' (legacy 'dismissed' = permanent).
+    if (stored && stored.startsWith('dismissed:')) {
+      const ts = parseInt(stored.slice('dismissed:'.length), 10);
+      const ONE_HOUR_MS = 60 * 60 * 1000;
+      if (!Number.isNaN(ts) && Date.now() - ts < ONE_HOUR_MS) {
+        return; // encore dans la fenêtre de silence
+      }
+      // expiré → on retire et on laisse réafficher
+      localStorage.removeItem(storageKey);
+    } else if (stored === 'dismissed') {
+      // Legacy : ancien format permanent → on retire pour redonner sa chance.
+      localStorage.removeItem(storageKey);
+    }
     // Si marqué 'installed' mais pas en standalone → app désinstallée, réafficher le prompt
     if (stored === 'installed') localStorage.removeItem(storageKey);
 
@@ -54,18 +71,43 @@ const PWAInstallPrompt: React.FC<Props> = ({ appName, themeColor, storageKey }) 
   }, [storageKey]);
 
   const onInstall = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      localStorage.setItem(storageKey, 'installed');
+    if (!deferredPrompt) {
+      // ✅ 2026-05-17 — Pas de deferredPrompt = navigateur n'a jamais envoyé
+      // beforeinstallprompt (déjà installé ailleurs, conditions PWA non
+      // remplies, ou utilisateur l'a déjà rejeté récemment côté navigateur).
+      // On informe l'utilisateur et on bascule vers les instructions manuelles.
+      alert(
+        "Votre navigateur n'a pas proposé l'installation automatique.\n\n" +
+        'Pour installer manuellement :\n' +
+        '• Chrome / Edge : menu ⋮ → "Installer l\'application"\n' +
+        '• Safari iOS : Partager ↑ → "Sur l\'écran d\'accueil"\n' +
+        '• Firefox : menu ⋮ → "Installer"',
+      );
+      return;
     }
-    setDeferredPrompt(null);
-    setShow(false);
+    try {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('[PWA] install outcome:', outcome);
+      if (outcome === 'accepted') {
+        localStorage.setItem(storageKey, 'installed');
+      } else {
+        // L'utilisateur a refusé dans le prompt natif → on note un dismissal
+        // léger pour ne pas le re-spammer dans la même session.
+        localStorage.setItem(storageKey, `dismissed:${Date.now()}`);
+      }
+    } catch (e) {
+      console.warn('[PWA] install error:', e);
+      alert("L'installation a échoué. Essayez via le menu ⋮ du navigateur.");
+    } finally {
+      setDeferredPrompt(null);
+      setShow(false);
+    }
   };
 
   const onDismiss = () => {
-    localStorage.setItem(storageKey, 'dismissed');
+    // ✅ 2026-05-15 : stocke le timestamp pour expiration auto à 7 jours.
+    localStorage.setItem(storageKey, `dismissed:${Date.now()}`);
     setShow(false);
   };
 
@@ -91,7 +133,7 @@ const PWAInstallPrompt: React.FC<Props> = ({ appName, themeColor, storageKey }) 
             : 'Ajoutez à votre écran d\'accueil pour un accès rapide'}
         </div>
       </div>
-      {!isIOS && deferredPrompt && (
+      {!isIOS && (
         <button
           onClick={onInstall}
           className="flex-shrink-0 px-4 py-2 rounded-lg text-white text-sm font-semibold"

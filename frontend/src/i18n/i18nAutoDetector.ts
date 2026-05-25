@@ -7,17 +7,18 @@ import ff from "@/locales/ff.json";
 import pt from "@/locales/pt.json";
 import ar from "@/locales/ar.json";
 import { BOURSE_TRANSLATIONS, SUPPORTED_LNGS } from "./bourse_etablissement";
+import { PHARMACIE_TRANSLATIONS } from "./pharmacie";
 
 // Fusionne les ressources Bourse (clés `bourse.*`, `etabAdmin.*`, `common.*`)
-// dans les ressources existantes de chaque langue. Utilisable depuis toute
-// l'app via useTranslation().
+// + Pharmacie (clés `pharmacie.*`) dans les ressources existantes de chaque
+// langue. Utilisable depuis toute l'app via useTranslation().
 const mergeResources = () => {
   const base: Record<string, { translation: any }> = {
-    fr: { translation: { ...fr, ...BOURSE_TRANSLATIONS.fr } },
-    en: { translation: { ...en, ...BOURSE_TRANSLATIONS.en } },
-    pt: { translation: { ...pt, ...BOURSE_TRANSLATIONS.pt } },
-    ar: { translation: { ...ar, ...BOURSE_TRANSLATIONS.ar } },
-    ff: { translation: { ...ff, ...BOURSE_TRANSLATIONS.ff } },
+    fr: { translation: { ...fr, ...BOURSE_TRANSLATIONS.fr, ...PHARMACIE_TRANSLATIONS.fr } },
+    en: { translation: { ...en, ...BOURSE_TRANSLATIONS.en, ...PHARMACIE_TRANSLATIONS.en } },
+    pt: { translation: { ...pt, ...BOURSE_TRANSLATIONS.pt, ...PHARMACIE_TRANSLATIONS.pt } },
+    ar: { translation: { ...ar, ...BOURSE_TRANSLATIONS.ar, ...PHARMACIE_TRANSLATIONS.ar } },
+    ff: { translation: { ...ff, ...BOURSE_TRANSLATIONS.ff, ...PHARMACIE_TRANSLATIONS.ff } },
   };
   return base;
 };

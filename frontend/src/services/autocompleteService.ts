@@ -48,14 +48,15 @@ class AutocompleteService {
                 params.append('prefix', prefix);
             }
 
-            const response = await apiGet<{
+            const res = await apiGet(`/api/autocomplete/suggestions?${params.toString()}`);
+            const data: {
                 success: boolean;
                 data: AutocompleteSuggestion[];
                 count: number;
-            }>(`/api/autocomplete/suggestions?${params.toString()}`);
+            } = await res.json();
 
-            if (response.success && Array.isArray(response.data)) {
-                return response.data;
+            if (data.success && Array.isArray(data.data)) {
+                return data.data;
             }
 
             return [];
@@ -71,14 +72,13 @@ class AutocompleteService {
      */
     async getSubCharacteristics(identifiant_base: string): Promise<string[]> {
         try {
-            const response = await apiGet<{
-                success: boolean;
-                data: string[];
-                count: number;
-            }>(`/api/autocomplete/sub-characteristics/${encodeURIComponent(identifiant_base)}`);
+            const res = await apiGet(
+                `/api/autocomplete/sub-characteristics/${encodeURIComponent(identifiant_base)}`
+            );
+            const data: { success: boolean; data: string[]; count: number } = await res.json();
 
-            if (response.success && Array.isArray(response.data)) {
-                return response.data;
+            if (data.success && Array.isArray(data.data)) {
+                return data.data;
             }
 
             return [];
@@ -98,16 +98,13 @@ class AutocompleteService {
         sous_caracteristique: string
     ): Promise<string[]> {
         try {
-            const response = await apiGet<{
-                success: boolean;
-                data: string[];
-                count: number;
-            }>(
+            const res = await apiGet(
                 `/api/autocomplete/values/${encodeURIComponent(identifiant_base)}/${encodeURIComponent(sous_caracteristique)}`
             );
+            const data: { success: boolean; data: string[]; count: number } = await res.json();
 
-            if (response.success && Array.isArray(response.data)) {
-                return response.data;
+            if (data.success && Array.isArray(data.data)) {
+                return data.data;
             }
 
             return [];
@@ -135,11 +132,7 @@ class AutocompleteService {
         service_id?: number
     ): Promise<number | null> {
         try {
-            const response = await apiPost<{
-                success: boolean;
-                id: number;
-                message: string;
-            }>('/api/autocomplete/upsert', {
+            const res = await apiPost('/api/autocomplete/upsert', {
                 identifiant_base,
                 sous_caracteristique,
                 valeur,
@@ -147,9 +140,10 @@ class AutocompleteService {
                 user_id,
                 service_id,
             });
+            const data: { success: boolean; id: number; message: string } = await res.json();
 
-            if (response.success && response.id) {
-                return response.id;
+            if (data.success && data.id) {
+                return data.id;
             }
 
             return null;
@@ -180,7 +174,7 @@ class AutocompleteService {
                 identifiant_base: string;
                 sous_caracteristique: string;
                 valeur: string;
-                origine_champs: string;
+                origine_champs: 'ia' | 'utilisateur';
             }> = [];
 
             valeurs.forEach(valeur => {

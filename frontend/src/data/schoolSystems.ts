@@ -68,29 +68,88 @@ const SERIES_LYCEE_AOF_GENERAL: Serie[] = [
   { code: 'D', label: 'Maths & Sciences de la Vie' },
 ];
 
-/** Technique industrielle CM — 2nde F (choix de filière dès la 2nde) */
-const SERIES_2NDE_F_CM: Serie[] = [
-  { code: 'F1', label: 'Mécanique générale' },
-  { code: 'F2', label: 'Électronique' },
-  { code: 'F3', label: 'Électrotechnique' },
-  { code: 'F4', label: 'Génie civil / Bâtiment' },
-  { code: 'F5', label: 'Construction aéronautique' },
-  { code: 'F6', label: 'Chimie industrielle' },
-  { code: 'F7', label: 'Mine & Géologie' },
-  { code: 'TI', label: 'Technologie informatique' },
+/**
+ * Lycée Technique CM — Premier Cycle (1ère→4ème année CETIC)
+ * Source : MINESEC liste officielle 2024-2025 Enseignement Secondaire Technique
+ * Industriel (N° du 26 juin 2024). Spécialités proposées dès la 1ère année.
+ */
+const SERIES_CETIC_PREMIER_CM: Serie[] = [
+  { code: 'ELME', label: 'Électromécanique' },
+  { code: 'ELEQ', label: 'Électricité d\'Équipement' },
+  { code: 'ELNI', label: 'Électronique' },
+  { code: 'FRCL', label: 'Froid et Climatisation' },
+  { code: 'MENU', label: 'Menuiserie' },
+  { code: 'CHARP', label: 'Charpente' },
+  { code: 'MEFE', label: 'Métaux en Feuilles' },
+  { code: 'COOM', label: 'Construction Ouvrages Métalliques' },
+  { code: 'CAPA', label: 'Carrosserie Peinture' },
+  { code: 'MEM', label: 'Maintenance Électro-Mécanique' },
+  { code: 'MARE', label: 'Mécanique Auto Réparation' },
+  { code: 'MACO', label: 'Maçonnerie' },
+  { code: 'INSA', label: 'Installation Sanitaire' },
+  { code: 'COME', label: 'Couture sur Mesure' },
+  { code: 'ESCO', label: 'Esthétique Coiffure' },
+  { code: 'DECO', label: 'Décoration' },
+  { code: 'AF-SC', label: 'Affûtage Sciage' },
 ];
 
-/** Technique industrielle CM — 1ère & Terminale F */
-const SERIES_TECHNIQUE_INDUSTRIEL_CM: Serie[] = [
-  { code: 'F1', label: 'Mécanique générale' },
+/**
+ * Lycée Technique CM — 1er cycle, spécialités agricoles (CETIC agro)
+ * Regroupés sous "1er cycle" car le PDF MINESEC ne sépare pas par année.
+ */
+const SERIES_CETIC_AGRICOLE_CM: Serie[] = [
+  { code: 'TAG/PPO', label: 'Producteur de Porcs' },
+  { code: 'TAG/PVO', label: 'Producteur de Volaille' },
+  { code: 'TAG/PCE', label: 'Producteur de Céréales' },
+];
+
+/**
+ * Lycée Technique CM — Second Cycle (2nde/1ère/Tle)
+ * Spécialités industrielles et tertiaires F2-F8 + voies modernisées.
+ */
+const SERIES_TECHNIQUE_SECOND_CM: Serie[] = [
   { code: 'F2', label: 'Électronique' },
   { code: 'F3', label: 'Électrotechnique' },
-  { code: 'F4', label: 'Génie civil / Bâtiment' },
-  { code: 'F5', label: 'Construction aéronautique' },
-  { code: 'F6', label: 'Chimie industrielle' },
-  { code: 'F7', label: 'Mine & Géologie' },
-  { code: 'TI', label: 'Technologie informatique' },
+  { code: 'F4', label: 'Génie Civil / Bâtiment' },
+  { code: 'F5', label: 'Froid et Climatisation' },
+  { code: 'MIPE', label: 'Mine et Pétrole (F6)' },
+  { code: 'BIPE', label: 'Bioprocédé et Pétrochimie (F6)' },
+  { code: 'COPH', label: 'Cosmétique et Pharmacie (F6)' },
+  { code: 'GT', label: 'Géomètre Topographe' },
+  { code: 'IB', label: 'Industrie du Bois' },
+  { code: 'ISRH', label: 'Installation Sanitaire et Réseaux Hydrauliques' },
+  { code: 'IH', label: 'Industrie de l\'Habillement' },
+  { code: 'AMEB', label: 'Ameublement Ébénisterie' },
+  { code: 'MAGE', label: 'Menuiserie Agencement' },
+  { code: 'MA', label: 'Mécanique Auto' },
+  { code: 'MEM', label: 'Maintenance Électro-Mécanique' },
+  { code: 'MF', label: 'Métaux en Feuilles' },
+  { code: 'CM', label: 'Construction Mécanique' },
+  { code: 'AF1', label: 'Arts — Céramique' },
+  { code: 'AF2', label: 'Arts — Peinture' },
+  { code: 'AF3', label: 'Arts — Sculpture' },
 ];
+
+/**
+ * Lycée Technique CM — Spécialités 2nd cycle sans année spécifique
+ * (le PDF MINESEC liste les manuels pour l'ensemble du 2nd cycle).
+ */
+const SERIES_TECHNIQUE_GROUPED_CM: Serie[] = [
+  { code: 'BIJO', label: 'Bijouterie - Joaillerie' },
+  { code: 'CH-TI', label: 'Chaudronnerie Tuyauterie Industrielle' },
+  { code: 'F7', label: 'Sciences Biochimiques' },
+  { code: 'F8', label: 'Chimie Industrielle et Biomédicale' },
+  { code: 'FM', label: 'Fabrication Mécanique' },
+  { code: 'TAG/AQ', label: 'Aquaculture' },
+  { code: 'TAG/PM', label: 'Producteurs Monogastriques' },
+  { code: 'TAG/PCLC', label: 'Céréales, Légumineuses et Champignons' },
+  { code: 'TCPA', label: 'Transformation des Produits Agricoles' },
+  { code: 'TGF', label: 'Technique et Gestion Forestière' },
+];
+
+/** Lycée général CM — anciennes filières F (legacy, conservé pour compat) */
+const SERIES_2NDE_F_CM: Serie[] = SERIES_TECHNIQUE_SECOND_CM;
+const SERIES_TECHNIQUE_INDUSTRIEL_CM: Serie[] = SERIES_TECHNIQUE_SECOND_CM;
 
 /** Technique commerciale CM — 2nde G */
 const SERIES_2NDE_G_CM: Serie[] = [
@@ -235,11 +294,13 @@ const CM_FRANCOPHONE: SystemeScolaire = {
   systemeLabel: 'Francophone',
   niveaux: [
     {
+      // Cameroun MINEDUB officiel : 2 années de maternelle (et non 3 sections
+      // comme dans le système français). Les manuels sont nommés "Maternelle
+      // 1ère année" et "Maternelle 2ème année" dans la liste officielle.
       nom: 'Maternelle',
       classes: [
-        { nom: 'Petite section' },
-        { nom: 'Moyenne section' },
-        { nom: 'Grande section' },
+        { nom: 'Maternelle 1ère année' },
+        { nom: 'Maternelle 2ème année' },
       ],
     },
     {
@@ -262,38 +323,41 @@ const CM_FRANCOPHONE: SystemeScolaire = {
       ],
     },
     {
-      // Au Cameroun, un Lycée Technique (ou CETIC) intègre TOUTES les filières
-      // (industrielle, commerciale, agro-pastorale, hôtelière) dans un seul
-      // établissement. On regroupe donc en un seul niveau, avec les voies
-      // distinguées par la classe (2nde F/G/EA/HR puis 1ère/Tle par voie).
+      // Cameroun — Lycée Technique / CETIC : aligné sur la LISTE OFFICIELLE
+      // MINESEC 2024-2025 Enseignement Secondaire Technique Industriel.
+      // Premier cycle = 1ère à 4ème année (sortie BEP/CAP) ; second cycle = 2nde/1ère/Tle.
+      // Le sous-cycle technique se choisit par spécialité (ELME, ELEQ, MENU, ...),
+      // pas par filière générique. Les noms de classe correspondent exactement
+      // à ceux du référentiel national (programmes_scolaires.classe).
       nom: 'Lycée/Collège technique',
       classes: [
-        // Sous-cycle technique (1er cycle, 6ème → 3ème) — toutes les filières
-        // proposées dans les CETIC / Lycées Techniques camerounais.
-        // TI = Technologie Industrielle, CG = Commerce-Gestion,
-        // MB = Menuiserie-Bois, ESF = Économie Sociale Familiale,
-        // HC = Habillement-Couture, BTP = Bâtiment / Travaux Publics,
-        // MA = Mécanique Auto.
-        { nom: '6ème TI' }, { nom: '6ème CG' }, { nom: '6ème MB' },
-        { nom: '6ème ESF' }, { nom: '6ème HC' }, { nom: '6ème BTP' }, { nom: '6ème MA' },
-        { nom: '5ème TI' }, { nom: '5ème CG' }, { nom: '5ème MB' },
-        { nom: '5ème ESF' }, { nom: '5ème HC' }, { nom: '5ème BTP' }, { nom: '5ème MA' },
-        { nom: '4ème TI' }, { nom: '4ème CG' }, { nom: '4ème MB' },
-        { nom: '4ème ESF' }, { nom: '4ème HC' }, { nom: '4ème BTP' }, { nom: '4ème MA' },
-        { nom: '3ème TI' }, { nom: '3ème CG' }, { nom: '3ème MB' },
-        { nom: '3ème ESF' }, { nom: '3ème HC' }, { nom: '3ème BTP' }, { nom: '3ème MA' },
-        // 2nde — entrée du second cycle, par voie
-        { nom: '2nde F',  series: SERIES_2NDE_F_CM },           // industrielle
-        { nom: '2nde G',  series: SERIES_2NDE_G_CM },           // commerciale
-        { nom: '2nde EA' },                                      // agro-pastoral
-        { nom: '2nde HR' },                                      // hôtellerie
-        // 1ère — par voie
-        { nom: '1ère F',  series: SERIES_TECHNIQUE_INDUSTRIEL_CM },
+        // Manuels transversaux partagés par toutes les spécialités du 1er cycle
+        { nom: 'Tronc commun 1er cycle' },
+
+        // 1er cycle CETIC — spécialités industrielles et tertiaires
+        { nom: '1ère année', series: SERIES_CETIC_PREMIER_CM },
+        { nom: '2ème année', series: SERIES_CETIC_PREMIER_CM },
+        { nom: '3ème année', series: SERIES_CETIC_PREMIER_CM },
+        { nom: '4ème année', series: SERIES_CETIC_PREMIER_CM },
+
+        // 1er cycle CETIC — spécialités agricoles (PDF non séparé par année)
+        { nom: '1er cycle', series: SERIES_CETIC_AGRICOLE_CM },
+
+        // 2nd cycle — Industrie/Tertiaire avec spécialité par année
+        { nom: '2nde', series: SERIES_TECHNIQUE_SECOND_CM },
+        { nom: '1ère', series: SERIES_TECHNIQUE_SECOND_CM },
+        { nom: 'Tle',  series: SERIES_TECHNIQUE_SECOND_CM },
+
+        // 2nd cycle — Spécialités sans année spécifique (PDF MINESEC groupé)
+        { nom: '2nd cycle', series: SERIES_TECHNIQUE_GROUPED_CM },
+
+        // Commerce / Agro / Hôtellerie — voies tertiaires (legacy MINESEC)
+        { nom: '2nde G',  series: SERIES_2NDE_G_CM },
+        { nom: '2nde EA' },
+        { nom: '2nde HR' },
         { nom: '1ère G',  series: SERIES_TECHNIQUE_COMMERCIAL_CM },
         { nom: '1ère EA', series: SERIES_AGRO_CM },
         { nom: '1ère HR', series: SERIES_HOTELLERIE_CM },
-        // Terminale — par voie
-        { nom: 'Tle F',   series: SERIES_TECHNIQUE_INDUSTRIEL_CM },
         { nom: 'Tle G',   series: SERIES_TECHNIQUE_COMMERCIAL_CM },
         { nom: 'Tle EA',  series: SERIES_AGRO_CM },
         { nom: 'Tle HR',  series: SERIES_HOTELLERIE_CM },

@@ -6,17 +6,19 @@
 // consulter les statistiques d'audience.
 
 import {
-  ArrowLeft, BarChart3, Bus, Calendar, Check, ChevronRight, Coffee, Copy, Edit2, ExternalLink,
-  FileText, GraduationCap, Home as HomeIcon, Info, Loader2, LogOut, Megaphone,
-  Phone, Plus, Save, School, Shirt, ShoppingCart, Sparkles, Trophy, Upload, X,
+  ArrowLeft, BarChart3, BookOpen, Bus, Calendar, Camera, Check, ChevronRight, Coffee, Copy, Edit2,
+  ExternalLink, FileText, GraduationCap, Home as HomeIcon, Info, Loader2, LogOut, Megaphone,
+  Paperclip, Phone, Plus, Save, School, Settings, Shirt, ShoppingCart, Sparkles, Trophy, Upload, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { isGuestAccount } from '../../hooks/useGuestAuth';
-import { apiGet, apiPost, apiPut } from '../../services/apiService';
+import { apiDelete, apiGet, apiPost, apiPut } from '../../services/apiService';
+import { CYCLES, CycleId, SystemeScolaireDB, normalizeCycles } from '../../data/etablissementSetup';
+import { LISTE_PAYS_UNIQUES, PaysCode } from '../../data/schoolSystems';
 
 const TYPES_BLOCS = [
   'inscription', 'transport', 'cantine', 'perisco', 'internat',
@@ -39,16 +41,33 @@ const TYPE_ICONS: Record<string, any> = {
 interface MyEtab {
   id: number;
   nom_etablissement: string;
+  nom_abrege?: string | null;
   slug: string | null;
   type_etablissement: string | null;
+  pays?: string | null;
   ville: string | null;
   quartier: string | null;
+  systeme_scolaire?: SystemeScolaireDB | null;
+  cycles_offerts?: string[];
   logo_url: string | null;
   banniere_url: string | null;
   page_status: string;
   page_published_at: string | null;
   qr_code_url: string | null;
   stats_views_30d: number;
+  my_role?: 'owner' | 'manager' | 'editor' | 'viewer' | null;
+}
+
+// Hiérarchie des rôles : owner ≥ manager > editor > viewer.
+function hasRole(my: MyEtab['my_role'], min: 'manager' | 'editor' | 'viewer'): boolean {
+  const rank = (r?: string | null) => {
+    if (r === 'owner' || r === 'manager') return 3;
+    if (r === 'editor') return 2;
+    if (r === 'viewer') return 1;
+    return 0;
+  };
+  const need = min === 'manager' ? 3 : min === 'editor' ? 2 : 1;
+  return rank(my || undefined) >= need;
 }
 
 // ============================================================================
@@ -217,7 +236,7 @@ export const EtablissementPortalHomePage: React.FC = () => {
               <p className="font-semibold text-sm text-gray-900 truncate">
                 {e.nom_etablissement}
               </p>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                     e.page_status === 'published'
@@ -227,6 +246,15 @@ export const EtablissementPortalHomePage: React.FC = () => {
                 >
                   {e.page_status === 'published' ? t('etabAdmin.dashboard.published') : t('etabAdmin.dashboard.draft')}
                 </span>
+                {e.my_role && e.my_role !== 'owner' && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-violet-100 text-violet-700">
+                    {e.my_role === 'manager'
+                      ? '👤 Gestionnaire'
+                      : e.my_role === 'editor'
+                        ? '✏️ Éditeur'
+                        : '👁 Consultation'}
+                  </span>
+                )}
                 {(e.quartier || e.ville) && (
                   <span className="text-xs text-gray-500">
                     {[e.quartier, e.ville].filter(Boolean).join(', ')}
@@ -256,6 +284,25 @@ export const EtablissementPortalHomePage: React.FC = () => {
             Nouvel établissement de démo (admin)
           </button>
         )}
+
+        {/* Outils admin Yukpo */}
+        {isYukpoAdmin && (
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-3">
+            <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wide mb-2">
+              Outils admin Yukpo
+            </p>
+            <button
+              onClick={() => navigate('/admin-yukpo/programme-national/import')}
+              className="w-full inline-flex items-center justify-between gap-2 px-4 py-2.5 bg-white border border-amber-200 text-amber-800 text-xs font-semibold rounded-xl"
+            >
+              <span className="flex items-center gap-2">
+                <Upload className="w-3.5 h-3.5" />
+                Importer un programme national (CSV)
+              </span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -277,6 +324,7 @@ interface BlocCMS {
 export const EtablissementDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { etabId = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
   const { toast } = useToast();
   const [etab, setEtab] = useState<MyEtab | null>(null);
@@ -285,6 +333,7 @@ export const EtablissementDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingType, setEditingType] = useState<string | null>(null);
   const [showIaUpload, setShowIaUpload] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -309,6 +358,21 @@ export const EtablissementDashboardPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Auto-ouverture de la modale config / IA depuis un query param
+  // (utilisé par la page Liste scolaire pour orienter vers la config).
+  useEffect(() => {
+    if (searchParams.get('config') === 'open') {
+      setShowConfig(true);
+      searchParams.delete('config');
+      setSearchParams(searchParams, { replace: true });
+    }
+    if (searchParams.get('ia') === 'open') {
+      setShowIaUpload(true);
+      searchParams.delete('ia');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const publier = async () => {
     try {
@@ -362,6 +426,16 @@ export const EtablissementDashboardPage: React.FC = () => {
         <h1 className="text-base font-bold text-gray-900 truncate flex-1 min-w-0">
           {etab.nom_etablissement}
         </h1>
+        {hasRole(etab.my_role, 'manager') && (
+          <button
+            onClick={() => setShowConfig(true)}
+            className="p-2 rounded-full hover:bg-gray-100 shrink-0"
+            aria-label="Configuration"
+            title="Configuration de l'établissement"
+          >
+            <Settings className="w-5 h-5 text-gray-600" />
+          </button>
+        )}
         <span
           className={`text-[10px] px-2 py-1 rounded-full font-semibold whitespace-nowrap shrink-0 ${
             etab.page_status === 'published'
@@ -413,7 +487,24 @@ export const EtablissementDashboardPage: React.FC = () => {
           )}
         </div>
 
-        {/* CTA IA — pré-remplissage automatique des blocs */}
+        {/* CTA Liste scolaire — gestion des programmes par classe */}
+        <button
+          onClick={() => navigate(`/etablissement-portal/${etabId}/liste-scolaire`)}
+          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 active:from-emerald-700 active:to-teal-700"
+        >
+          <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-bold text-sm">Liste scolaire</p>
+            <p className="text-xs text-emerald-50 mt-0.5">
+              Livres, cahiers et fournitures par classe
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5" />
+        </button>
+
+        {/* CTA Yukpo — pré-remplissage automatique des blocs */}
         <button
           onClick={() => setShowIaUpload(true)}
           className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 active:from-violet-700 active:to-fuchsia-700"
@@ -454,6 +545,11 @@ export const EtablissementDashboardPage: React.FC = () => {
               />
             </div>
           </div>
+        )}
+
+        {/* Équipe — visible uniquement aux managers/owners */}
+        {hasRole(etab.my_role, 'manager') && (
+          <TeamSection etabId={etabId} etabNom={etab.nom_etablissement} />
         )}
 
         {/* Liste des 10 blocs CMS */}
@@ -515,14 +611,24 @@ export const EtablissementDashboardPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modal configuration établissement */}
+      {showConfig && etab && (
+        <EtablissementConfigModal
+          etab={etab}
+          onClose={() => setShowConfig(false)}
+          onSaved={() => { setShowConfig(false); load(); }}
+        />
+      )}
     </div>
   );
 };
 
 // ============================================================================
 // Modal d'upload IA — multi-fichiers (PDF, image, Word, Excel)
+// Exporté pour être réutilisable depuis EtablissementListeScolairePage.
 // ============================================================================
-const IaUploadModal: React.FC<{
+export const IaUploadModal: React.FC<{
   etabId: string;
   onClose: () => void;
   onSuccess: () => void;
@@ -532,12 +638,18 @@ const IaUploadModal: React.FC<{
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const fileRef = React.useRef<HTMLInputElement>(null);
 
-  const handleFiles = (list: FileList | null) => {
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const galleryInputRef = React.useRef<HTMLInputElement>(null);
+  const documentInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFiles = (list: FileList | null, append = true) => {
     if (!list) return;
-    const arr = Array.from(list).slice(0, 12);
-    setFiles(arr);
+    const arr = Array.from(list);
+    setFiles(prev => {
+      const merged = append ? [...prev, ...arr] : arr;
+      return merged.slice(0, 12);
+    });
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -601,14 +713,21 @@ const IaUploadModal: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+      // ✅ z-[100] pour passer au-dessus de BourseNav (z-50). Sans ça, la
+      //    barre du bas masquait le bouton 'Lancer Yukpo' et bloquait le scroll.
+      className="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto"
+        // ✅ Flex column avec hauteur dynamique (dvh = dynamic viewport height,
+        //    gère correctement la barre Android qui apparaît/disparaît).
+        //    Le header reste fixe en haut, le contenu scroll, le bouton
+        //    submit est en bas (sticky) → toujours accessible.
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg flex flex-col"
+        style={{ maxHeight: '90dvh' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+        <div className="p-5 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
           <Sparkles className="w-5 h-5 text-violet-600" />
           <p className="font-bold text-gray-900 flex-1">{t('etabAdmin.ia.modal_title')}</p>
           <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
@@ -616,33 +735,56 @@ const IaUploadModal: React.FC<{
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
           <p className="text-xs text-gray-600 leading-relaxed bg-violet-50 border border-violet-200 rounded-xl p-3">
             {t('etabAdmin.ia.tip')}
           </p>
 
           {!result && (
             <>
-              <div
-                onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed border-violet-300 rounded-2xl p-6 text-center cursor-pointer hover:bg-violet-50"
-              >
-                <Upload className="w-10 h-10 text-violet-400 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-gray-700">
-                  {t('etabAdmin.ia.upload_label')}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {t('etabAdmin.ia.upload_help')}
-                </p>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  multiple
-                  accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
-                  className="hidden"
-                  onChange={(e) => handleFiles(e.target.files)}
-                />
+              {/* Trois sources d'import explicites — évite que le navigateur mobile
+                  force la caméra par défaut quand `accept` mêle image/* et autres types */}
+              <div className="grid grid-cols-3 gap-2">
+                <label className="flex flex-col items-center gap-1.5 py-4 bg-white border-2 border-dashed border-violet-300 rounded-2xl cursor-pointer active:bg-violet-50 text-center">
+                  <Camera className="w-5 h-5 text-violet-600" />
+                  <span className="text-xs text-violet-700 font-semibold">Caméra</span>
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+                  />
+                </label>
+                <label className="flex flex-col items-center gap-1.5 py-4 bg-white border-2 border-dashed border-blue-300 rounded-2xl cursor-pointer active:bg-blue-50 text-center">
+                  <Upload className="w-5 h-5 text-blue-600" />
+                  <span className="text-xs text-blue-700 font-semibold">Galerie</span>
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+                  />
+                </label>
+                <label className="flex flex-col items-center gap-1.5 py-4 bg-white border-2 border-dashed border-fuchsia-300 rounded-2xl cursor-pointer active:bg-fuchsia-50 text-center">
+                  <Paperclip className="w-5 h-5 text-fuchsia-600" />
+                  <span className="text-xs text-fuchsia-700 font-semibold">PDF / Word / Excel</span>
+                  <input
+                    ref={documentInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf,application/msword,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,application/vnd.ms-excel,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx"
+                    multiple
+                    className="hidden"
+                    onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+                  />
+                </label>
               </div>
+              <p className="text-[11px] text-gray-500 text-center -mt-1">
+                {t('etabAdmin.ia.upload_help')}
+              </p>
 
               {files.length > 0 && (
                 <div className="space-y-2">
@@ -867,19 +1009,19 @@ const BlocEditModal: React.FC<{
       onClick={onClose}
     >
       <div
-        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+        <div className="p-5 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
           <p className="font-bold text-gray-900 flex-1">
             {t(`bourse.infos.sections.${typeBloc}`)}
           </p>
-          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100" aria-label="Fermer">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           <div>
             <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
               Titre (optionnel)
@@ -926,7 +1068,10 @@ const BlocEditModal: React.FC<{
           </label>
         </div>
 
-        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+        <div
+          className="p-5 bg-white border-t border-gray-100 flex gap-2 shrink-0"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
           <button
             onClick={onClose}
             className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold"
@@ -941,6 +1086,545 @@ const BlocEditModal: React.FC<{
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {t('etabAdmin.blocs.save')}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// 4. Modale de configuration de l'établissement
+//    nom_etablissement, nom_abrege, pays, systeme_scolaire, cycles_offerts
+// ============================================================================
+
+const SYSTEMES: { id: SystemeScolaireDB; label: string; emoji: string }[] = [
+  { id: 'francophone', label: 'Francophone',          emoji: '🇫🇷' },
+  { id: 'anglophone',  label: 'Anglophone',           emoji: '🇬🇧' },
+  { id: 'bilingue',    label: 'Bilingue (FR + EN)',   emoji: '🌍' },
+];
+
+const EtablissementConfigModal: React.FC<{
+  etab: MyEtab;
+  onClose: () => void;
+  onSaved: () => void;
+}> = ({ etab, onClose, onSaved }) => {
+  const { toast } = useToast();
+  const [nom, setNom] = useState(etab.nom_etablissement || '');
+  const [nomAbrege, setNomAbrege] = useState(etab.nom_abrege || '');
+  const [pays, setPays] = useState<PaysCode>((etab.pays || 'CM') as PaysCode);
+  const [systeme, setSysteme] = useState<SystemeScolaireDB | null>(
+    (etab.systeme_scolaire as SystemeScolaireDB) || null,
+  );
+  const [cycles, setCycles] = useState<Set<CycleId>>(
+    new Set(normalizeCycles(etab.cycles_offerts || [])),
+  );
+  const [ville, setVille] = useState(etab.ville || '');
+  const [quartier, setQuartier] = useState(etab.quartier || '');
+  const [saving, setSaving] = useState(false);
+
+  const toggleCycle = (id: CycleId) => {
+    setCycles(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const submit = async () => {
+    if (!nom.trim()) {
+      toast({ title: 'Nom requis', variant: 'destructive' });
+      return;
+    }
+    if (!systeme) {
+      toast({ title: 'Système scolaire requis', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await apiPut(`/api/v2/admin/etablissement/${etab.id}/config`, {
+        nom_etablissement: nom.trim(),
+        nom_abrege: nomAbrege.trim() || null,
+        pays,
+        ville: ville.trim() || null,
+        quartier: quartier.trim() || null,
+        systeme_scolaire: systeme,
+        cycles_offerts: Array.from(cycles),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+      toast({ title: 'Configuration enregistrée' });
+      onSaved();
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      {/* dvh > vh sur mobile : tient compte de la barre d'adresse Chrome qui se rétracte.
+          flex column avec header/footer fixes ET zone de scroll au milieu (flex-1).
+          pb safe-area-inset-bottom pour notch iOS. */}
+      <div
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-5 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
+          <Settings className="w-5 h-5 text-emerald-600" />
+          <p className="font-bold text-gray-900 flex-1">Configuration de l'établissement</p>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100" aria-label="Fermer">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Nom + Nom abrégé */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nom complet *</label>
+            <input
+              value={nom}
+              onChange={e => setNom(e.target.value)}
+              placeholder="Collège Bilingue La Gaieté"
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+              Nom abrégé (sigle / forme courte populaire)
+            </label>
+            <input
+              value={nomAbrege}
+              onChange={e => setNomAbrege(e.target.value)}
+              placeholder="CBLG, ENAM, Vogt, Sainte-Thérèse…"
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            />
+            <p className="mt-1 text-[11px] text-gray-500">
+              Permet aux parents de retrouver votre école par son sigle dans la recherche.
+            </p>
+          </div>
+
+          {/* Pays */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Pays *</label>
+            <select
+              value={pays}
+              onChange={e => setPays(e.target.value as PaysCode)}
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            >
+              {LISTE_PAYS_UNIQUES.map(p => (
+                <option key={p.code} value={p.code}>{p.emoji} {p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Ville + Quartier */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Ville</label>
+              <input
+                value={ville}
+                onChange={e => setVille(e.target.value)}
+                className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Quartier</label>
+              <input
+                value={quartier}
+                onChange={e => setQuartier(e.target.value)}
+                className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Système scolaire */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Système scolaire *</label>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {SYSTEMES.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => setSysteme(s.id)}
+                  className={`py-3 px-2 rounded-xl text-xs font-semibold border-2 transition-colors ${
+                    systeme === s.id
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                      : 'border-gray-200 bg-white text-gray-700'
+                  }`}
+                >
+                  <div className="text-lg mb-1">{s.emoji}</div>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cycles offerts */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+              Cycles offerts *
+            </label>
+            <p className="mt-1 text-[11px] text-gray-500 mb-2">
+              Sélectionnez tous les niveaux dispensés par votre établissement.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {CYCLES.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => toggleCycle(c.id)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-semibold border-2 text-left ${
+                    cycles.has(c.id)
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                      : 'border-gray-200 bg-white text-gray-600'
+                  }`}
+                >
+                  {cycles.has(c.id) && <Check className="w-3 h-3 inline mr-1" />}
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="p-5 bg-white border-t border-gray-100 flex gap-2 shrink-0"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
+          <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={saving || !nom.trim() || !systeme || cycles.size === 0}
+            className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// 5. Section Équipe — invitations WhatsApp avec tracking
+// ============================================================================
+
+interface TeamInvitation {
+  id: number;
+  token: string;
+  invitation_path: string;
+  role: string | null;
+  telephone: string | null;
+  nom_affiche: string | null;
+  status: 'pending' | 'opened' | 'accepted';
+  opened_at: string | null;
+  accepted_at: string | null;
+  accepted_email: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
+const ROLES_INVITATION: { id: 'manager' | 'editor' | 'viewer'; label: string; desc: string }[] = [
+  { id: 'manager', label: 'Gestionnaire', desc: 'Tous les droits sauf inviter d\'autres gestionnaires' },
+  { id: 'editor',  label: 'Éditeur de contenu', desc: 'Peut éditer les blocs et la liste scolaire' },
+  { id: 'viewer',  label: 'Consultation',  desc: 'Voit les statistiques sans pouvoir modifier' },
+];
+
+const TeamSection: React.FC<{ etabId: string; etabNom: string }> = ({ etabId, etabNom }) => {
+  const { toast } = useToast();
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showInvite, setShowInvite] = useState(false);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiGet(`/api/v2/admin/etablissement/${etabId}/team/invitations`);
+      const d = await res.json().catch(() => ({}));
+      setInvitations(Array.isArray(d?.invitations) ? d.invitations : []);
+    } finally {
+      setLoading(false);
+    }
+  }, [etabId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const accepted = invitations.filter(i => i.status === 'accepted');
+  const pending = invitations.filter(i => i.status !== 'accepted');
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+          Équipe ({accepted.length} membre{accepted.length > 1 ? 's' : ''})
+        </p>
+        <button
+          onClick={() => setShowInvite(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Inviter un membre
+        </button>
+      </div>
+
+      {loading && <p className="text-xs text-gray-400 text-center py-3">Chargement…</p>}
+
+      {!loading && invitations.length === 0 && (
+        <p className="text-xs text-gray-500 leading-relaxed">
+          Aucune invitation envoyée. Cliquez sur « Inviter un membre » pour partager
+          un lien WhatsApp avec un collaborateur (gestionnaire, éditeur ou consultation).
+        </p>
+      )}
+
+      {!loading && invitations.length > 0 && (
+        <div className="space-y-2">
+          {invitations.map(inv => {
+            const link = `${window.location.origin}${inv.invitation_path}`;
+            const roleLabel = ROLES_INVITATION.find(r => r.id === inv.role)?.label || inv.role || '—';
+            const statusBadge =
+              inv.status === 'accepted' ? { color: 'bg-emerald-100 text-emerald-800', text: '✓ Accepté' }
+              : inv.status === 'opened' ? { color: 'bg-blue-100 text-blue-800', text: '👁 Ouvert' }
+              : { color: 'bg-amber-100 text-amber-800', text: '⏳ En attente' };
+            const removeMember = async () => {
+              const isAccepted = inv.status === 'accepted';
+              const who = inv.nom_affiche || inv.accepted_email || inv.telephone || 'ce membre';
+              const msg = isAccepted
+                ? `Retirer ${who} de l'équipe ?\n\nCet utilisateur perdra immédiatement l'accès à l'établissement.`
+                : `Révoquer l'invitation pour ${who} ?\n\nLe lien WhatsApp partagé deviendra inutilisable.`;
+              if (!window.confirm(msg)) return;
+              try {
+                const res = await apiDelete(`/api/v2/admin/etablissement/${etabId}/team/invitations/${inv.id}`);
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+                toast({ title: isAccepted ? 'Membre retiré' : 'Invitation révoquée' });
+                reload();
+              } catch (e: any) {
+                toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+              }
+            };
+            return (
+              <div key={inv.id} className="flex items-start gap-2 bg-gray-50 rounded-xl p-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {inv.nom_affiche || inv.accepted_email || inv.telephone || 'Sans nom'}
+                    </p>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${statusBadge.color}`}>
+                      {statusBadge.text}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5">{roleLabel}</p>
+                  {inv.status !== 'accepted' && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(link);
+                        toast({ title: 'Lien copié' });
+                      }}
+                      className="mt-1 text-[11px] text-emerald-700 font-semibold underline truncate max-w-full text-left"
+                    >
+                      Copier le lien d'invitation
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={removeMember}
+                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 shrink-0"
+                  aria-label={inv.status === 'accepted' ? 'Retirer le membre' : 'Révoquer l\'invitation'}
+                  title={inv.status === 'accepted' ? 'Retirer ce membre de l\'équipe' : 'Révoquer cette invitation'}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
+          {pending.length > 0 && (
+            <p className="text-[10px] text-gray-400 italic mt-1">
+              Les liens en attente expirent au bout de 30 jours.
+            </p>
+          )}
+        </div>
+      )}
+
+      {showInvite && (
+        <InviteTeamMemberModal
+          etabId={etabId}
+          etabNom={etabNom}
+          onClose={() => setShowInvite(false)}
+          onCreated={() => { setShowInvite(false); reload(); }}
+        />
+      )}
+    </div>
+  );
+};
+
+const InviteTeamMemberModal: React.FC<{
+  etabId: string;
+  etabNom: string;
+  onClose: () => void;
+  onCreated: () => void;
+}> = ({ etabId, etabNom: _etabNom, onClose, onCreated }) => {
+  const { toast } = useToast();
+  const [role, setRole] = useState<'manager' | 'editor' | 'viewer'>('editor');
+  const [nom, setNom] = useState('');
+  const [tel, setTel] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [created, setCreated] = useState<{ whatsapp_url: string; invitation_path: string } | null>(null);
+
+  const submit = async () => {
+    setSubmitting(true);
+    try {
+      const res = await apiPost(`/api/v2/admin/etablissement/${etabId}/team/invitations`, {
+        role,
+        nom_affiche: nom.trim() || null,
+        telephone: tel.trim() || null,
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+      setCreated({
+        whatsapp_url: d.whatsapp_url || '',
+        invitation_path: d.invitation_path || '',
+      });
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-5 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
+          <Plus className="w-5 h-5 text-emerald-600" />
+          <p className="font-bold text-gray-900 flex-1">Inviter un membre d'équipe</p>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100" aria-label="Fermer">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {!created && (
+            <>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                  Nom affiché (optionnel)
+                </label>
+                <input
+                  value={nom}
+                  onChange={e => setNom(e.target.value)}
+                  placeholder="Ex: Mme Mballa"
+                  className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                  Numéro WhatsApp (optionnel)
+                </label>
+                <input
+                  type="tel"
+                  value={tel}
+                  onChange={e => setTel(e.target.value)}
+                  placeholder="+237 6XX XX XX XX"
+                  className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                />
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Sert à pré-remplir le message WhatsApp à envoyer.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                  Rôle *
+                </label>
+                <div className="mt-2 space-y-2">
+                  {ROLES_INVITATION.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => setRole(r.id)}
+                      className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${
+                        role === r.id
+                          ? 'border-emerald-500 bg-emerald-50'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {role === r.id && <Check className="w-3.5 h-3.5 text-emerald-700" />}
+                        <p className="text-sm font-semibold text-gray-900">{r.label}</p>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5">{r.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {created && (
+            <div className="space-y-3">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-sm font-bold text-emerald-800 mb-1">Invitation créée ✓</p>
+                <p className="text-xs text-emerald-700 leading-relaxed">
+                  Partagez le lien suivant via WhatsApp ou tout autre canal.
+                  L'invité créera son compte (s'il n'en a pas) puis acceptera.
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 break-all">
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Lien d'invitation</p>
+                <p className="text-xs text-gray-800 font-mono">
+                  {window.location.origin}{created.invitation_path}
+                </p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}${created.invitation_path}`);
+                  }}
+                  className="mt-2 text-xs font-semibold text-emerald-700 underline"
+                >
+                  Copier le lien
+                </button>
+              </div>
+              {created.whatsapp_url && (
+                <a
+                  href={created.whatsapp_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full block text-center py-3 bg-green-600 text-white rounded-xl font-bold text-sm"
+                >
+                  📱 Ouvrir WhatsApp avec le message pré-rempli
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div
+          className="p-5 bg-white border-t border-gray-100 flex gap-2 shrink-0"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
+          <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
+            {created ? 'Fermer' : 'Annuler'}
+          </button>
+          {!created && (
+            <button
+              onClick={submit}
+              disabled={submitting}
+              className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              Créer l'invitation
+            </button>
+          )}
+          {created && (
+            <button onClick={onCreated} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold">
+              Terminé
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -22,9 +22,9 @@ const MODE_LABELS: Record<ModeListing, string> = {
     don: 'Donner',
 };
 const MODE_DESCRIPTIONS: Record<ModeListing, string> = {
-    troc: 'Échanger contre un autre livre dont j\'ai besoin',
-    vente: 'Mettre en vente d\'occasion (sans troc)',
-    don: 'Donner gratuitement',
+    troc: "Votre livre de l'an dernier part chez un autre parent, vous recevez le livre de la classe suivante (crédit Yukpo immédiat).",
+    vente: "Livre d'occasion déjà utilisé remis en circulation (cash dès qu'un acheteur le prend).",
+    don: "Vous offrez votre livre à la communauté Bourse Yukpo (geste solidaire, sans contrepartie).",
 };
 
 const LivreScolaireFormPage: React.FC = () => {
@@ -83,8 +83,9 @@ const LivreScolaireFormPage: React.FC = () => {
             const response = await apiGet(`/api/bourse-livre/${livreId}`);
             const data = await response.json();
 
-            if (data.success && data.data?.livre) {
-                const livre = data.data.livre;
+            // Backend retourne { success: true, livre: {...} } à plat.
+            const livre = data.livre || data.data?.livre;
+            if (data.success && livre) {
                 setFormData({
                     titre: livre.titre || '',
                     auteur: livre.auteur || '',
@@ -219,7 +220,7 @@ const LivreScolaireFormPage: React.FC = () => {
                     title: 'Succès',
                     description: mode === 'edit' ? 'Livre modifié avec succès !' : 'Livre créé avec succès !',
                 });
-                navigate(`/${mode === 'edit' ? livreId : data.data?.livre?.id || ''}`);
+                navigate(`/${mode === 'edit' ? livreId : (data.livre?.id || data.data?.livre?.id || '')}`);
             } else {
                 toast({
                     title: 'Erreur',
