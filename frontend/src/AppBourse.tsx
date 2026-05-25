@@ -36,6 +36,7 @@ import MesCommandesPage from './pages/livres-scolaires/MesCommandesPage';
 import CommandeDetailPage from './pages/livres-scolaires/CommandeDetailPage';
 import MaCommandeTimelinePage from './pages/livres-scolaires/MaCommandeTimelinePage';
 import { LibrairieDashboardPage, LibrairieCommandeDetailPage } from './pages/livres-scolaires/LibrairiePortalPage';
+import SuperLibrairieOperationsPage from './pages/super-librairie/SuperLibrairieOperationsPage';
 import LibrairieMarcheBoursePage from './pages/livres-scolaires/LibrairieMarcheBoursePage';
 import EcoleSearchPage from './pages/livres-scolaires/EcoleSearchPage';
 import {
@@ -157,6 +158,9 @@ function AppBourse() {
               <Route path="/librairie" element={<BourseLayout><RequireAuth><LibrairieDashboardPage /></RequireAuth></BourseLayout>} />
               <Route path="/librairie/commandes/:commandeId" element={<BourseLayout><RequireAuth><LibrairieCommandeDetailPage /></RequireAuth></BourseLayout>} />
               <Route path="/librairie/marche-bourse" element={<BourseLayout><RequireAuth><LibrairieMarcheBoursePage /></RequireAuth></BourseLayout>} />
+              {/* 2026-05-25 — Page Opérations YL (ruptures, assignation coursier,
+                  invitation coursier). Accessible depuis le header /librairie. */}
+              <Route path="/super-librairie/operations" element={<RequireAuth><SuperLibrairieOperationsPage /></RequireAuth>} />
 
               {/* ✅ 2026-05-07 : Pages Officielles Établissements */}
               {/* Côté parent (mode invité OK) */}

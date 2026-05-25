@@ -1697,21 +1697,25 @@ export const LibrairieDashboardPage: React.FC = () => {
       }
       if (data?.pousseee) {
         toast({
-          title: t('librairie.push.success', 'Commande poussée vers Yukpo Librairie'),
+          title: t('librairie.debloquee.success', 'Commande débloquée'),
+          description: t(
+            'librairie.debloquee.success_desc',
+            'Le traitement vient de démarrer — la commande passe en validation.'
+          ),
         });
       } else {
         toast({
-          title: t('librairie.push.partial', 'Commande débloquée'),
+          title: t('librairie.debloquee.partial', 'Commande partiellement débloquée'),
           description: t(
-            'librairie.push.no_super_lib',
-            'Pas de super-libraire actif — reste en validation_budget'
+            'librairie.debloquee.no_super_lib',
+            "Pas de super-libraire actif — reste en validation_budget en attendant."
           ),
         });
       }
       await load();
     } catch (e: any) {
       toast({
-        title: t('librairie.push.error', 'Échec du push'),
+        title: t('librairie.debloquee.error', 'Échec du déblocage'),
         description: e?.message || '',
         variant: 'destructive',
       });
@@ -1981,7 +1985,7 @@ export const LibrairieDashboardPage: React.FC = () => {
                           }}
                           className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold"
                         >
-                          {t('librairie.pousser', 'Pousser vers Yukpo Librairie')}
+                          {t('librairie.debloquer', 'Débloquer cette commande')}
                         </button>
                       )}
                     </div>
