@@ -1,0 +1,65 @@
+name: Netlify bourse.yukpomnang.com auto-deploy
+
+# Déclencheurs : push master touchant le frontend bourse, ou trigger manuel.
+# Construit dist-bourse sur runner GH puis déploie via netlify CLI (le site
+# Netlify n'a aucun auto-deploy git configuré, donc on pilote depuis ici).
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'frontend/src/**'
+      - 'frontend/public/**'
+      - 'frontend/index-bourse.html'
+      - 'frontend/vite.bourse.config.ts'
+      - 'frontend/vite.lite.factory.ts'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - 'frontend/tailwind.config.*'
+      - 'frontend/postcss.config.*'
+      - 'frontend/tsconfig*.json'
+      - 'frontend/netlify.toml'
+      - '.github/workflows/netlify-bourse-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Raison du redéploiement manuel'
+        required: false
+
+concurrency:
+  group: netlify-bourse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build dist-bourse + netlify deploy --prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Build dist-bourse
+        working-directory: frontend
+        run: npx vite build --config vite.bourse.config.ts
+
+      - name: Deploy to Netlify (prod)
+        working-directory: frontend
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_BOURSE }}
+        run: |
+          npx --yes netlify-cli@latest deploy \
+            --prod \
+            --dir=dist-bourse \
+            --site="$NETLIFY_SITE_ID" \
+            --message="${{ github.event.head_commit.message || 'manual dispatch' }}"
