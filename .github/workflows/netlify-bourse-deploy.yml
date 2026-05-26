@@ -57,9 +57,18 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_BOURSE }}
+          # 2026-05-26 — Passer le message via env var (pas inline) car les
+          # messages de commit multilignes ou contenant apostrophes/backticks
+          # cassaient le shell ("command not found" sur line 19). On garde
+          # uniquement la 1ère ligne + on retire les caractères dangereux.
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          MANUAL_REASON: ${{ github.event.inputs.reason }}
         run: |
+          RAW_MSG="${COMMIT_MSG:-${MANUAL_REASON:-manual dispatch}}"
+          SAFE_MSG=$(printf '%s' "$RAW_MSG" | head -n1 | tr -d "'\"\`\$" | cut -c1-200)
+          echo "Deploying with message: $SAFE_MSG"
           npx --yes netlify-cli@latest deploy \
             --prod \
             --dir=dist-bourse \
             --site="$NETLIFY_SITE_ID" \
-            --message="${{ github.event.head_commit.message || 'manual dispatch' }}"
+            --message="$SAFE_MSG"
