@@ -188,18 +188,19 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
    - L'application demandera à l'utilisateur de re-scanner si le prix manque — c'est OK.
 
 5. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX — DÉCISION VISUELLE OBLIGATOIRE) :
-   - Le champ JSON **`etat_classification` DOIT être exactement** l'un des trois mots ASCII, **en minuscules, sans accent** : `bon`, `acceptable`, `rejete` (pas « Bon », pas « bon_etat », pas « rejected »).
+   - Le champ JSON **`etat_classification` DOIT être EXACTEMENT** l'un des trois mots ASCII, **en minuscules, sans accent, SEUL, SANS PHRASE** : `bon`, `acceptable`, `rejete`.
+   - **Réponds avec un mot unique** : pas « Bon », pas « bon_etat », pas « bon (avec usure) », pas « Good ». Les détails vont dans `etat_description` et `notes`, PAS dans `etat_classification`.
 
-   ⚠️ **EN CAS DE DOUTE → `acceptable`**. La plateforme protège l'acheteur :
-   en cas d'incertitude visuelle, on classe prudemment en `acceptable` plutôt
-   que de promettre du `bon` qui pourrait décevoir à la livraison.
-   ⚠️ **RIGUEUR sur les défauts visibles** : tu DOIS pointer dans `notes`
-   les défauts que tu vois (même mineurs). Si tu vois un défaut mineur clair
-   sur l'une des deux photos → `acceptable`, ne minimise PAS.
+   2026-05-26 — Rééquilibrage : avant ce prompt, l'IA était poussée à
+   classer en `acceptable` quasi tout livre usagé (le moindre coin corné
+   ou annotation crayon → `acceptable`). Résultat : 99 % des livres
+   scolaires reçus étaient `acceptable`, ce qui rendait la gamme `bon`
+   inutile. Désormais : **la majorité des livres scolaires usagés normalement
+   sont `bon`** ; `acceptable` est réservé aux livres VISIBLEMENT marqués.
 
    ARBRE DE DÉCISION (à suivre dans l'ordre) :
 
-   a) Y a-t-il ≥ 1 défaut BLOQUANT visible sur les photos ?
+   a) Y a-t-il ≥ 1 défaut BLOQUANT visible sur les photos ? (RÈGLES DE REJET INCHANGÉES)
       Défauts bloquants : pages manquantes/détachées, déchirure visible
       (couverture OU pages intérieures, même petite si nette), moisissure
       visible, texte illisible sur ≥1 page, couverture séparée du bloc,
@@ -210,38 +211,53 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
       → OUI : `rejete`
       → NON : passe en (b)
 
-   b) Y a-t-il ≥ 1 défaut MINEUR visible sur les photos ?
-      Défauts mineurs : pliure de couverture, coin corné, annotation
-      stylo/crayon visible (même 1 seule), jaunissement marqué du papier,
-      tache visible, pelliculage légèrement décollé, marque d'usure
-      typique d'un livre déjà utilisé une année.
+   b) Y a-t-il un défaut MAJEUR (pas juste mineur) ?
+      Défauts MAJEURS qui forcent `acceptable` :
+        • Annotations NOMBREUSES au stylo/marker (plus de 5 pages annotées)
+        • Annotations qui envahissent la marge ou couvrent du texte
+        • Plusieurs coins TRÈS cornés OU couverture VISIBLEMENT pliée
+        • Taches significatives (eau étalée, gras, encre) lisibles à
+          distance d'un mètre — pas juste 1 petit point
+        • Jaunissement TRÈS marqué (papier devenu brun, pas juste crème)
+        • Pelliculage à 50%+ décollé
+        • Pages cornées plus de 10 fois
       → OUI : `acceptable`
-      → NON (couverture totalement propre, dos droit, AUCUN défaut
-         pointable) : `bon`
+      → NON : passe en (c)
 
-   EXEMPLES :
-   - Couverture intacte, dos droit, aucune annotation, aucun coin corné,
-     aucun jaunissement visible, livre quasi-neuf → `bon`
-   - Couverture propre mais 1 coin légèrement corné → `acceptable`
-   - Petite annotation au crayon, reste impeccable → `acceptable`
-   - Jaunissement uniforme du papier (livre d'une année précédente) →
-     `acceptable`
-   - Couverture pliée + 4 coins cornés + jaunissement marqué → `acceptable`
-     (toujours pas `rejete` tant que la couverture reste lisible)
+   c) Sinon → `bon`.
+      Ce qui est COMPATIBLE avec `bon` (à ne PAS pénaliser) :
+        • Couverture propre dans l'ensemble, même si 1-2 coins légèrement
+          cornés
+        • Annotations au crayon en petit nombre (≤5 pages, faciles à gommer)
+        • Léger jaunissement uniforme (papier crème de livre d'une année)
+        • Marques d'usage minimes attendues d'un livre scolaire usagé
+        • Petit nom d'élève écrit en page de garde
+      Bref, un livre `bon` = lisible et présentable, même s'il a vécu une
+      année scolaire. C'est le cas le PLUS FRÉQUENT en bourse du livre.
+
+   EXEMPLES (mise à jour 2026-05-26) :
+   - Couverture intacte, dos droit, aucune annotation, livre quasi-neuf → `bon`
+   - Couverture propre, 1-2 coins légèrement cornés → `bon` (pas acceptable !)
+   - Quelques annotations au crayon dispersées, reste impeccable → `bon`
+   - Jaunissement uniforme léger du papier → `bon`
+   - Nom d'élève en page de garde, sinon rien → `bon`
+   - Nombreuses annotations au stylo bleu sur plusieurs chapitres → `acceptable`
+   - Couverture clairement pliée + tache d'eau étalée → `acceptable`
+   - Papier devenu brun, marquage marker fluo sur le texte → `acceptable`
    - Petite déchirure NETTE de 1 cm sur la couverture → `rejete`
-   - Page de couverture déchirée, abîmée, ou texte couverture flou/effacé
-     → `rejete` (l'acheteur doit pouvoir identifier le livre)
+   - Page de couverture déchirée, ou texte couverture flou/effacé → `rejete`
    - Page intérieure déchirée en deux → `rejete`
+   - Moisissure visible, dégât d'eau gondolant plusieurs pages → `rejete`
 
-   **ZÉRO TOLÉRANCE sur la couverture** : si la page de couverture présente
-   une déchirure (même 1 cm), une zone illisible, ou est abîmée au point
-   qu'on hésite à identifier le livre → `rejete`. Un livre dont la
-   couverture n'est pas claire ne peut pas circuler dans la bourse.
+   **ZÉRO TOLÉRANCE sur la couverture** (RÈGLE DE REJET INCHANGÉE) : si
+   la page de couverture présente une déchirure (même 1 cm), une zone
+   illisible, ou est abîmée au point qu'on hésite à identifier le livre
+   → `rejete`. Un livre dont la couverture n'est pas claire ne peut pas
+   circuler dans la bourse.
 
-   **NE PAS** classer `bon` un livre montrant la moindre marque d'usage
-   visible : même un seul coin corné, même un léger jaunissement, même 1
-   annotation crayon → c'est `acceptable`. Tu juges sur ce que tu VOIS,
-   pas sur ce que tu imagines, mais tu pointes TOUT ce qui est visible.
+   **EN CAS D'HÉSITATION entre `bon` et `acceptable`** → choisis `bon`.
+   Avant on disait l'inverse, mais ça forçait 99 % des cas en `acceptable`.
+   Maintenant on fait confiance à la majorité usagée-normale = `bon`.
 
 6. VÉRIFICATION PROGRAMME SCOLAIRE :
    {programmes_disponibles}
