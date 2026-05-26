@@ -822,22 +822,24 @@ async fn auto_progress_commande_mixte(
     // 1) Si en 'edition' : calculer les totaux + passer en validation_budget.
     //    Si déjà en 'validation_budget' : skip, on garde les montants existants.
     if statut == "edition" {
-        let totaux: (f64, f64) = sqlx::query_as(
+        // 2026-05-25 : fix bug "Rust f64 not compatible with SQL NUMERIC".
+        // Cause : `0.0` en SQL est NUMERIC par défaut, donc COALESCE(x::float8, 0.0)
+        // renvoyait NUMERIC (super-type), alors que query_as<f64> attend FLOAT8.
+        // Fix : cast explicite final ::float8 + query_scalar plus simple.
+        let total_commande: f64 = sqlx::query_scalar(
             r#"
-            SELECT
-              COALESCE((SELECT SUM(prix_final * quantite)::DOUBLE PRECISION
-                          FROM commande_livres_neufs WHERE commande_id = $1), 0.0)
-              + COALESCE((SELECT SUM(prix * quantite)::DOUBLE PRECISION
-                          FROM commande_livres_occasion WHERE commande_id = $1), 0.0)
-              AS total,
-              0.0 AS placeholder
+            SELECT (
+              COALESCE((SELECT SUM(prix_final * quantite)
+                          FROM commande_livres_neufs WHERE commande_id = $1), 0)
+              + COALESCE((SELECT SUM(prix * quantite)
+                          FROM commande_livres_occasion WHERE commande_id = $1), 0)
+            )::float8 AS total
             "#,
         )
         .bind(commande_id)
         .fetch_one(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("auto-progress totaux: {}", e)))?;
-        let total_commande = totaux.0;
         let commission_app = total_commande * ConfigurationSysteme::COMMISSION_APP;
         let montant_net_libraires = total_commande - commission_app;
 
