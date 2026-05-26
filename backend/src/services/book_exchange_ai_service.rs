@@ -1522,6 +1522,20 @@ RÉPONSE ATTENDUE (JSON strict) :
     }
 
     /// Ramène les variantes LLM vers exactement `bon`, `acceptable` ou `rejete`.
+    ///
+    /// 2026-05-26 — Refonte de l'ordre des checks. Avant ce fix, la regex
+    /// "acceptable" matchait sur "usure", "corners", "annot" et écrasait
+    /// le check "bon" qui venait APRÈS → tous les livres avec mention
+    /// "Bon état mais légère usure" finissaient en "acceptable" en prod.
+    ///
+    /// Nouvel ordre :
+    ///   1. rejete (priorité absolue : si rejeté, peu importe le reste)
+    ///   2. acceptable strict (le LLM a explicitement choisi acceptable)
+    ///   3. bon : tout signal positif clair (bon/tres bon/excellent/comme neuf)
+    ///   4. acceptable inféré : signaux négatifs SANS signal positif
+    ///   5. fallback : acceptable
+    ///
+    /// Les autres règles de rejet (rejete) restent inchangées.
     pub fn normalize_etat_classification_llm(raw: &str) -> String {
         let s = raw.trim().to_lowercase();
         let n: String = s
@@ -1537,36 +1551,65 @@ RÉPONSE ATTENDUE (JSON strict) :
             })
             .collect();
 
+        // 1. Rejet : priorité absolue (livre inutilisable)
         if n.contains("rejet") {
             return "rejete".to_string();
         }
+
+        // 2. Match strict mot unique (cas le plus courant : le LLM répond
+        //    juste "bon" / "acceptable" comme demandé dans le prompt)
         match n.as_str() {
-            "bon" | "tres bon" => return "bon".to_string(),
-            "acceptable" => return "acceptable".to_string(),
+            "bon" | "tres bon" | "good" | "very good" => return "bon".to_string(),
+            "acceptable" | "fair" => return "acceptable".to_string(),
             _ => {}
         }
-        if (n.starts_with("tres bon")
-            || n.contains("excellent")
-            || n.contains("comme neuf")
-            || n.contains("tres bon etat")
-            || n.contains("bon etat"))
-            && !n.contains("pas tres bon")
-            && !n.contains("pas bon")
-        {
+
+        // 3. Signal POSITIF clair → bon (priorité sur les défauts mentionnés
+        //    en aparté ; un livre "bon avec légère usure" reste bon).
+        //    On exclut les négations explicites ("pas bon", "non bon").
+        let has_neg_bon = n.contains("pas bon")
+            || n.contains("pas tres bon")
+            || n.contains("non bon")
+            || n.contains("plus bon");
+        let signal_positif = !has_neg_bon
+            && (n.starts_with("bon")
+                || n.starts_with("tres bon")
+                || n.contains("bon etat")
+                || n.contains("tres bon etat")
+                || n.contains("excellent")
+                || n.contains("comme neuf")
+                || n.contains("very good")
+                || n.contains("good condition"));
+        if signal_positif {
             return "bon".to_string();
         }
+
+        // 4. Signal ACCEPTABLE explicite (le LLM a écrit "acceptable" quelque
+        //    part, ou des indicateurs d'état moyen significatifs).
+        //    Note : "usure" / "annot" / "corners" SEULS ne suffisent plus à
+        //    forcer acceptable — c'est compatible avec un livre "bon" qui a
+        //    de petits défauts cosmétiques.
         if n.contains("acceptable")
+            || n.contains("fair condition")
             || n.contains("etat moyen")
-            || n.contains("usure")
-            || n.contains("abime")
-            || n.contains("corners")
-            || n.contains("annot")
+            || n.contains("moyenne usure")
+            || n.contains("usure importante")
+            || n.contains("usure marquee")
+            || n.contains("annotations importantes")
+            || n.contains("nombreuses annotations")
+            || n.contains("tres abime")
+            || n.contains("tres use")
+            || n.contains("pliures importantes")
         {
             return "acceptable".to_string();
         }
+
+        // 5. Si "bon" apparait sans "acceptable" → bon (filet de sécurité).
         if n.contains("bon") && !n.contains("acceptable") {
             return "bon".to_string();
         }
+
+        // 6. Fallback ultime : acceptable (plus prudent que bon par défaut).
         "acceptable".to_string()
     }
 

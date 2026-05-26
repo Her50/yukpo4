@@ -200,11 +200,34 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
    NE LAISSE `prix_detecte` À NULL QUE si le livre est totalement illisible (aucun titre, aucune info exploitable).
 
 5. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX — DÉCISION VISUELLE OBLIGATOIRE) :
-   - Le champ JSON **`etat_classification` DOIT être exactement** l'un des trois mots ASCII, **en minuscules, sans accent** : `bon`, `acceptable`, `rejete` (pas « Bon », pas « bon_etat », pas « rejected »).
-   - **`bon`** : Couverture propre et intacte, dos ferme, pages sans taches ni déchirures majeures, peu ou pas d'annotations. Utilisation confortable.
-   - **`acceptable`** : Usure visible MAIS livre encore utilisable : pliures, coins cornés, quelques annotations au crayon/stylo, jaunissement léger, légères taches sans moisissure.
-   - **`rejete`** : Trop dégradé pour circuler : pages manquantes ou détachées, grosses déchirures, moisissure / odeur, texte souvent illisible, couverture très abîmée ou séparée du bloc.
-   - **Ne choisis `acceptable` par défaut** : si les deux faces sont nettes et le livre semble peu utilisé, choisis `bon`. Réserve `rejete` aux cas réellement limite.
+   - Le champ JSON **`etat_classification` DOIT être EXACTEMENT** l'un des trois mots ASCII, **en minuscules, sans accent, SEUL, SANS PHRASE** : `bon`, `acceptable`, ou `rejete`.
+   - **Réponds avec un mot unique : `bon`, `acceptable` ou `rejete`**. Ne mets pas « Bon état », « bon_etat », « bon avec usure », « Good », « bon (légère usure) » — uniquement `bon` / `acceptable` / `rejete`.
+   - Les détails (annotations, usure, etc.) vont dans `etat_description`, PAS dans `etat_classification`.
+
+   Critères visuels :
+   - **`bon`** (cas LE PLUS FRÉQUENT — choisis-le par défaut si le livre est globalement lisible et utilisable) :
+     - Couverture présente et globalement intacte (acceptable même si légèrement usée aux coins)
+     - Dos ferme (le bloc tient ensemble, peut être un peu fatigué)
+     - Pages lisibles, peu ou pas de taches
+     - **Quelques annotations au crayon ou marque-page = encore `bon`**
+     - **Léger jaunissement des pages = encore `bon`** (normal pour un livre scolaire)
+     - **Coins légèrement cornés = encore `bon`**
+
+   - **`acceptable`** (cas MOYEN — réserve-le aux livres VISIBLEMENT usés) :
+     - Annotations NOMBREUSES au stylo/marker
+     - Pliures importantes / page sortant du bloc
+     - Taches significatives (eau, gras, encre étalée) mais texte lisible
+     - Couverture déchirée mais retenue par le scotch
+     - Si tu hésites entre `bon` et `acceptable` → choisis `bon`.
+
+   - **`rejete`** (cas RARE — livre vraiment inutilisable) :
+     - Pages manquantes ou détachées du bloc
+     - Grosses déchirures dans le texte / pages illisibles
+     - Moisissure / odeur / pages collées
+     - Couverture séparée du bloc, texte difficile à lire
+     - Inondation, brûlure, ou dégât majeur
+
+   - **RÈGLE D'OR** : la majorité des livres scolaires usagés sont `bon`. `acceptable` doit être l'exception (livre vraiment marqué). `rejete` est très rare.
 
 6. VÉRIFICATION PROGRAMME SCOLAIRE :
    {programmes_disponibles}
