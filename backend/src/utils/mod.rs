@@ -11,6 +11,7 @@ pub mod lang;
 pub mod livekit;
 pub mod log;
 pub mod normalize_name;
+pub mod phone_verified;
 pub mod prompt_sanitizer;
 pub mod redis_helper;
 pub mod redis_tcp_direct;

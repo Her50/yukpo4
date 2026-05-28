@@ -221,15 +221,18 @@ pub async fn me_handler(
     #[derive(FromRow)]
     struct UserRow {
         id: i32,
-        email: String,
+        email: Option<String>,
+        phone: Option<String>,
         role: String,
         tokens_balance: i64,
         nom_complet: Option<String>,
         partner_type: Option<String>,
+        // ✅ 2026-05-28 : gate côté frontend pour banner "vérifie ton numéro".
+        phone_verified: bool,
     }
     let user = sqlx::query_as::<_, UserRow>(
         r#"
-        SELECT id, email, role, tokens_balance, nom_complet, partner_type
+        SELECT id, email, phone, role, tokens_balance, nom_complet, partner_type, phone_verified
         FROM users WHERE id = $1
         "#,
     )
@@ -240,11 +243,13 @@ pub async fn me_handler(
 
     Ok(Json(serde_json::json!({
         "id": user.id,
-        "email": user.email,
+        "email": user.email.unwrap_or_default(),
+        "phone": user.phone,
         "role": user.role,
         "name": user.nom_complet,
         "partner_type": user.partner_type,
         "tokens_balance": user.tokens_balance,
+        "phone_verified": user.phone_verified,
     })))
 }
 

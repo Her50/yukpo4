@@ -255,18 +255,23 @@ pub async fn register_phone(
         tokens_balance: i64,
     }
 
+    // phone_verified = FALSE : aucun OTP/SMS n'a confirmé la possession de
+    // la SIM. Le compte est utilisable pour les achats (où l'argent vient
+    // de l'inscrit lui-même → pas de risque pour autrui), mais les actions
+    // sensibles (cash-out parrainage, création troc) sont gatées côté backend
+    // tant que cette colonne reste FALSE.
     let user: NewUser = sqlx::query_as(
         r#"
         INSERT INTO users (
             email, password_hash, role,
             nom, prenom, nom_complet,
-            phone, pin_hash, preferred_lang,
+            phone, pin_hash, phone_verified, preferred_lang,
             tokens_balance, token_price_user, token_price_provider,
             commission_pct, is_provider, is_active
         ) VALUES (
             $1, NULL, 'user',
             $2, $3, $4,
-            $5, $6, 'fr',
+            $5, $6, FALSE, 'fr',
             0, 0, 0,
             0, false, true
         )
@@ -322,6 +327,9 @@ pub async fn register_phone(
                 "phone": phone,
                 "nom_complet": nom_complet,
                 "tokens_balance": user.tokens_balance,
+                // false par défaut — gate les actions sensibles tant que la
+                // possession de la SIM n'est pas prouvée (SMS futur ou admin).
+                "phone_verified": false,
             }
         })),
     ))
@@ -365,12 +373,13 @@ pub async fn login_phone(
         partner_type: Option<String>,
         failed_pin_attempts: i32,
         pin_locked_until: Option<DateTime<Utc>>,
+        phone_verified: bool,
     }
 
     let user: Option<UserRow> = sqlx::query_as(
         r#"
         SELECT id, role, email, pin_hash, nom_complet, tokens_balance,
-               partner_type, failed_pin_attempts, pin_locked_until
+               partner_type, failed_pin_attempts, pin_locked_until, phone_verified
         FROM users WHERE phone = $1
         "#,
     )
@@ -492,7 +501,117 @@ pub async fn login_phone(
                 "phone": phone,
                 "nom_complet": user.nom_complet,
                 "tokens_balance": user.tokens_balance,
+                "phone_verified": user.phone_verified,
             }
+        })),
+    ))
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RECLAIM : un user signale "ce numéro est le mien, quelqu'un d'autre l'a pris"
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Aucune action automatique : le signalement crée une entrée dans
+// `phone_reclaims` que les admins traitent manuellement (table accessible via
+// /api/admin/phone-reclaims). Anti-spam : 3 signalements max / 24 h / phone
+// pour un même IP. Pas d'auth requise (le réclamant n'a justement pas accès
+// au compte).
+//
+// L'app n'envoie aucune notification au "squatteur" pour ne pas le prévenir.
+
+#[derive(Deserialize)]
+pub struct ReclaimPhoneInput {
+    pub phone: String,
+    /// Email ou autre numéro joignable pour que l'admin rappelle.
+    pub contact: String,
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+pub async fn reclaim_phone(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<ReclaimPhoneInput>,
+) -> AppResult<impl IntoResponse> {
+    let phone = validate_phone(&body.phone)?;
+    let contact = body.contact.trim();
+    if contact.is_empty() || contact.len() > 200 {
+        return Err(AppError::BadRequest(
+            "Indiquez un email ou un autre numéro de contact (max 200 caractères).".into(),
+        ));
+    }
+    let reason = body
+        .reason
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.chars().take(1000).collect::<String>());
+
+    let ip = headers
+        .get("cf-connecting-ip")
+        .or_else(|| headers.get("x-forwarded-for"))
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.split(',').next())
+        .map(|s| s.trim().to_string());
+    let ua = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.chars().take(500).collect::<String>());
+
+    // Anti-spam : 3 reclaims max / IP / 24 h, tous numéros confondus.
+    if let Some(ip_str) = &ip {
+        let n: i64 = sqlx::query_scalar(
+            r#"SELECT COUNT(*) FROM phone_reclaims
+               WHERE ip_address = $1::inet AND created_at > NOW() - INTERVAL '24 hours'"#,
+        )
+        .bind(ip_str)
+        .fetch_one(&state.pg)
+        .await
+        .unwrap_or(0);
+        if n >= 3 {
+            return Err(AppError::TooManyRequests(
+                "Trop de signalements depuis cette adresse. Réessayez demain.".into(),
+            ));
+        }
+    }
+
+    // Récupère l'id du compte cible (s'il existe) — utile pour l'admin.
+    let target_user_id: Option<i32> =
+        sqlx::query_scalar("SELECT id FROM users WHERE phone = $1")
+            .bind(&phone)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    sqlx::query(
+        r#"INSERT INTO phone_reclaims (phone, target_user_id, contact, reason, ip_address, user_agent)
+           VALUES ($1, $2, $3, $4, $5::inet, $6)"#,
+    )
+    .bind(&phone)
+    .bind(target_user_id)
+    .bind(contact)
+    .bind(&reason)
+    .bind(&ip)
+    .bind(&ua)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[reclaim_phone] INSERT: {e:?}");
+        AppError::Internal("Impossible d'enregistrer le signalement.".into())
+    })?;
+
+    info!(
+        "[reclaim_phone] OK phone={} target_user_id={:?}",
+        log_safe_phone(&phone),
+        target_user_id
+    );
+
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "success": true,
+            "message": "Signalement enregistré. Un admin vous contactera sous 48 h."
         })),
     ))
 }

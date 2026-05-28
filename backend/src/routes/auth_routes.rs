@@ -16,7 +16,7 @@ use crate::controllers::auth_controller::{
     verify_phone_code, // ✅ NOUVEAUX
 };
 use crate::controllers::auth_phone_controller::{
-    check_phone, login_phone, register_phone,
+    check_phone, login_phone, reclaim_phone, register_phone,
 };
 use axum::response::Json;
 use serde_json::json;
@@ -77,6 +77,18 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 )),
         )
         .route("/auth/phone/login", options(cors_preflight_handler))
+        // ✅ 2026-05-28 — Réclamation anti-squat : "ce numéro est le mien,
+        // quelqu'un d'autre l'a pris". Crée un ticket admin sans alerter
+        // le compte cible. Anti-spam : 3 / IP / 24 h (logique côté handler).
+        .route(
+            "/auth/phone/reclaim",
+            post(reclaim_phone)
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    anti_bruteforce::anti_bruteforce,
+                )),
+        )
+        .route("/auth/phone/reclaim", options(cors_preflight_handler))
         // ✅ NOUVEAUX: Endpoints vérification téléphone
         .route(
             "/auth/send-verification-sms",
