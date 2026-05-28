@@ -45,15 +45,22 @@ export interface User {
   lang?: string;
   credits?: number;
   currency?: string;
+  /** 2026-05-28 — Lu depuis /auth/me. FALSE pour les nouveaux comptes
+   *  phone+PIN tant que la possession de la SIM n'a pas été prouvée.
+   *  Gate les actions sensibles (payout, troc create) côté serveur ;
+   *  côté UI, affiche un banner non-bloquant invitant à valider. */
+  phone_verified?: boolean;
 }
 
 interface MeResponse {
   id: number;
   email: string;
+  phone?: string | null;
   role: string;
   name?: string | null;
   partner_type?: string | null;
   tokens_balance?: number;
+  phone_verified?: boolean;
 }
 
 export const useUser = () => {
@@ -69,6 +76,7 @@ export const useUser = () => {
     return {
       id: String(me.id),
       email: me.email,
+      phone: me.phone ?? undefined,
       role: me.role as Role,
       isAdmin: isAdminRole(me.role),
       isUser: me.role === 'user',
@@ -78,6 +86,10 @@ export const useUser = () => {
       photo: '',
       credits: me.tokens_balance ?? 0,
       currency: 'XAF',
+      // Comptes legacy email-only : on assume vérifié pour ne pas leur
+      // afficher un banner inutile (cf. migration 20260528_001 qui force
+      // phone_verified=TRUE pour eux).
+      phone_verified: me.phone_verified ?? true,
     };
   }, []);
 

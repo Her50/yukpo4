@@ -21,6 +21,10 @@ export interface AuthUser {
   phone: string;
   nom_complet: string | null;
   tokens_balance: number;
+  /** 2026-05-28 — FALSE tant que la possession de la SIM n'a pas été
+   *  prouvée (OTP futur, validation admin / librairie partenaire).
+   *  Gate les actions sensibles : payout cash, création troc. */
+  phone_verified: boolean;
 }
 
 export interface AuthResponse {
@@ -77,4 +81,20 @@ export async function loginPhone(phone: string, pin: string): Promise<AuthRespon
     throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
   }
   return data as AuthResponse;
+}
+
+/** Signale qu'un numéro a été pris par quelqu'un d'autre ("c'est mon numéro,
+ *  pas le sien"). Crée un ticket admin sans alerter le compte cible.
+ *  Anti-spam : 3 / IP / 24 h côté backend. */
+export async function reclaimPhone(input: {
+  phone: string;
+  contact: string;
+  reason?: string;
+}): Promise<{ success: boolean; message: string }> {
+  const res = await apiPost('/api/auth/phone/reclaim', input);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+  }
+  return data;
 }

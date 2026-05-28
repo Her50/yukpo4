@@ -4,12 +4,20 @@
 // 2026-05-28 — Cible : parent qui a déjà créé son compte.
 // Pas d'OAuth, pas d'email, pas de mot de passe complexe.
 // Rate-limit & lockout gérés côté serveur (5 essais / 15 min).
+//
+// Lien discret "Ce n'est pas mon compte ?" en bas : ouvre un modal de
+// réclamation pour les cas où un fraudeur aurait squatté le numéro.
+// Volontairement secondaire pour ne pas alourdir le flux de connexion.
 // =============================================================================
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { loginPhone, normalizePhone } from '@/services/authPhoneService';
+import {
+  loginPhone,
+  normalizePhone,
+  reclaimPhone,
+} from '@/services/authPhoneService';
 import { useUser } from '@/hooks/useUser';
 
 const PIN_LENGTH = 4;
@@ -25,9 +33,14 @@ const LoginPhonePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // État du modal de réclamation (squatting).
+  const [showReclaim, setShowReclaim] = useState(false);
+  const [reclaimContact, setReclaimContact] = useState('');
+  const [reclaimReason, setReclaimReason] = useState('');
+  const [reclaimLoading, setReclaimLoading] = useState(false);
+
   const pinRef = useRef<HTMLInputElement>(null);
 
-  // Si on arrive avec un phone prérempli, focus direct le PIN.
   useEffect(() => {
     if (initialPhone) {
       setTimeout(() => pinRef.current?.focus(), 100);
@@ -72,6 +85,37 @@ const LoginPhonePage: React.FC = () => {
       setError(err?.message || 'Identifiants invalides');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReclaim = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const normalized = normalizePhone(phone);
+    if (normalized.length < 8) {
+      toast.error("Saisissez d'abord le numéro concerné en haut.");
+      return;
+    }
+    if (!reclaimContact.trim()) {
+      toast.error('Indiquez un email ou un autre numéro pour vous joindre.');
+      return;
+    }
+    setReclaimLoading(true);
+    try {
+      await reclaimPhone({
+        phone: normalized,
+        contact: reclaimContact.trim(),
+        reason: reclaimReason.trim() || undefined,
+      });
+      toast.success(
+        'Signalement enregistré. Un admin vous contactera sous 48 h.',
+      );
+      setShowReclaim(false);
+      setReclaimContact('');
+      setReclaimReason('');
+    } catch (err: any) {
+      toast.error(err?.message || "Impossible d'envoyer le signalement.");
+    } finally {
+      setReclaimLoading(false);
     }
   };
 
@@ -151,7 +195,99 @@ const LoginPhonePage: React.FC = () => {
             S'inscrire
           </Link>
         </div>
+
+        {/* Lien volontairement discret — rare cas où l'user est sûr qu'il
+            ne s'est jamais inscrit mais checkPhone dit que le numéro est pris. */}
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={() => setShowReclaim(true)}
+            className="text-[11px] text-gray-400 hover:text-gray-600 underline"
+          >
+            Ce n'est pas votre compte ? Signaler
+          </button>
+        </div>
       </div>
+
+      {/* Modal réclamation — visible uniquement si l'user clique le lien discret. */}
+      {showReclaim && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/50 flex items-end sm:items-center justify-center px-4"
+          onClick={() => setShowReclaim(false)}
+        >
+          <div
+            className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 pb-8 sm:pb-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-gray-900 text-lg mb-2">
+              Signaler un numéro pris à tort
+            </h3>
+            <p className="text-xs text-gray-600 mb-4 leading-relaxed">
+              Si vous êtes certain de ne jamais avoir créé de compte avec ce
+              numéro mais qu'il apparaît déjà utilisé, signalez-le. Un admin
+              vérifiera votre demande sous 48 h.
+            </p>
+
+            <form onSubmit={handleReclaim} className="flex flex-col gap-3">
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">
+                  Numéro concerné
+                </span>
+                <input
+                  type="tel"
+                  className="mt-1 w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-700"
+                  value={normalizePhone(phone) || '— saisir en haut —'}
+                  readOnly
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">
+                  Comment vous joindre ?
+                </span>
+                <input
+                  type="text"
+                  placeholder="email ou autre numéro"
+                  className="mt-1 w-full p-3 rounded-lg border border-gray-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+                  value={reclaimContact}
+                  onChange={(e) => setReclaimContact(e.target.value)}
+                  disabled={reclaimLoading}
+                  required
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-700">
+                  Détails (optionnel)
+                </span>
+                <textarea
+                  rows={3}
+                  placeholder="Depuis quand utilisez-vous ce numéro, etc."
+                  className="mt-1 w-full p-3 rounded-lg border border-gray-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none resize-none"
+                  value={reclaimReason}
+                  onChange={(e) => setReclaimReason(e.target.value)}
+                  disabled={reclaimLoading}
+                />
+              </label>
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowReclaim(false)}
+                  disabled={reclaimLoading}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-lg disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={reclaimLoading}
+                  className="flex-[2] bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-lg disabled:opacity-50"
+                >
+                  {reclaimLoading ? 'Envoi…' : 'Envoyer le signalement'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
