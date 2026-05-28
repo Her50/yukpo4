@@ -23,7 +23,7 @@
 
 use axum::{
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Json},
 };
 use bcrypt::{hash, verify};
@@ -34,10 +34,23 @@ use sqlx::FromRow;
 use std::sync::Arc;
 
 use crate::{
+    controllers::auth_controller::{build_jwt_cookie, AUTH_COOKIE_TTL_SECS},
     core::types::{AppError, AppResult},
     state::AppState,
     utils::{jwt_manager::generate_jwt, normalize_name::build_full_name},
 };
+
+/// 2026-05-28 — Construit le header Set-Cookie commun à register_phone /
+/// login_phone. Sans ça, le frontend web (cookie httpOnly) ne reçoit jamais
+/// le JWT, /auth/me renvoie 401 et l'utilisateur paraît déconnecté juste
+/// après avoir saisi son PIN.
+fn jwt_cookie_headers(jwt: &str) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    if let Ok(hv) = HeaderValue::from_str(&build_jwt_cookie(jwt, AUTH_COOKIE_TTL_SECS)) {
+        headers.insert(axum::http::header::SET_COOKIE, hv);
+    }
+    headers
+}
 
 /// Normalise un numéro de téléphone : retire les espaces, tirets,
 /// parenthèses, points. Préserve le + initial. Cohérent avec la fonction
@@ -318,6 +331,7 @@ pub async fn register_phone(
 
     Ok((
         StatusCode::CREATED,
+        jwt_cookie_headers(&jwt),
         Json(serde_json::json!({
             "success": true,
             "token": jwt,
@@ -492,6 +506,7 @@ pub async fn login_phone(
 
     Ok((
         StatusCode::OK,
+        jwt_cookie_headers(&jwt),
         Json(serde_json::json!({
             "success": true,
             "token": jwt,

@@ -55,7 +55,13 @@ pub struct LoginInput {
 /// ✅ 2026-05-21 — Construit le header Set-Cookie sécurisé pour le JWT.
 /// HttpOnly empêche JS de lire le cookie (fix XSS), Secure force HTTPS,
 /// SameSite=Lax empêche CSRF cross-site mais autorise navigation classique.
-/// Path=/ et Max-Age aligné sur le TTL du JWT (24h).
+/// Path=/ et Max-Age aligné sur le TTL du JWT (30 jours depuis 2026-05-28).
+///
+/// 2026-05-28 — Constante exportée AUTH_COOKIE_TTL_SECS pour rester aligné
+/// avec le TTL du JWT côté `generate_jwt()`. Toute place qui set un cookie
+/// JWT doit utiliser cette valeur pour éviter la divergence cookie/JWT.
+pub const AUTH_COOKIE_TTL_SECS: i64 = 60 * 60 * 24 * 30;
+
 pub(crate) fn build_jwt_cookie(token: &str, max_age_secs: i64) -> String {
     // En debug (cargo run local), on n'a pas forcément HTTPS → on retire Secure
     // pour pouvoir tester sur http://localhost. En release Secure est présent.
@@ -202,7 +208,7 @@ pub async fn login_handler(
 
     // ✅ 2026-05-21 — Set-Cookie httpOnly pour le navigateur web (fix XSS).
     // Le mobile (RN) ignore les cookies et continue d'utiliser `token` du JSON.
-    let cookie_value = build_jwt_cookie(&jwt, 60 * 60 * 24);
+    let cookie_value = build_jwt_cookie(&jwt, AUTH_COOKIE_TTL_SECS);
     let mut headers = HeaderMap::new();
     if let Ok(hv) = HeaderValue::from_str(&cookie_value) {
         headers.insert(axum::http::header::SET_COOKIE, hv);

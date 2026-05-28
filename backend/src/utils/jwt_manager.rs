@@ -53,15 +53,21 @@ pub fn generate_jwt(
     secret: &str,
     partner_type: Option<String>, // ✅ NOUVEAU: Type de partenaire
 ) -> Result<String, AppError> {
+    // 2026-05-28 — TTL allongé à 30 jours.
+    // Cible : parents Bourse du Livre qui ouvrent l'app ponctuellement
+    // (rentrée scolaire, achats sporadiques). 24 h obligeait à ressaisir
+    // PIN/password à chaque session ; usage habituel des apps grand
+    // public mobile (WhatsApp, MoMo) = plusieurs semaines/mois. Le PIN
+    // bcrypt + rate-limit 5 essais reste la barrière principale.
     let claims = UserClaims::new(
         user_id,
         role,
         email,
         name,
         tokens_balance,
-        60 * 60 * 24,
+        60 * 60 * 24 * 30,
         partner_type,
-    ); // 24h
+    );
     encode(
         &Header::new(Algorithm::HS256),
         &claims,
