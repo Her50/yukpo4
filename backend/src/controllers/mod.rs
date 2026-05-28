@@ -5,6 +5,7 @@ pub mod assurance_controller; // ✅ NOUVEAU: Contrôleur assurance dédié (rec
 pub mod async_upload_controller; // ✅ NOUVEAU 2025-01-27: Contrôleur pour upload asynchrone
 pub mod audio_library_controller;
 pub mod auth_controller;
+pub mod auth_phone_controller;
 pub mod auth_logout_controller; // ✅ 2026-05-16 : /auth/logout (blacklist JWT)
 pub mod drive_import_controller; // ✅ Import permanent via lien Drive/cloud pour partenaires
 pub mod echange_controller;

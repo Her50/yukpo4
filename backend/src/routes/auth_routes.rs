@@ -15,6 +15,9 @@ use crate::controllers::auth_controller::{
     send_phone_verification_code,
     verify_phone_code, // ✅ NOUVEAUX
 };
+use crate::controllers::auth_phone_controller::{
+    check_phone, login_phone, register_phone,
+};
 use axum::response::Json;
 use serde_json::json;
 
@@ -51,6 +54,29 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(register_user).layer(axum::extract::DefaultBodyLimit::max(20_000_000)), // 20MB — supporte 2 images docs + logo
         )
         .route("/auth/register", options(cors_preflight_handler))
+        // ✅ 2026-05-28 — Auth simplifiée par téléphone + PIN 4 chiffres
+        // (cible : parents qui scannent une liste scolaire — pas d'email,
+        // pas de mot de passe complexe). cf. auth_phone_controller.rs.
+        .route("/auth/phone/check", post(check_phone))
+        .route("/auth/phone/check", options(cors_preflight_handler))
+        .route(
+            "/auth/phone/register",
+            post(register_phone)
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    anti_bruteforce::anti_bruteforce,
+                )),
+        )
+        .route("/auth/phone/register", options(cors_preflight_handler))
+        .route(
+            "/auth/phone/login",
+            post(login_phone)
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    anti_bruteforce::anti_bruteforce,
+                )),
+        )
+        .route("/auth/phone/login", options(cors_preflight_handler))
         // ✅ NOUVEAUX: Endpoints vérification téléphone
         .route(
             "/auth/send-verification-sms",
