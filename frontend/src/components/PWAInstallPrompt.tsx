@@ -95,17 +95,25 @@ const PWAInstallPrompt: React.FC<Props> = ({ appName, themeColor, storageKey }) 
     };
     window.addEventListener('beforeinstallprompt', handler);
 
-    // 3. Fallback : affiche le bandeau après 5s même sans beforeinstallprompt
-    //    (sur Android le timer est plus long pour laisser le SW s'activer).
-    const fallbackTimer = setTimeout(() => {
-      // eslint-disable-next-line no-console
-      console.log('[PWA] Fallback timer — affiche bandeau (deferredPrompt:', !!deferredPrompt, ')');
-      setShow(true);
-    }, ios ? 1000 : 5000);
+    // 2026-05-29 — iOS n'envoie JAMAIS beforeinstallprompt → on affiche
+    // tout de suite le bandeau avec instructions Safari (seul moyen sur iOS).
+    // Android : ON N'AFFICHE PAS de bandeau tant que Chrome n'a pas envoyé
+    // beforeinstallprompt. Avant on avait un timer 5s qui montrait le bandeau
+    // même sans event → clic Installer = pas d'event prompt natif → modal
+    // d'instructions qui frustre l'user. Maintenant : pas d'event = pas de
+    // bouton. Mieux vaut zéro bandeau qu'un bouton qui ne fait rien.
+    let iosTimer: number | undefined;
+    if (ios) {
+      iosTimer = window.setTimeout(() => {
+        // eslint-disable-next-line no-console
+        console.log('[PWA] iOS — affiche bandeau instructions Safari');
+        setShow(true);
+      }, 1000);
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
-      clearTimeout(fallbackTimer);
+      if (iosTimer) window.clearTimeout(iosTimer);
     };
   }, [storageKey]);
 
@@ -125,6 +133,14 @@ const PWAInstallPrompt: React.FC<Props> = ({ appName, themeColor, storageKey }) 
       console.log('[PWA] install outcome:', outcome);
       if (outcome === 'accepted') {
         localStorage.setItem(storageKey, 'installed');
+        // Petit message qui confirme à l'user où trouver l'app.
+        try {
+          alert(
+            `${appName} est installée ! Vous trouverez l'icône sur l'écran d'accueil de votre téléphone.`,
+          );
+        } catch {
+          /* alert peut être bloqué — non bloquant */
+        }
       } else {
         localStorage.setItem(storageKey, `dismissed:${Date.now()}`);
       }

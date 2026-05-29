@@ -30,6 +30,9 @@ const LoginPhonePage: React.FC = () => {
   const initialPhone = searchParams.get('phone') ?? '';
   const [phone, setPhone] = useState(initialPhone);
   const [pin, setPin] = useState('');
+  // 2026-05-29 — Toggle pour afficher le PIN en clair (par défaut caché à
+  // la connexion, contrairement à l'inscription).
+  const [pinVisible, setPinVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -158,12 +161,21 @@ const LoginPhonePage: React.FC = () => {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-gray-700">
-              Code PIN ({PIN_LENGTH} chiffres)
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700">
+                Code PIN ({PIN_LENGTH} chiffres)
+              </span>
+              <button
+                type="button"
+                onClick={() => setPinVisible((v) => !v)}
+                className="text-[11px] text-amber-600 hover:text-amber-700 font-medium"
+              >
+                {pinVisible ? '🙈 Masquer' : '👁️ Afficher'}
+              </button>
+            </div>
             <input
               ref={pinRef}
-              type="password"
+              type={pinVisible ? 'text' : 'password'}
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={PIN_LENGTH}

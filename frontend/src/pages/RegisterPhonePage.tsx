@@ -33,6 +33,11 @@ const RegisterPhonePage: React.FC = () => {
   const [prenom, setPrenom] = useState('');
   const [pin, setPin] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
+  // 2026-05-29 — Affichage en clair du PIN à l'inscription (default ON).
+  // Une fois choisi, l'user le voit pour confirmer sans erreur. Reste un
+  // PIN à 4 chiffres, donc l'enjeu de masquage est faible. Peut être
+  // re-caché via le bouton œil.
+  const [pinVisible, setPinVisible] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -237,11 +242,20 @@ const RegisterPhonePage: React.FC = () => {
               </label>
             </div>
             <label className="block">
-              <span className="text-xs font-medium text-gray-700">
-                Code PIN ({PIN_LENGTH} chiffres)
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-700">
+                  Code PIN ({PIN_LENGTH} chiffres)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPinVisible((v) => !v)}
+                  className="text-[11px] text-amber-600 hover:text-amber-700 font-medium"
+                >
+                  {pinVisible ? '🙈 Masquer' : '👁️ Afficher'}
+                </button>
+              </div>
               <input
-                type="password"
+                type={pinVisible ? 'text' : 'password'}
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={PIN_LENGTH}
@@ -260,7 +274,7 @@ const RegisterPhonePage: React.FC = () => {
                 Confirmez le PIN
               </span>
               <input
-                type="password"
+                type={pinVisible ? 'text' : 'password'}
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={PIN_LENGTH}
