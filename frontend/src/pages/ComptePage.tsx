@@ -26,6 +26,13 @@ const ComptePage: React.FC = () => {
     return <div className="p-8 text-center text-gray-500">{t('common.loading')}</div>;
   }
 
+  // ✅ 2026-05-28 — Sur la Bourse du Livre (appPartnerType absent), on
+  // utilise le flux phone+PIN. Les apps standalone (pharmacie/restaurant)
+  // gardent le legacy email+password tant qu'elles n'ont pas migré.
+  const isBourse = !appPartnerType;
+  const loginPath = isBourse ? '/login-phone' : '/login';
+  const registerPath = isBourse ? '/register-phone' : '/register';
+
   if (!isAuthenticated) {
     return (
       <div className="max-w-md mx-auto p-6 pt-12">
@@ -41,13 +48,13 @@ const ComptePage: React.FC = () => {
 
         <div className="space-y-3">
           <Link
-            to="/login"
+            to={loginPath}
             className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg text-white font-semibold ${accentBtn}`}
           >
             <LogIn size={18} /> {t('compte.login')}
           </Link>
           <Link
-            to="/register"
+            to={registerPath}
             className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-50 font-semibold text-gray-800"
           >
             <UserPlus size={18} /> {t('compte.registerClient')}

@@ -18,11 +18,13 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children, allowedRoles }) => 
     return <div className="flex justify-center items-center min-h-screen">Chargement...</div>;
   }
 
-  // 🔐 Non connecté → redirige vers /login avec source=shared_service pour
-  // que LoginPage revienne sur la page demandée après connexion.
+  // 🔐 Non connecté → redirige vers /login-phone (parents Bourse du Livre).
+  // 2026-05-28 — Bascule du legacy /login (email+password) vers le nouveau
+  // flux phone+PIN. Les partenaires (libraires, établissements) gardent
+  // l'accès direct à /login via des liens explicites dans leurs portails.
   if (!user) {
     const path = `${location.pathname}${location.search || ''}`;
-    const target = `/login?source=shared_service&redirect=${encodeURIComponent(path)}`;
+    const target = `/login-phone?redirect=${encodeURIComponent(path)}`;
     return <Navigate to={target} state={{ from: location }} replace />;
   }
 

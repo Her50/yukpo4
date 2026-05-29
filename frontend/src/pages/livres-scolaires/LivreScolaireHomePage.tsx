@@ -87,7 +87,7 @@ const LivreScolaireHomePage: React.FC = () => {
   // bouton "Devenir partenaire" pour les écoles, libraires, etc.).
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate('/login?source=shared_service&redirect=%2F', { replace: true });
+      navigate('/login-phone?redirect=%2F', { replace: true });
     }
   }, [isLoading, user, navigate]);
 
@@ -148,7 +148,7 @@ const LivreScolaireHomePage: React.FC = () => {
                   localStorage.removeItem('yukpo_guest_account');
                   window.dispatchEvent(new Event('tokens_updated'));
                 } catch {/* nothing */}
-                navigate('/login');
+                navigate('/login-phone');
               }}
               className="flex items-center justify-center bg-white/20 backdrop-blur-sm w-9 h-9 rounded-full active:bg-white/30"
               aria-label="Se déconnecter"
