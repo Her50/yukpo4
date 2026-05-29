@@ -398,11 +398,6 @@ pub async fn create_troc_direct(
         user_id, payload.livre_offert_id, payload.livre_souhaite_id
     );
 
-    // ✅ 2026-05-28 — Anti-squat : créer un troc engage à expédier un livre
-    // physique à un inconnu. Un fraudeur ayant squatté un numéro pourrait
-    // organiser des trocs frauduleux. Gate sur phone_verified.
-    crate::utils::phone_verified::require_phone_verified(&state.pg, user_id).await?;
-
     let participant_id = payload.participant_id;
     let service = Service::new(Arc::new(state.pg.clone()));
     let troc = service.create_troc_direct(user_id, payload).await?;
@@ -442,9 +437,6 @@ pub async fn create_troc_chaine(
         user_id,
         payload.participants.len()
     );
-
-    // ✅ 2026-05-28 — Anti-squat (cf. create_troc_direct).
-    crate::utils::phone_verified::require_phone_verified(&state.pg, user_id).await?;
 
     // Vérifier que l'utilisateur authentifié est participant de la chaîne
     let is_participant = payload.participants.iter().any(|p| p.user_id == user_id);

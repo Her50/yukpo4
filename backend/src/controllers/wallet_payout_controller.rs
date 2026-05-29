@@ -64,11 +64,6 @@ pub async fn request_payout(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(input): Json<RequestPayoutInput>,
 ) -> AppResult<impl IntoResponse> {
-    // ✅ 2026-05-28 — Anti-squat : un compte phone+PIN non vérifié ne peut PAS
-    // déclencher de payout (sinon un fraudeur ayant squatté un numéro pourrait
-    // encaisser un bonus parrainage qui ne lui appartient pas).
-    crate::utils::phone_verified::require_phone_verified(&state.pg, user_id).await?;
-
     // ✅ 2026-05-16 — Idempotency-Key (RFC 7240 / Stripe pattern). Si le client
     // fournit cette clé, un retry (double-clic, timeout réseau) sera dédoublé
     // par le ledger wallet (UNIQUE INDEX partiel sur dedup_key). Sans clé, on
