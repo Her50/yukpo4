@@ -5,7 +5,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ToasterProvider } from './components/ui/toaster';
 import BourseNav from './components/nav/BourseNav';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import PhoneVerificationBanner from './components/PhoneVerificationBanner';
 import './config/axios';
 
 // Auth
@@ -120,7 +119,6 @@ function BourseLayout({ children }: { children: React.ReactNode }) {
   // pages de la Bourse du Livre (parent + partenaires).
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
-      <PhoneVerificationBanner />
       {children}
       <BourseNav />
       <PWAInstallPrompt
