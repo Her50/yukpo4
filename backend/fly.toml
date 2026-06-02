@@ -102,11 +102,15 @@ primary_region = "cdg"
   # depuis 1 IP, l'app dégrade fort (p99 10s). 5 VM warm absorbent mieux le burst
   # initial sans cold-start cascade.
   min_machines_running = 5
-  # ✅ 2026-05-21 — Plafond 50 (avec PgBouncer prod `yukpo-fly-pgbouncer`).
-  # Calcul : 50 VM × 200 hard = 10 000 conn HTTP max → atteint l'objectif 10k.
-  # PgBouncer factorise 50 × 20 = 1000 conn client à ~80 conn server Postgres.
-  # Worst-case facture pic = 50 × $3.89 ≈ $195/mois (impossible avec auto_stop).
-  max_machines_running = 50
+  # ✅ 2026-06-02 — Cap baissé 50 → 10 pour contenir la facture pré-prod.
+  # Contexte : facture Fly de mai à $366 (pics autoscale jusqu'à 25 VM × heures
+  # de tests + bandwidth simulations). On n'est pas encore en production réelle ;
+  # 10 VM × 200 hard = 2 000 conn HTTP max — largement suffisant pour les
+  # premiers parents de la rentrée. À remonter à 50 après validation prod réelle.
+  #
+  # Worst-case facture pic actuelle = 10 × $11.39 ≈ $114/mois si TOUTES allumées
+  # 24/7, mais auto_stop_machines = "stop" → coût réel proche de min_machines_running.
+  max_machines_running = 10
 
   # ✅ 2026-05-17 — Soft/hard divisés par 6 après load test : 300/600 ne
   # déclenchait JAMAIS le scale-up (test à 200 VU = ~200 conn, sous le soft).
