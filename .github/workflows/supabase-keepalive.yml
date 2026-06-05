@@ -1,0 +1,107 @@
+# =============================================================================
+# Supabase keep-alive — empêche la mise en pause auto des projets free-tier
+# =============================================================================
+# Contexte (2026-06-02) : sur le free tier Supabase, tout projet sans activité
+# pendant 7 jours est automatiquement mis en pause. Après 90 jours en pause,
+# les données sont supprimées (téléchargeables uniquement durant ce délai).
+#
+# Ce workflow ping chaque projet Supabase toutes les **72h** via une requête
+# REST avec la clé anon → compte comme activité, prévient la pause.
+#
+# CONFIGURATION (à faire une seule fois) :
+#   1. GitHub repo → Settings → Secrets and variables → Actions
+#   2. Pour chaque projet à protéger, ajouter :
+#      - Variable (visible) : SUPABASE_<NAME>_URL
+#        Format : https://<project-ref>.supabase.co
+#      - Secret (caché) : SUPABASE_<NAME>_ANON_KEY
+#        Récupérable sur dashboard Supabase → Settings → API → anon/public key
+#   3. Les blocs qui n'ont pas de URL configurée sont skip silencieusement.
+#
+# DÉCLENCHEMENT :
+#   - Auto : tous les 3 jours à 12:00 UTC (cron)
+#   - Manuel : onglet Actions → "Supabase keep-alive" → "Run workflow"
+# =============================================================================
+
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # Tous les 3 jours à 12:00 UTC = 13:00 Paris hiver / 14:00 été.
+    # Marge de sécurité large vs limite 7 jours de Supabase.
+    - cron: '0 12 */3 * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Ping Supabase projects
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Yukpopro
+        if: ${{ vars.SUPABASE_YUKPOPRO_URL != '' }}
+        env:
+          URL: ${{ vars.SUPABASE_YUKPOPRO_URL }}
+          KEY: ${{ secrets.SUPABASE_YUKPOPRO_ANON_KEY }}
+        run: |
+          echo "→ Ping yukpopro ($URL)"
+          # /rest/v1/ avec apikey passe par PostgREST → compte comme activité DB.
+          # -f : échec si HTTP >= 400 (sauf 401 toléré ci-dessous)
+          status=$(curl -s -o /tmp/out -w "%{http_code}" \
+            "$URL/rest/v1/" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            --max-time 15)
+          echo "  HTTP $status"
+          # 200/401/404 = projet répond. 000/5xx = problème.
+          case "$status" in
+            2*|401|404) echo "  ✓ vivant" ;;
+            *) echo "  ✗ injoignable" ; exit 1 ;;
+          esac
+
+      - name: Ping Yukposecretariat
+        if: ${{ vars.SUPABASE_YUKPOSECR_URL != '' }}
+        env:
+          URL: ${{ vars.SUPABASE_YUKPOSECR_URL }}
+          KEY: ${{ secrets.SUPABASE_YUKPOSECR_ANON_KEY }}
+        run: |
+          echo "→ Ping yukposecretariat ($URL)"
+          status=$(curl -s -o /tmp/out -w "%{http_code}" \
+            "$URL/rest/v1/" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            --max-time 15)
+          echo "  HTTP $status"
+          case "$status" in
+            2*|401|404) echo "  ✓ vivant" ;;
+            *) echo "  ✗ injoignable" ; exit 1 ;;
+          esac
+
+      - name: Ping Yukpoassurance
+        if: ${{ vars.SUPABASE_YUKPOASS_URL != '' }}
+        env:
+          URL: ${{ vars.SUPABASE_YUKPOASS_URL }}
+          KEY: ${{ secrets.SUPABASE_YUKPOASS_ANON_KEY }}
+        run: |
+          echo "→ Ping yukpoassurance ($URL)"
+          status=$(curl -s -o /tmp/out -w "%{http_code}" \
+            "$URL/rest/v1/" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            --max-time 15)
+          echo "  HTTP $status"
+          case "$status" in
+            2*|401|404) echo "  ✓ vivant" ;;
+            *) echo "  ✗ injoignable" ; exit 1 ;;
+          esac
+
+      - name: Notification résumé
+        if: always()
+        run: |
+          echo "----- Résumé Supabase keep-alive -----"
+          echo "Run: $(date -u)"
+          echo "Configurés :"
+          [ -n "${{ vars.SUPABASE_YUKPOPRO_URL }}" ] && echo "  - yukpopro" || echo "  - yukpopro (non configuré)"
+          [ -n "${{ vars.SUPABASE_YUKPOSECR_URL }}" ] && echo "  - yukposecretariat" || echo "  - yukposecretariat (non configuré)"
+          [ -n "${{ vars.SUPABASE_YUKPOASS_URL }}" ] && echo "  - yukpoassurance" || echo "  - yukpoassurance (non configuré)"
