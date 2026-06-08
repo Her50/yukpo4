@@ -10,8 +10,15 @@
 //!   - Sinon (endpoint public) → rate-limit par IP (X-Forwarded-For)
 //!
 //! Plafonds par défaut (surchargables via env) :
-//!   - 3 requêtes par heure
-//!   - 10 requêtes par 24h
+//!   - 60 requêtes par heure (cible : 1 ambassadeur peut scanner 1/minute)
+//!   - 300 requêtes par 24h
+//!
+//! 2026-06-08 — Bumped 3/h → 60/h, 10/jour → 300/jour pour le scénario
+//! "1000 jeunes ambassadeurs scannent les manuels de la rentrée". À 60/h
+//! par user, 1000 users actifs = capacité théorique 60 000 scans/h côté
+//! rate-limit (largement au-dessus de l'objectif 1000/h). Le vrai garde-fou
+//! contre la surcharge stack reste le `Semaphore(50)` dans le controller
+//! bourse_livre_v2 + les rate limits OpenAI/Claude amont.
 //!
 //! Comportement Redis down : fail-open (warn + bypass). On préfère servir
 //! quelques requêtes en plus que casser le flow utilisateur.
@@ -32,14 +39,14 @@ fn limit_per_hour() -> i32 {
     std::env::var("OCR_RATE_LIMIT_PER_HOUR")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(3)
+        .unwrap_or(60)
 }
 
 fn limit_per_day() -> i32 {
     std::env::var("OCR_RATE_LIMIT_PER_DAY")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(10)
+        .unwrap_or(300)
 }
 
 fn extract_client_ip(req: &Request<Body>) -> Option<String> {

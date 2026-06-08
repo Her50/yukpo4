@@ -27,7 +27,44 @@ use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::OnceLock;
+use tokio::sync::Semaphore;
 use uuid::Uuid;
+
+// ============================================================================
+// CAP DE CONCURRENCE — extraction IA (programmes scolaires / scans livres)
+// ============================================================================
+//
+// 2026-06-08 — Le pattern `tokio::spawn(do_programme_extraction(..))` lance
+// la tâche immédiatement, sans aucune borne. En cas de pic (1000 ambassadeurs
+// scannant 5-10 livres dans la même fenêtre), on peut se retrouver avec
+// plusieurs centaines d'extractions IA concurrentes :
+//   - explosion mémoire (~64 KB par tâche + pile async + buffers fichiers)
+//   - rate-limit OpenAI/Claude atteint en quelques secondes → cascade 429
+//   - DB pool saturé par les commits INSERT en parallèle
+//
+// Solution : semaphore global qui limite à `MAX_CONCURRENT_EXTRACTIONS`
+// extractions en cours. La spawn() reste asynchrone et non bloquante pour
+// l'API (le client reçoit 202 immédiatement), mais l'extraction réelle
+// attend qu'un permis se libère. À 50 simultané × ~10s/extraction =
+// ~5 extractions/s = 18 000/h théorique en cap soutenu — largement au-dessus
+// de l'objectif 1000 scans/h tout en protégeant la stack.
+//
+// Surchargeable via env `BOURSE_EXTRACTION_CONCURRENCY` au cas où on veut
+// tester un autre cap sans redéployer.
+
+fn max_concurrent_extractions() -> usize {
+    std::env::var("BOURSE_EXTRACTION_CONCURRENCY")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|&n: &usize| n > 0)
+        .unwrap_or(50)
+}
+
+fn extraction_semaphore() -> &'static Arc<Semaphore> {
+    static SEM: OnceLock<Arc<Semaphore>> = OnceLock::new();
+    SEM.get_or_init(|| Arc::new(Semaphore::new(max_concurrent_extractions())))
+}
 
 // ============================================================================
 // SESSIONS D'UPLOAD PROGRESSIVE
@@ -3081,10 +3118,45 @@ pub async fn submit_programmes_scolaires_etablissement(
             .await;
     }
 
-    // Lancer le traitement IA en tâche de fond
+    // Lancer le traitement IA en tâche de fond, bornée par semaphore global.
+    // Si le cap (BOURSE_EXTRACTION_CONCURRENCY, défaut 50) est atteint, la
+    // tâche reste vivante mais attend qu'un permis se libère — le client a
+    // déjà reçu son 202 et peut poll /status/{job_id} normalement.
     let state_bg = state.clone();
     let job_id_bg = job_id.clone();
+    let sem = extraction_semaphore().clone();
     tokio::spawn(async move {
+        let start = std::time::Instant::now();
+        let _permit = match sem.acquire_owned().await {
+            Ok(p) => p,
+            Err(e) => {
+                // Cas dégénéré : Semaphore fermé (jamais en prod). On marque
+                // l'erreur dans Redis pour que le client voie le statut.
+                error!("[scan_job {}] semaphore closed: {}", job_id_bg, e);
+                let key = format!("scan_job:{}", job_id_bg);
+                if let Ok(mut conn) = state_bg.redis_client.get_multiplexed_async_connection().await
+                {
+                    let _: Result<(), _> = redis::cmd("SETEX")
+                        .arg(&key)
+                        .arg(1800i64)
+                        .arg(r#"{"status":"error","message":"Service saturé. Réessayez."}"#)
+                        .query_async(&mut conn)
+                        .await;
+                }
+                return;
+            }
+        };
+        // Log si l'attente du permis a été significative — signal de saturation
+        // utile pour le tuning du cap.
+        let waited = start.elapsed();
+        if waited.as_secs() >= 1 {
+            warn!(
+                "[scan_job {}] permit attendu {}s (cap concurrent atteint)",
+                job_id_bg,
+                waited.as_secs()
+            );
+        }
+
         let result = do_programme_extraction(state_bg.clone(), user_id, payload).await;
         let key = format!("scan_job:{}", job_id_bg);
         if let Ok(mut conn) = state_bg.redis_client.get_multiplexed_async_connection().await {
@@ -3103,6 +3175,7 @@ pub async fn submit_programmes_scolaires_etablissement(
             let _: Result<(), _> =
                 redis::cmd("SETEX").arg(&key).arg(1800i64).arg(val).query_async(&mut conn).await;
         }
+        // _permit drop ici → libère un slot dans le sem pour la prochaine extraction
     });
 
     Ok((
