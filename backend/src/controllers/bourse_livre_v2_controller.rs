@@ -850,18 +850,31 @@ pub async fn analyze_recto_verso(
         });
     }
 
-    // 4) Anti-fraude : duplicate detection. Un parent peut légitimement avoir
-    //    plusieurs exemplaires du MÊME manuel si plusieurs enfants sont dans
-    //    la même classe (jumeaux, triplés, fratrie même niveau).
-    //    Politique : tolère jusqu'à MAX_COPIES_PAR_ISBN par user, au-delà on
-    //    bloque et redirige vers le support (cas vraiment exceptionnels).
+    // 4) Anti-fraude : duplicate detection. Un user ne peut scanner qu'UN seul
+    //    exemplaire d'un même livre.
     //
-    //    ✅ 2026-05-14 : Détection robuste sur 2 niveaux :
+    //    Historique : auparavant 3 exemplaires tolérés (jumeaux/fratrie même
+    //    classe). 2026-06-08 — Durcissement à 1 exemplaire dans le contexte
+    //    du lancement avec 1000 ambassadeurs jeunes : le cas légitime
+    //    "plusieurs enfants même classe" n'est pas représentatif de leur
+    //    profil, et la tolérance ×3 ouvrait une porte de fraude facile
+    //    (scanner 3× son livre pour multiplier le crédit). Les vrais cas
+    //    parents avec jumeaux passent par le support (rare, traité au cas
+    //    par cas).
+    //
+    //    Détection robuste sur 2 niveaux :
     //      a) ISBN normalisé (clé primaire — précise)
     //      b) FALLBACK : (titre normalisé + classe normalisée) quand l'ISBN
     //         est manquant, partiel ou non fiable. Évite que des doublons
     //         passent en cas d'extraction IA imparfaite du code-barres.
-    const MAX_COPIES_PAR_ISBN: i64 = 3;
+    //
+    //    Tunable via env BOURSE_MAX_COPIES_PAR_ISBN (défaut 1) au cas où on
+    //    veut temporairement relâcher pour un cas particulier sans redéployer.
+    let max_copies_par_isbn: i64 = std::env::var("BOURSE_MAX_COPIES_PAR_ISBN")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|&n: &i64| n >= 1)
+        .unwrap_or(1);
     // ✅ 2026-05-15 : Message informatif (non bloquant) renvoyé au frontend
     // quand le user scanne le 2e ou 3e exemplaire du même livre. Permet de
     // l'alerter qu'il a déjà scanné ce livre, tout en acceptant le scan.
@@ -936,7 +949,7 @@ pub async fn analyze_recto_verso(
             0
         };
 
-        if dup_count >= MAX_COPIES_PAR_ISBN {
+        if dup_count >= max_copies_par_isbn {
             let dedup_mode = if isbn_normalized.is_some() {
                 "ISBN"
             } else {
@@ -944,19 +957,32 @@ pub async fn analyze_recto_verso(
             };
             info!(
                 "[analyze_recto_verso] Livre REJETÉ : duplicate ({}× déjà scanné via {}, max={}) — anti-fraude user_id={}",
-                dup_count, dedup_mode, MAX_COPIES_PAR_ISBN, user_id
+                dup_count, dedup_mode, max_copies_par_isbn, user_id
             );
             analysis.etat_classification = "rejete".to_string();
             analysis.prix_detecte = Some(0.0);
-            let note = format!(
-                "Limite atteinte : {} exemplaires de ce livre déjà scannés (détection via {}). Au-delà, contactez le support.",
-                dup_count, dedup_mode
-            );
+            // Message adapté selon le cap : si max=1 (cas par défaut depuis
+            // 2026-06-08), on parle d'un seul exemplaire ; sinon on explique
+            // la limite tolérée.
+            let note = if max_copies_par_isbn == 1 {
+                format!(
+                    "Ce livre a déjà été scanné par votre compte (détection via {}). Un seul exemplaire est accepté par livre.",
+                    dedup_mode
+                )
+            } else {
+                format!(
+                    "Limite atteinte : {} exemplaires de ce livre déjà scannés (détection via {}). Au-delà, contactez le support.",
+                    dup_count, dedup_mode
+                )
+            };
             analysis.notes = Some(match analysis.notes.take() {
                 Some(n) if !n.is_empty() => format!("{} | {}", n, note),
                 _ => note,
             });
         } else if dup_count >= 1 {
+            // Branche atteinte uniquement si BOURSE_MAX_COPIES_PAR_ISBN > 1
+            // (override env pour cas particulier jumeaux/fratrie). Avec le
+            // défaut 2026-06-08 (cap=1), cette branche est inatteignable.
             let dedup_mode = if isbn_normalized.is_some() {
                 "ISBN"
             } else {
@@ -964,16 +990,12 @@ pub async fn analyze_recto_verso(
             };
             info!(
                 "[analyze_recto_verso] Doublon déjà scanné {}× via {} (toléré jusqu'à {}) — accepté user_id={}",
-                dup_count, dedup_mode, MAX_COPIES_PAR_ISBN, user_id
+                dup_count, dedup_mode, max_copies_par_isbn, user_id
             );
-            // ✅ 2026-05-15 : message info pour le frontend — l'user est
-            // informé qu'il a déjà scanné ce livre une (ou deux) fois mais
-            // que le scan actuel est accepté (limite tolérée pour
-            // jumeaux/fratrie). Pas un blocage.
-            let remaining = MAX_COPIES_PAR_ISBN - dup_count;
+            let remaining = max_copies_par_isbn - dup_count;
             soft_duplicate_info = Some(format!(
-                "ℹ️ Vous avez déjà scanné ce livre {} fois. Yukpo tolère jusqu'à {} exemplaires (jumeaux/fratrie). Il reste {} scan(s) possible(s).",
-                dup_count, MAX_COPIES_PAR_ISBN, remaining
+                "ℹ️ Vous avez déjà scanné ce livre {} fois. Yukpo tolère jusqu'à {} exemplaires. Il reste {} scan(s) possible(s).",
+                dup_count, max_copies_par_isbn, remaining
             ));
         }
     }
