@@ -2234,8 +2234,20 @@ Réponds en JSON strict avec TOUS les champs : titre, auteur, editeur, isbn, cla
             image_verso_base64.to_string(),
         ];
 
+        // ════════════════════════════════════════════════════════════════════
+        // 2026-06-08 — Pipeline hybride scan livre :
+        //   Étape 1 : appel principal avec gpt-4o-mini (default predict_multimodal
+        //             depuis swap priorités, ~30× moins cher que gpt-4o).
+        //   Étape 2 : si la confidence renvoyée par mini < 0.7 → retry forcé sur
+        //             gpt-4o (mini a échoué à interpréter clairement le livre).
+        //   Étape 3 : ÉTAT du livre TOUJOURS confirmé par gpt-4o via un appel
+        //             dédié state-only — décision plus subjective, vaut la
+        //             précision supplémentaire (gpt-4o ~10% mieux que mini sur
+        //             la classification d'état dégradé / déchirures fines).
+        // ════════════════════════════════════════════════════════════════════
+
         let (model_name, response, tokens) =
-            self.app_ia.predict_multimodal(&prompt, Some(images)).await.map_err(|e| {
+            self.app_ia.predict_multimodal(&prompt, Some(images.clone())).await.map_err(|e| {
                 log::error!(
                     "[BookExchangeAIService] Erreur IA multimodale recto-verso: {}",
                     e
@@ -2244,13 +2256,13 @@ Réponds en JSON strict avec TOUS les champs : titre, auteur, editeur, isbn, cla
             })?;
 
         log::info!(
-            "[BookExchangeAIService] Analyse recto-verso effectuée avec {} (tokens: {})",
+            "[BookExchangeAIService] Analyse recto-verso (étape 1) avec {} (tokens: {})",
             model_name,
             tokens
         );
 
         let response_json = Self::sanitize_recto_verso_llm_json(&response);
-        let analysis: BookRectoVersoAnalysis = match serde_json::from_str(&response_json) {
+        let mut analysis: BookRectoVersoAnalysis = match serde_json::from_str(&response_json) {
             Ok(a) => a,
             Err(e) => {
                 log::warn!(
@@ -2282,12 +2294,168 @@ Réponds en JSON strict avec TOUS les champs : titre, auteur, editeur, isbn, cla
             }
         };
 
+        // ════════════════════════════════════════════════════════════════════
+        // Étape 2 : RETRY sur gpt-4o si la confidence de mini est trop basse.
+        // ════════════════════════════════════════════════════════════════════
+        // Seuil 0.7 : mini renvoie typiquement 0.85-0.95 sur un scan net, et
+        // 0.3-0.6 quand l'image est ambiguë (livre flou, mauvaise lumière, page
+        // intérieure scannée à la place de la couverture). Dans ces cas, gpt-4o
+        // donne une analyse sensiblement meilleure et vaut son surcoût.
+        // On ne retry PAS si mini a déjà classé en "rejete" — la décision est
+        // claire (image non-conforme ou degradation flag) et gpt-4o aurait peu
+        // de chance de l'inverser.
+        if analysis.confidence < 0.7
+            && !analysis.etat_classification.eq_ignore_ascii_case("rejete")
+        {
+            log::warn!(
+                "[BookExchangeAIService] Mini confidence basse ({:.2}) — retry forcé gpt-4o",
+                analysis.confidence
+            );
+            match self
+                .app_ia
+                .predict_multimodal_force_model(
+                    &prompt,
+                    Some(images.clone()),
+                    "gpt-4o",
+                    Some("mini"),
+                )
+                .await
+            {
+                Ok((m, r, t)) => {
+                    log::info!(
+                        "[BookExchangeAIService] Retry gpt-4o réussi avec {} (tokens: {})",
+                        m,
+                        t
+                    );
+                    let rj = Self::sanitize_recto_verso_llm_json(&r);
+                    if let Ok(better) = serde_json::from_str::<BookRectoVersoAnalysis>(&rj) {
+                        analysis = better;
+                    }
+                }
+                Err(e) => {
+                    log::warn!(
+                        "[BookExchangeAIService] Retry gpt-4o échoué: {} — on garde résultat mini",
+                        e
+                    );
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // Étape 3 : CONFIRMATION ÉTAT par gpt-4o (toujours, peu importe l'étape 2).
+        // ════════════════════════════════════════════════════════════════════
+        // Le choix bon/acceptable/rejete + degradation_flags est la décision la
+        // plus subjective de tout le pipeline et a un impact direct sur le crédit
+        // versé au parent. gpt-4o offre ~10% de précision en plus que mini sur
+        // la détection fine de déchirures, pelliculage arraché, etc. — on fait
+        // donc un appel dédié state-only (prompt court, ~600 tokens) pour
+        // confirmer l'état, et on remplace les champs concernés dans `analysis`.
+        let state_prompt = format!(
+            r#"Tu es un expert qualité livre scolaire pour Yukpo. Analyse UNIQUEMENT l'état physique des 2 images fournies (recto + verso d'un même manuel scolaire). Ignore titre/auteur/prix — seulement l'état.
+
+Yukpo refuse de remettre en circulation des livres dégradés. Sois STRICT — en cas de doute sur un défaut visible, mets le flag à true et classe en "rejete". Il vaut mieux refuser à tort qu'accepter un livre abîmé.
+
+Pour chacun des 9 booléens degradation_flags ci-dessous, examine CHAQUE cm² visible des 2 couvertures :
+- has_tear : déchirure visible (même petite, même recollée par scotch/colle)
+- has_missing_piece : morceau de couverture manquant (coin, bord, bande)
+- has_pelliculage_arrache : pelliculage arraché >20% (zones où le carton est à nu)
+- has_inscription_permanent : stylo/feutre/marker permanent sur la couverture (pas un sticker amovible)
+- has_moisissure : moisissures, taches biologiques, points noirs, halo verdâtre
+- has_water_damage : papier gondolé, taches d'eau, brûlures
+- is_paper_not_cardboard : l'image montre une PAGE INTÉRIEURE PAPIER au lieu de la couverture cartonnée
+- has_broken_binding : reliure cassée, pages tombantes ou couverture détachée
+- has_illegible_pages : texte illisible >5% des pages visibles (gribouillage, taches)
+
+OR LOGIQUE recto/verso : si UN flag est true sur N'IMPORTE LAQUELLE des 2 images → flag = true global. Ne PAS moyenner.
+
+Classification :
+- Si ≥1 flag à true → etat_classification = "rejete"
+- Sinon : "bon" si couverture quasi-neuve (pelliculage intact, coins nets, propreté >95%) ; "acceptable" si usage visible (cornures légères, traces d'usage normal) mais lisible et structurellement intact.
+
+⚠️ EN CAS DE DOUTE entre bon et acceptable → "acceptable" (protection acheteur).
+
+Réponds en JSON STRICT (rien d'autre, pas de markdown) :
+{{
+  "etat_classification": "bon" | "acceptable" | "rejete",
+  "etat_description": "courte description en 1-2 phrases du constat visuel",
+  "confidence": 0.0-1.0,
+  "degradation_flags": {{
+    "has_tear": false,
+    "has_missing_piece": false,
+    "has_pelliculage_arrache": false,
+    "has_inscription_permanent": false,
+    "has_moisissure": false,
+    "has_water_damage": false,
+    "is_paper_not_cardboard": false,
+    "has_broken_binding": false,
+    "has_illegible_pages": false
+  }}
+}}
+"#
+        );
+
+        // Cas "rejete" déjà acté côté mini ET avec degradation_flags non vide : on
+        // peut éviter le surcoût de l'appel gpt-4o state-only (la décision est
+        // claire). Pour tous les autres cas (bon, acceptable, rejete sans flags
+        // explicites), gpt-4o confirme l'état.
+        let skip_state_call = analysis.etat_classification.eq_ignore_ascii_case("rejete")
+            && analysis
+                .degradation_flags
+                .as_ref()
+                .is_some_and(|f| f.any_set());
+
+        if !skip_state_call {
+            match self
+                .app_ia
+                .predict_multimodal_force_model(
+                    &state_prompt,
+                    Some(images),
+                    "gpt-4o",
+                    Some("mini"),
+                )
+                .await
+            {
+                Ok((m, r, t)) => {
+                    log::info!(
+                        "[BookExchangeAIService] État confirmé par {} (tokens: {})",
+                        m,
+                        t
+                    );
+                    let rj = Self::sanitize_recto_verso_llm_json(&r);
+                    if let Ok(state_only) =
+                        serde_json::from_str::<BookRectoVersoAnalysis>(&rj)
+                    {
+                        analysis.etat_classification = state_only.etat_classification;
+                        if !state_only.etat_description.is_empty() {
+                            analysis.etat_description = state_only.etat_description;
+                        }
+                        if state_only.degradation_flags.is_some() {
+                            analysis.degradation_flags = state_only.degradation_flags;
+                        }
+                    } else {
+                        log::warn!(
+                            "[BookExchangeAIService] Parse state-only JSON échoué — on garde l'état mini"
+                        );
+                    }
+                }
+                Err(e) => {
+                    log::warn!(
+                        "[BookExchangeAIService] État gpt-4o échoué: {} — on garde l'état mini",
+                        e
+                    );
+                }
+            }
+        } else {
+            log::info!(
+                "[BookExchangeAIService] État déjà 'rejete' avec degradation_flags — skip state-only gpt-4o"
+            );
+        }
+
         // ✅ Règle métier stricte : classe_souhaitee = next(classe_actuelle).
         // L'utilisateur troque le livre d'une classe terminée pour obtenir le livre de la
         // classe IMMÉDIATEMENT SUPÉRIEURE (même matière). On ignore donc la valeur retournée
         // par l'IA et on dérive systématiquement la classe cible depuis la table de
         // progression du système scolaire détecté (GPS-aware), pour éviter toute incohérence.
-        let mut analysis = analysis;
         analysis.etat_classification =
             Self::normalize_etat_classification_llm(&analysis.etat_classification);
         if let Some(ref classe_act) = analysis.classe_actuelle {
@@ -2946,4 +3114,21 @@ pub struct DegradationFlags {
     /// Texte illisible sur plus de 5% des pages (gribouillages, taches)
     #[serde(default)]
     pub has_illegible_pages: bool,
+}
+
+impl DegradationFlags {
+    /// 2026-06-08 — Retourne true si AU MOINS UN flag est positif.
+    /// Utilisé pour décider d'éviter l'appel state-only gpt-4o quand mini a
+    /// déjà détecté un défaut concret (rejet acté avec preuves visuelles).
+    pub fn any_set(&self) -> bool {
+        self.has_tear
+            || self.has_missing_piece
+            || self.has_pelliculage_arrache
+            || self.has_inscription_permanent
+            || self.has_moisissure
+            || self.has_water_damage
+            || self.is_paper_not_cardboard
+            || self.has_broken_binding
+            || self.has_illegible_pages
+    }
 }

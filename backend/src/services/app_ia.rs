@@ -324,7 +324,11 @@ impl AppIA {
                     presence_penalty: 0.0,  // Supprim? pour acc?l?rer
                     timeout: 60, // ✅ Augmenté à 60s pour analyse complète des images (éviter timeouts)
                     retry_count: 2, // R?duit ? 2 tentatives
-                    priority: 10,
+                    // 2026-06-08 — Priorité abaissée à 9 (était 10) pour laisser
+                    // gpt-4o-mini gérer l'OCR par défaut (30× moins cher). gpt-4o
+                    // est désormais explicitement appelé via predict_multimodal_force_model()
+                    // pour les cas où la précision compte (état du livre).
+                    priority: 9,
                     cost_per_token: 0.000005, // GPT-4o est moins cher que GPT-4 Turbo
                     enabled: true,
                 });
@@ -355,7 +359,13 @@ impl AppIA {
                     presence_penalty: 0.0,  // Supprim? pour acc?l?rer
                     timeout: 60,            // ✅ Augmenté pour éviter timeouts extrêmes
                     retry_count: 2,         // R?duit ? 2 tentatives
-                    priority: 9,
+                    // 2026-06-08 — Priorité 10 (était 9) : mini devient le défaut
+                    // pour predict_multimodal. ~30× moins cher que gpt-4o pour une
+                    // qualité OCR comparable sur scans livres scolaires nets.
+                    // gpt-4o reste appelé explicitement pour l'état du livre via
+                    // predict_multimodal_force_model() — décision plus subjective
+                    // où la précision supplémentaire compte.
+                    priority: 10,
                     cost_per_token: 0.00000015,
                     enabled: true,
                 });
@@ -925,6 +935,99 @@ impl AppIA {
 
         log::warn!("[AppIA OCR] Tous les modèles OCR ont échoué, fallback texte");
         self.predict(prompt).await
+    }
+
+    /// 2026-06-08 — Multimodal forcé sur un modèle spécifique.
+    ///
+    /// Sélectionne le PREMIER modèle multimodal dont `name.contains(model_filter)`,
+    /// avec exclusion optionnelle d'un autre filtre (ex. forcer "gpt-4o" SANS
+    /// matcher "gpt-4o-mini").
+    ///
+    /// Cas d'usage : flow hybride scan livre où on veut explicitement gpt-4o
+    /// pour la classification d'état (subjectif, vaut la précision supplémentaire)
+    /// tout en laissant le default predict_multimodal utiliser gpt-4o-mini pour
+    /// l'OCR (30× moins cher).
+    pub async fn predict_multimodal_force_model(
+        &self,
+        prompt: &str,
+        images: Option<Vec<String>>,
+        model_filter: &str,
+        exclude_filter: Option<&str>,
+    ) -> AppResult<(String, String, u32)> {
+        let start_time = SystemTime::now();
+        let interaction_id = Uuid::new_v4().to_string();
+
+        let models = self.models.read().await;
+        let candidates: Vec<&ModelConfig> = models
+            .iter()
+            .filter(|m| m.enabled && self.supports_multimodal(m))
+            .filter(|m| m.name.contains(model_filter))
+            .filter(|m| match exclude_filter {
+                Some(excl) => !m.name.contains(excl),
+                None => true,
+            })
+            .collect();
+
+        let model = match candidates.first() {
+            Some(m) => m,
+            None => {
+                log::warn!(
+                    "[AppIA force_model] Aucun modèle matchant '{}' (excl='{:?}') — fallback predict_multimodal",
+                    model_filter,
+                    exclude_filter
+                );
+                drop(models);
+                return self.predict_multimodal(prompt, images).await;
+            }
+        };
+
+        log::info!(
+            "[AppIA force_model] Appel forcé du modèle: {} (filter='{}', excl='{:?}')",
+            model.name,
+            model_filter,
+            exclude_filter
+        );
+
+        use crate::config::ai_timeouts::AITimeoutConfig;
+        let timeout_duration = AITimeoutConfig::get_multimodal_timeout();
+
+        let timeout_future = tokio::time::timeout(
+            timeout_duration,
+            self.call_model_multimodal(model, prompt, images.as_ref(), &interaction_id),
+        );
+
+        match timeout_future.await {
+            Ok(Ok((model_name, response, tokens_used))) => {
+                let elapsed = SystemTime::now().duration_since(start_time).unwrap().as_millis();
+                log::info!(
+                    "[AppIA force_model] ✅ {} réussi en {}ms (tokens: {})",
+                    model_name,
+                    elapsed,
+                    tokens_used
+                );
+                self.update_metrics_with_tokens(&model_name, true, start_time, tokens_used).await;
+                self.record_interaction(&interaction_id, prompt, &response, &model_name).await;
+                Ok((model_name, response.to_string(), tokens_used))
+            }
+            Ok(Err(e)) => {
+                log::warn!(
+                    "[AppIA force_model] Modèle {} échec: {} — fallback predict_multimodal",
+                    model.name,
+                    e
+                );
+                drop(models);
+                self.predict_multimodal(prompt, images).await
+            }
+            Err(_) => {
+                log::warn!(
+                    "[AppIA force_model] Modèle {} timeout {}s — fallback predict_multimodal",
+                    model.name,
+                    timeout_duration.as_secs()
+                );
+                drop(models);
+                self.predict_multimodal(prompt, images).await
+            }
+        }
     }
 
     /// Génère des sous-titres au format SRT via l'orchestrateur IA
