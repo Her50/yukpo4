@@ -11,7 +11,7 @@
 // côté backend (referral_service.rs) — l'UI affiche le bonus en valeur
 // effective déjà gagnée (referrals.bonus_amount_xaf sommé).
 
-import { Check, Copy, Loader2, Share2, Sparkles, Users } from 'lucide-react';
+import { ArrowLeftRight, Check, Copy, Loader2, Share2, Sparkles, Users } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
@@ -21,11 +21,21 @@ import { apiGet } from '../../services/apiService';
 interface ReferralData {
   code: string;
   share_url: string;
-  bonus_amount_xaf: number;
+  /** 2026-06-08 — Nouveau modèle de rémunération parrainage :
+   *  - bonus_percent_vente % du montant de la 1re commande qualifiante du filleul
+   *  - bonus_percent_troc % de la commission Yukpo sur chaque troc effectué
+   *    par un filleul (cumulable indéfiniment, pas seulement à la 1re fois)
+   */
+  bonus_percent_vente: number;
+  bonus_percent_troc: number;
+  bonus_seuil_min_xaf: number;
   total_clicks: number;
   total_signups: number;
   total_conversions: number;
   total_bonus_xaf: number;
+  total_trocs_filleuls: number;
+  total_troc_commission_xaf: number;
+  total_gains_xaf: number;
 }
 
 const ReferralCard: React.FC = () => {
@@ -117,11 +127,12 @@ const ReferralCard: React.FC = () => {
             </h2>
           </div>
           <p className="text-[11px] sm:text-xs text-gray-600 mt-1 leading-snug">
-            {t('referral.subtitle', {
+            {t('referral.subtitle_v2', {
               defaultValue:
-                'Gagnez {{amount}} FCFA dès qu’un filleul passe sa première commande de {{min}} FCFA ou plus.',
-              amount: data.bonus_amount_xaf.toLocaleString('fr-FR'),
-              min: '10 000',
+                'Gagnez {{pct_vente}}% sur la 1re commande ≥ {{min}} FCFA de chaque filleul + {{pct_troc}}% sur les commissions Yukpo de chacun de leurs trocs réussis.',
+              pct_vente: data.bonus_percent_vente,
+              pct_troc: data.bonus_percent_troc,
+              min: data.bonus_seuil_min_xaf.toLocaleString('fr-FR'),
             })}
           </p>
         </div>
@@ -183,7 +194,9 @@ const ReferralCard: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — 2 lignes :
+          1) Indicateurs d'activité (clics, inscrits, commandes, trocs effectifs)
+          2) Gains détaillés (ventes, troc, total) — TOTAL en vert highlight */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-4 pt-4 border-t border-indigo-100">
         <StatTile
           label={t('referral.stats.clicks', { defaultValue: 'Clics' })}
@@ -199,8 +212,23 @@ const ReferralCard: React.FC = () => {
           value={data.total_conversions.toLocaleString('fr-FR')}
         />
         <StatTile
-          label={t('referral.stats.bonus', { defaultValue: 'Bonus gagné' })}
+          label={t('referral.stats.trocs', { defaultValue: 'Trocs réussis' })}
+          value={data.total_trocs_filleuls.toLocaleString('fr-FR')}
+          icon={<ArrowLeftRight className="w-3.5 h-3.5 text-amber-600" />}
+        />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mt-2 sm:mt-3">
+        <StatTile
+          label={t('referral.stats.bonus_vente', { defaultValue: 'Gains ventes' })}
           value={`${data.total_bonus_xaf.toLocaleString('fr-FR')} XAF`}
+        />
+        <StatTile
+          label={t('referral.stats.bonus_troc', { defaultValue: 'Gains troc' })}
+          value={`${data.total_troc_commission_xaf.toLocaleString('fr-FR')} XAF`}
+        />
+        <StatTile
+          label={t('referral.stats.total_gains', { defaultValue: 'Total gagné' })}
+          value={`${data.total_gains_xaf.toLocaleString('fr-FR')} XAF`}
           highlight
         />
       </div>
