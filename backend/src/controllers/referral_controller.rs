@@ -22,11 +22,19 @@ use crate::state::AppState;
 pub struct MyReferralResponse {
     pub code: String,
     pub share_url: String,
-    pub bonus_amount_xaf: i32,
+    /// 2026-06-08 — Remplace l'ancien bonus_amount_xaf=500 fixe par le
+    /// modèle "5% ventes + 25% gains troc". Le front affiche désormais
+    /// les pourcentages plutôt qu'un montant unique.
+    pub bonus_percent_vente: f64,
+    pub bonus_percent_troc: f64,
+    pub bonus_seuil_min_xaf: i32,
     pub total_clicks: i64,
     pub total_signups: i64,
     pub total_conversions: i64,
     pub total_bonus_xaf: i64,
+    pub total_trocs_filleuls: i64,
+    pub total_troc_commission_xaf: i64,
+    pub total_gains_xaf: i64,
 }
 
 /// Renvoie le code de parrainage du user connecté + ses stats.
@@ -54,14 +62,31 @@ pub async fn get_my_referral(
         stats.code
     );
 
+    // 2026-06-08 — Frontend lit ces 3 paramètres pour afficher la formule
+    // « 5% sur les ventes ≥ 10 000 FCFA + 25% sur les commissions troc »
+    // sans avoir à hardcoder côté React.
+    let bonus_percent_vente = std::env::var("REFERRAL_BONUS_PERCENT_VENTE")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(referral_service::REFERRAL_BONUS_PERCENT_VENTE_DEFAULT);
+    let bonus_percent_troc = std::env::var("REFERRAL_TROC_COMMISSION_PERCENT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(referral_service::REFERRAL_TROC_COMMISSION_PERCENT_DEFAULT);
+
     Ok(Json(MyReferralResponse {
         code: stats.code,
         share_url,
-        bonus_amount_xaf: 500,
+        bonus_percent_vente,
+        bonus_percent_troc,
+        bonus_seuil_min_xaf: referral_service::REFERRAL_MIN_ORDER_XAF,
         total_clicks: stats.total_clicks,
         total_signups: stats.total_signups,
         total_conversions: stats.total_conversions,
         total_bonus_xaf: stats.total_bonus_xaf,
+        total_trocs_filleuls: stats.total_trocs_filleuls,
+        total_troc_commission_xaf: stats.total_troc_commission_xaf,
+        total_gains_xaf: stats.total_gains_xaf,
     }))
 }
 

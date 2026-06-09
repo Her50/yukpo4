@@ -22,20 +22,49 @@ const CODE_LEN: usize = 6;
 const CODE_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const MAX_GEN_ATTEMPTS: u8 = 10;
 
-/// Montant du bonus parrain (FCFA) crédité à la conversion du filleul.
-pub const REFERRAL_BONUS_XAF: i32 = 500;
+/// Pourcentage du bonus parrain sur la première commande qualifiante du
+/// filleul. 2026-06-08 — Bascule du modèle "500 FCFA fixe" vers "5% du
+/// montant de la commande" : aligne l'incitation du parrain avec la
+/// valeur réelle générée par son filleul (un filleul qui dépense 50 000
+/// FCFA rapporte 2 500 FCFA au parrain au lieu de 500). Surcharge via
+/// env `REFERRAL_BONUS_PERCENT_VENTE` si besoin d'ajustement sans rebuild.
+pub const REFERRAL_BONUS_PERCENT_VENTE_DEFAULT: f64 = 5.0;
+
+/// Pourcentage de la commission Yukpo sur un troc reversé au parrain quand
+/// l'initiateur est un filleul. 2026-06-08 — Si Yukpo encaisse par exemple
+/// 1 000 FCFA de commission sur un troc initié par un filleul, le parrain
+/// reçoit 250 FCFA (25%). Cumulable avec le bonus ventes (sources ledger
+/// distinctes : `referral_bonus` vs `referral_troc_commission`).
+pub const REFERRAL_TROC_COMMISSION_PERCENT_DEFAULT: f64 = 25.0;
 
 /// Seuil minimum de la première commande du filleul pour déclencher le bonus.
 /// Why: empêche un parrain de gamer le système en s'auto-parrainant (ou en
 /// payant un faux filleul) via une micro-commande de 500-1000 FCFA juste pour
-/// déclencher le bonus. Avec un seuil à 10 000 FCFA, la commande coûte plus
-/// que le bonus → arbitrage économique cassé.
+/// déclencher le bonus. Avec un seuil à 10 000 FCFA, l'arbitrage économique
+/// reste cassé pour les premières commandes minuscules.
 ///
 /// Le filleul peut faire plusieurs commandes en-dessous du seuil avant
 /// d'atteindre ce montant : on déclenche au moment où la PREMIÈRE commande
 /// ≥ 10 000 FCFA passe en statut `completed`. Les commandes précédentes
 /// n'invalident pas l'éligibilité (referrals.status reste 'pending').
 pub const REFERRAL_MIN_ORDER_XAF: i32 = 10_000;
+
+/// Helpers env (overrides sans rebuild).
+fn referral_bonus_percent_vente() -> f64 {
+    std::env::var("REFERRAL_BONUS_PERCENT_VENTE")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .filter(|p| *p > 0.0 && *p <= 100.0)
+        .unwrap_or(REFERRAL_BONUS_PERCENT_VENTE_DEFAULT)
+}
+
+fn referral_troc_commission_percent() -> f64 {
+    std::env::var("REFERRAL_TROC_COMMISSION_PERCENT")
+        .ok()
+        .and_then(|v| v.parse::<f64>().ok())
+        .filter(|p| *p > 0.0 && *p <= 100.0)
+        .unwrap_or(REFERRAL_TROC_COMMISSION_PERCENT_DEFAULT)
+}
 
 /// Génère un code aléatoire (pur, sans accès DB).
 pub fn random_code() -> String {
@@ -227,7 +256,17 @@ pub struct ReferralStats {
     pub total_clicks: i64,
     pub total_signups: i64,
     pub total_conversions: i64,
+    /// Somme des bonus ventes crédités (5% commande × nb conversions converties).
     pub total_bonus_xaf: i64,
+    /// 2026-06-08 — Nombre de trocs réellement complétés par les filleuls
+    /// du parrain (statut = 'complete' dans troc_livres_scolaires). Distinct
+    /// du nombre de scans/livres uploadés, qui n'est qu'un acte technique.
+    pub total_trocs_filleuls: i64,
+    /// Somme des commissions troc (25% gain Yukpo) cumulées dans le ledger
+    /// pour ce parrain.
+    pub total_troc_commission_xaf: i64,
+    /// Gains totaux parrainage (ventes + troc) — pratique pour l'affichage.
+    pub total_gains_xaf: i64,
 }
 
 /// Stats agrégées pour un parrain donné. Utilisé par l'onglet Parrainage du
@@ -265,12 +304,45 @@ pub async fn get_stats(pool: &PgPool, user_id: i32) -> Result<ReferralStats, sql
     .fetch_one(pool)
     .await?;
 
+    // 2026-06-08 — Trocs réellement complétés par les filleuls du parrain.
+    // On joint troc_livres_scolaires.initiateur_id → users.id, en filtrant
+    // sur referred_by = parrain. statut='complete' = troc bouclé (livres
+    // échangés physiquement, paiements/commissions encaissés).
+    let total_trocs_filleuls: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::BIGINT
+           FROM troc_livres_scolaires t
+           INNER JOIN users u ON u.id = t.initiateur_id
+           WHERE u.referred_by = $1 AND t.statut = 'complete'"#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    // Cumul commissions troc dans le ledger (source = referral_troc_commission).
+    let total_troc_commission_xaf: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+           FROM wallet_credit_bourse_ledger
+           WHERE user_id = $1
+             AND source = 'referral_troc_commission'
+             AND direction = 'credit'"#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    let total_gains_xaf = total_bonus_xaf + total_troc_commission_xaf;
+
     Ok(ReferralStats {
         code,
         total_clicks,
         total_signups,
         total_conversions,
         total_bonus_xaf,
+        total_trocs_filleuls,
+        total_troc_commission_xaf,
+        total_gains_xaf,
     })
 }
 
@@ -335,8 +407,11 @@ pub async fn try_credit_referral_bonus(
         return Ok(ConversionOutcome::NoOp);
     };
 
-    let pending: Option<(i64, i32, i32)> = sqlx::query_as(
-        r#"SELECT id, parrain_id, bonus_amount_xaf
+    // 2026-06-08 — On ne lit plus `bonus_amount_xaf` ici : le montant n'est
+    // plus une constante stockée à l'inscription mais calculé maintenant à
+    // partir du % × montant commande (cf. plus bas, après lecture du total).
+    let pending: Option<(i64, i32)> = sqlx::query_as(
+        r#"SELECT id, parrain_id
              FROM referrals
             WHERE filleul_id = $1
               AND status = 'pending'
@@ -347,7 +422,7 @@ pub async fn try_credit_referral_bonus(
     .fetch_optional(pool)
     .await?;
 
-    let Some((referral_id, parrain_id, bonus_xaf)) = pending else {
+    let Some((referral_id, parrain_id)) = pending else {
         return Ok(ConversionOutcome::NoOp);
     };
 
@@ -385,6 +460,15 @@ pub async fn try_credit_referral_bonus(
             order_total_xaf,
         });
     }
+
+    // 2026-06-08 — Bonus = pourcentage du montant commande, arrondi à l'entier
+    // FCFA inférieur. Plancher à 1 FCFA pour éviter un crédit nul (corner case
+    // edge si % = 0 par erreur d'env). On stocke ce montant calculé dans
+    // referrals.bonus_amount_xaf pour traçabilité (chaque parrainage garde le
+    // montant effectif lié à la commande qui l'a déclenché).
+    let bonus_percent = referral_bonus_percent_vente();
+    let bonus_xaf: i32 = ((order_total_xaf as f64) * bonus_percent / 100.0).floor() as i32;
+    let bonus_xaf = bonus_xaf.max(1);
 
     // 2bis. ✅ 2026-05-16 — ANTI-FRAUDE : vérifie multi-compte, burst, IP commune,
     // phone non vérifié. Si signaux détectés, on enregistre dans audit_logs et on
@@ -424,11 +508,14 @@ pub async fn try_credit_referral_bonus(
     )
     .await?;
 
-    // UPDATE referrals — guard idempotency via bonus_credited_at IS NULL
+    // UPDATE referrals — guard idempotency via bonus_credited_at IS NULL.
+    // 2026-06-08 — On stocke aussi `bonus_amount_xaf` calculé (5% du montant
+    // commande) pour que les stats agrégées soient cohérentes avec le ledger.
     let updated = sqlx::query(
         r#"UPDATE referrals
               SET status = 'converted',
                   bonus_credited_at = NOW(),
+                  bonus_amount_xaf = $4,
                   first_order_id = $2,
                   first_order_total_xaf = $3
             WHERE id = $1 AND bonus_credited_at IS NULL"#,
@@ -436,6 +523,7 @@ pub async fn try_credit_referral_bonus(
     .bind(referral_id)
     .bind(delivery_id)
     .bind(order_total_xaf)
+    .bind(bonus_xaf)
     .execute(&mut *tx)
     .await?;
 
@@ -451,6 +539,106 @@ pub async fn try_credit_referral_bonus(
         parrain_id,
         order_total_xaf,
         bonus_xaf,
+        parrain_new_balance: new_balance,
+    })
+}
+
+// ============================================================================
+// PR #3 — Commission parrain sur troc effectué par un filleul
+// ============================================================================
+
+/// Résultat de [`try_credit_referral_troc_commission`].
+#[derive(Debug)]
+pub enum TrocCommissionOutcome {
+    /// L'initiateur n'a pas de parrain (ou auto-parrainage filtré) — no-op.
+    NoOp,
+    /// Commission créditée au parrain. Retourne le montant + nouveau solde.
+    Credited {
+        parrain_id: i32,
+        commission_xaf: i32,
+        parrain_new_balance: Decimal,
+    },
+}
+
+/// Crédite la commission parrain sur un troc fraîchement passé à `statut='complete'`.
+///
+/// Modèle de calcul (2026-06-08) :
+///   Yukpo gagne `yukpo_gain_xaf` sur ce troc (= TAUX_COMMISSION_APP × valeurs
+///   reçues par les 2 parties, cf. troc_intelligent_service.rs). Le parrain
+///   du filleul initiateur reçoit `REFERRAL_TROC_COMMISSION_PERCENT` % de
+///   ce gain. Exemple : gain Yukpo 1 000 FCFA, parrain crédité 250 FCFA.
+///
+/// Idempotence : dedup_key = `referral_troc:troc=X:par=Y` — un même troc ne
+/// peut créditer qu'une seule fois, même si le hook se déclenche en double
+/// (race condition, retry réseau).
+///
+/// **Anti-fraude minimal** : on filtre l'auto-parrainage (initiateur == parrain).
+/// On NE refait PAS le check anti-fraude complet (multi-compte, IP, phone)
+/// utilisé pour le bonus initial — la fraude troc requiert deux livres réels
+/// qui changent de main physiquement, le ratio coût/bénéfice est défavorable
+/// au fraudeur.
+///
+/// Ne lève pas d'erreur métier : si le filleul n'a pas de parrain, ou si le
+/// gain Yukpo est ≤ 0 (cas dégénéré), on retourne NoOp.
+pub async fn try_credit_referral_troc_commission(
+    pool: &PgPool,
+    troc_id: i32,
+    filleul_id: i32,
+    yukpo_gain_xaf: i32,
+) -> Result<TrocCommissionOutcome, sqlx::Error> {
+    if yukpo_gain_xaf <= 0 {
+        return Ok(TrocCommissionOutcome::NoOp);
+    }
+
+    // Lookup parrain. Important : on lit `users.referred_by` directement, pas
+    // `referrals` — un filleul peut générer des commissions troc même si son
+    // bonus de bienvenue n'est pas (encore) converti. Le parrainage existe dès
+    // l'inscription, pas seulement après la 1re commande.
+    let parrain_id: Option<i32> =
+        sqlx::query_scalar("SELECT referred_by FROM users WHERE id = $1 AND referred_by IS NOT NULL")
+            .bind(filleul_id)
+            .fetch_optional(pool)
+            .await?
+            .flatten();
+
+    let Some(parrain_id) = parrain_id else {
+        return Ok(TrocCommissionOutcome::NoOp);
+    };
+
+    if parrain_id == filleul_id {
+        log::warn!(
+            "[referral_troc] auto-parrainage filtré filleul={} (= parrain)",
+            filleul_id
+        );
+        return Ok(TrocCommissionOutcome::NoOp);
+    }
+
+    let percent = referral_troc_commission_percent();
+    let commission_xaf: i32 = ((yukpo_gain_xaf as f64) * percent / 100.0).floor() as i32;
+    if commission_xaf <= 0 {
+        return Ok(TrocCommissionOutcome::NoOp);
+    }
+
+    let new_balance = wallet_credit_bourse_service::apply_credit(
+        pool,
+        parrain_id,
+        Decimal::from(commission_xaf),
+        CreditSource::ReferralTrocCommission,
+        CreditMovementContext {
+            troc_id: Some(troc_id),
+            note: Some(format!(
+                "Commission parrainage troc : filleul {} a effectué le troc #{} (gain Yukpo {} XAF)",
+                filleul_id, troc_id, yukpo_gain_xaf
+            )),
+            dedup_key: Some(format!("referral_troc:troc={}:par={}", troc_id, parrain_id)),
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    Ok(TrocCommissionOutcome::Credited {
+        parrain_id,
+        commission_xaf,
         parrain_new_balance: new_balance,
     })
 }

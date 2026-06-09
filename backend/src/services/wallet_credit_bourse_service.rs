@@ -37,6 +37,12 @@ pub enum CreditSource {
     /// ✅ 2026-05-15 : bonus parrain. Crédité quand le filleul passe sa
     /// première commande ≥ 10 000 FCFA en statut `Completed`.
     ReferralBonus,
+    /// ✅ 2026-06-08 : commission parrain sur troc effectué par un filleul.
+    /// 25% du gain Yukpo (TAUX_COMMISSION_APP × valeurs reçues par les
+    /// 2 parties du troc). Versée chaque fois qu'un troc initié par un
+    /// filleul passe en statut `complete`. Distinct de `ReferralBonus`
+    /// (ventes) : permet au parrain de cumuler les deux flux.
+    ReferralTrocCommission,
     /// ✅ 2026-05-15 (PR #3) : débit pour réserver les fonds d'une demande
     /// de payout cash (avant approbation admin).
     PayoutReserved,
@@ -54,6 +60,7 @@ impl CreditSource {
             CreditSource::ConsignationRecovery => "consignation_recovery",
             CreditSource::ManualAdminAdjustment => "manual_admin_adjustment",
             CreditSource::ReferralBonus => "referral_bonus",
+            CreditSource::ReferralTrocCommission => "referral_troc_commission",
             CreditSource::PayoutReserved => "payout_reserved",
             CreditSource::PayoutRefunded => "payout_refunded",
         }

@@ -1928,6 +1928,67 @@ impl TrocIntelligentService {
             "[TROC_INTELLIGENT] ✅ Troc complété avec paiement soulte: id={}",
             troc_id
         );
+
+        // 2026-06-08 — Commission parrainage sur troc.
+        //
+        // Architecture du GAIN YUKPO sur un troc (re-vérifiée 2026-06-08) :
+        //   Au SCAN d'un livre, le parent reçoit `valeur_calculee × 0.75` en
+        //   crédit wallet (cf. wallet_credit_bourse_service::RATIO_CREDIT_VS_VALEUR_IA).
+        //   La marge Yukpo de 25% est PROVISIONNELLE — elle ne devient un
+        //   revenu réel qu'au moment où le livre change effectivement de main
+        //   (= troc passé à statut `complete` ici).
+        //
+        //   Donc le gain Yukpo réel sur ce troc =
+        //     (valeur_offert × 0.25) + (valeur_souhaite × 0.25)
+        //     = (valeur_offert + valeur_souhaite) × 0.25
+        //
+        //   Le 5% TAUX_COMMISSION_APP utilisé plus haut dans la fonction est un
+        //   FRAIS DE SERVICE additionnel facturé aux 2 parties (cf. soulte +
+        //   book_exchange_commissions table). On NE L'INCLUT PAS dans
+        //   l'assiette du parrainage : décision de design qui aligne la
+        //   commission parrain uniquement sur la marge livre (la valeur que
+        //   les filleuls font réellement « tourner » sur la plateforme).
+        //
+        // Fire-and-forget : le troc est déjà commité ; on ne fait pas échouer
+        // l'utilisateur si la commission parrain pose problème (idempotence
+        // via dedup_key gère les retries).
+        let marge_ratio = 1.0
+            - crate::services::wallet_credit_bourse_service::RATIO_CREDIT_VS_VALEUR_IA;
+        let gain_yukpo_scan = (valeur_offert + valeur_souhaite) * marge_ratio;
+        if gain_yukpo_scan > 0.0 {
+            let pool = self.pool.clone();
+            let initiateur_id = troc.initiateur_id;
+            let gain_xaf = gain_yukpo_scan.round() as i32;
+            tokio::spawn(async move {
+                match crate::services::referral_service::try_credit_referral_troc_commission(
+                    &pool,
+                    troc_id,
+                    initiateur_id,
+                    gain_xaf,
+                )
+                .await
+                {
+                    Ok(crate::services::referral_service::TrocCommissionOutcome::Credited {
+                        parrain_id,
+                        commission_xaf,
+                        ..
+                    }) => {
+                        info!(
+                            "[referral_troc] ✅ troc {} initiateur={} → parrain {} crédité {} XAF (marge Yukpo scan {} XAF)",
+                            troc_id, initiateur_id, parrain_id, commission_xaf, gain_xaf
+                        );
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::warn!(
+                            "[referral_troc] échec crédit commission parrain troc {} init={}: {}",
+                            troc_id, initiateur_id, e
+                        );
+                    }
+                }
+            });
+        }
+
         Ok(troc_complete)
     }
 
