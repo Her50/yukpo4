@@ -34,6 +34,10 @@ pub struct MyReferralResponse {
     pub total_bonus_xaf: i64,
     pub total_trocs_filleuls: i64,
     pub total_troc_commission_xaf: i64,
+    /// 2026-06-24 — Phase 0 : commission espérée si tous les livres
+    /// actuellement en circulation par les filleuls trouvaient preneur.
+    /// Motiver l'ambassadeur sur le potentiel terrain.
+    pub commission_esperee_xaf: i64,
     pub total_gains_xaf: i64,
 }
 
@@ -86,6 +90,7 @@ pub async fn get_my_referral(
         total_bonus_xaf: stats.total_bonus_xaf,
         total_trocs_filleuls: stats.total_trocs_filleuls,
         total_troc_commission_xaf: stats.total_troc_commission_xaf,
+        commission_esperee_xaf: stats.commission_esperee_xaf,
         total_gains_xaf: stats.total_gains_xaf,
     }))
 }

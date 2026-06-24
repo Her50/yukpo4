@@ -1929,42 +1929,52 @@ impl TrocIntelligentService {
             troc_id
         );
 
-        // 2026-06-08 — Commission parrainage sur troc.
+        // 2026-06-24 — Commission parrainage sur troc, par LIVRE (pas par
+        // initiateur). Voir [troc_intelligent_service.rs:1932] historique.
         //
-        // Architecture du GAIN YUKPO sur un troc (re-vérifiée 2026-06-08) :
-        //   Au SCAN d'un livre, le parent reçoit `valeur_calculee × 0.75` en
-        //   crédit wallet (cf. wallet_credit_bourse_service::RATIO_CREDIT_VS_VALEUR_IA).
-        //   La marge Yukpo de 25% est PROVISIONNELLE — elle ne devient un
-        //   revenu réel qu'au moment où le livre change effectivement de main
-        //   (= troc passé à statut `complete` ici).
+        // Modèle métier :
+        //   Chaque livre du troc a été mis en circulation par UN parent, qui
+        //   peut être filleul d'un ambassadeur. Au scan, Yukpo a une marge
+        //   provisionnelle de 25% × valeur_calculee. Au troc effectif (statut
+        //   passé à 'complete' ci-dessus), cette marge se matérialise pour
+        //   chaque livre.
         //
-        //   Donc le gain Yukpo réel sur ce troc =
-        //     (valeur_offert × 0.25) + (valeur_souhaite × 0.25)
-        //     = (valeur_offert + valeur_souhaite) × 0.25
+        //   ➜ Le parrain de CHACUN des 2 scanneurs reçoit 25% de la marge
+        //     Yukpo sur LE LIVRE de SON filleul. Indépendant : si les 2
+        //     parents ont 2 ambassadeurs différents, les 2 ambassadeurs sont
+        //     payés. Si un seul a un parrain, seul lui est payé. Si c'est le
+        //     même ambassadeur pour les 2 (cas rare mais possible), il
+        //     cumule les 2 crédits (dedup_key distinct par livre).
         //
-        //   Le 5% TAUX_COMMISSION_APP utilisé plus haut dans la fonction est un
-        //   FRAIS DE SERVICE additionnel facturé aux 2 parties (cf. soulte +
-        //   book_exchange_commissions table). On NE L'INCLUT PAS dans
-        //   l'assiette du parrainage : décision de design qui aligne la
-        //   commission parrain uniquement sur la marge livre (la valeur que
-        //   les filleuls font réellement « tourner » sur la plateforme).
+        //   Le 5% TAUX_COMMISSION_APP utilisé plus haut (frais de service
+        //   soulte) est exclu de l'assiette parrainage. Décision design.
         //
-        // Fire-and-forget : le troc est déjà commité ; on ne fait pas échouer
-        // l'utilisateur si la commission parrain pose problème (idempotence
-        // via dedup_key gère les retries).
+        // Fire-and-forget : le troc est déjà commité, on n'échoue pas
+        // l'utilisateur si le crédit parrain pose problème (idempotence via
+        // dedup_key par livre gère les retries).
         let marge_ratio = 1.0
             - crate::services::wallet_credit_bourse_service::RATIO_CREDIT_VS_VALEUR_IA;
-        let gain_yukpo_scan = (valeur_offert + valeur_souhaite) * marge_ratio;
-        if gain_yukpo_scan > 0.0 {
-            let pool = self.pool.clone();
-            let initiateur_id = troc.initiateur_id;
-            let gain_xaf = gain_yukpo_scan.round() as i32;
-            tokio::spawn(async move {
+
+        // On capture les infos nécessaires AVANT le spawn pour éviter de
+        // tenir des références sur le scope de cette fonction.
+        let pool = self.pool.clone();
+        let livre_offert_id = troc.livre_offert_id;
+        let livre_souhaite_id = troc.livre_souhaite_id;
+        // user_id du scanneur de chaque livre (= colonne livres_scolaires.user_id)
+        let scanneur_offert = livre_offert.as_ref().map(|l| l.user_id);
+        let scanneur_souhaite = livre_souhaite.as_ref().map(|l| l.user_id);
+        let gain_livre_offert = (valeur_offert * marge_ratio).round() as i32;
+        let gain_livre_souhaite = (valeur_souhaite * marge_ratio).round() as i32;
+
+        tokio::spawn(async move {
+            // Côté livre offert : payer le parrain du scanneur de ce livre.
+            if let Some(scanneur) = scanneur_offert {
                 match crate::services::referral_service::try_credit_referral_troc_commission(
                     &pool,
                     troc_id,
-                    initiateur_id,
-                    gain_xaf,
+                    livre_offert_id,
+                    scanneur,
+                    gain_livre_offert,
                 )
                 .await
                 {
@@ -1974,20 +1984,51 @@ impl TrocIntelligentService {
                         ..
                     }) => {
                         info!(
-                            "[referral_troc] ✅ troc {} initiateur={} → parrain {} crédité {} XAF (marge Yukpo scan {} XAF)",
-                            troc_id, initiateur_id, parrain_id, commission_xaf, gain_xaf
+                            "[referral_troc] ✅ troc {} livre_offert={} scanneur={} → parrain {} crédité {} XAF (marge livre {} XAF)",
+                            troc_id, livre_offert_id, scanneur, parrain_id, commission_xaf, gain_livre_offert
                         );
                     }
                     Ok(_) => {}
                     Err(e) => {
                         log::warn!(
-                            "[referral_troc] échec crédit commission parrain troc {} init={}: {}",
-                            troc_id, initiateur_id, e
+                            "[referral_troc] échec crédit parrain côté offert troc={} livre={} scanneur={}: {}",
+                            troc_id, livre_offert_id, scanneur, e
                         );
                     }
                 }
-            });
-        }
+            }
+
+            // Côté livre souhaité : payer le parrain du scanneur de ce livre.
+            if let Some(scanneur) = scanneur_souhaite {
+                match crate::services::referral_service::try_credit_referral_troc_commission(
+                    &pool,
+                    troc_id,
+                    livre_souhaite_id,
+                    scanneur,
+                    gain_livre_souhaite,
+                )
+                .await
+                {
+                    Ok(crate::services::referral_service::TrocCommissionOutcome::Credited {
+                        parrain_id,
+                        commission_xaf,
+                        ..
+                    }) => {
+                        info!(
+                            "[referral_troc] ✅ troc {} livre_souhaite={} scanneur={} → parrain {} crédité {} XAF (marge livre {} XAF)",
+                            troc_id, livre_souhaite_id, scanneur, parrain_id, commission_xaf, gain_livre_souhaite
+                        );
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::warn!(
+                            "[referral_troc] échec crédit parrain côté souhaité troc={} livre={} scanneur={}: {}",
+                            troc_id, livre_souhaite_id, scanneur, e
+                        );
+                    }
+                }
+            }
+        });
 
         Ok(troc_complete)
     }
@@ -2862,6 +2903,62 @@ impl TrocIntelligentService {
             route.len(),
             ref_str
         );
+
+        // 2026-06-24 — Commission parrainage sur chaque maillon de la chaîne.
+        // Chaque transfer = un livre mis en circulation par UN sender (= scanneur).
+        // Si ce sender est un filleul, son parrain reçoit 25% de la marge Yukpo
+        // sur SON livre (marge = valeur_calculee × 0.25).
+        //
+        // On filtre mode_listing='troc' uniquement : les ventes seront gérées
+        // par le hook commission vendeur (fix C, ajouté dans la même PR).
+        //
+        // Fire-and-forget : si un crédit échoue, la chaîne reste committée.
+        // Le dedup_key par livre garantit l'idempotence si le hook se rejoue.
+        let marge_ratio = 1.0
+            - crate::services::wallet_credit_bourse_service::RATIO_CREDIT_VS_VALEUR_IA;
+        let troc_transfers_for_commission: Vec<(i32, i32, i32)> = transfers
+            .iter()
+            .filter(|t| t.mode_listing == "troc")
+            .map(|t| {
+                let gain_xaf = (t.valeur * marge_ratio).round() as i32;
+                (t.livre_id, t.sender_id, gain_xaf)
+            })
+            .collect();
+
+        if !troc_transfers_for_commission.is_empty() {
+            let pool = self.pool.clone();
+            tokio::spawn(async move {
+                for (livre_id, sender_id, gain_xaf) in troc_transfers_for_commission {
+                    match crate::services::referral_service::try_credit_referral_troc_commission(
+                        &pool,
+                        chaine_id, // partage l'espace dedup_key avec trocs directs ; OK car livre_id global
+                        livre_id,
+                        sender_id,
+                        gain_xaf,
+                    )
+                    .await
+                    {
+                        Ok(crate::services::referral_service::TrocCommissionOutcome::Credited {
+                            parrain_id,
+                            commission_xaf,
+                            ..
+                        }) => {
+                            info!(
+                                "[referral_troc:chaine] ✅ chaine {} livre {} sender {} → parrain {} crédité {} XAF (marge livre {} XAF)",
+                                chaine_id, livre_id, sender_id, parrain_id, commission_xaf, gain_xaf
+                            );
+                        }
+                        Ok(_) => {}
+                        Err(e) => {
+                            log::warn!(
+                                "[referral_troc:chaine] échec crédit chaine={} livre={} sender={}: {}",
+                                chaine_id, livre_id, sender_id, e
+                            );
+                        }
+                    }
+                }
+            });
+        }
 
         // 7. Retourner un résumé complet
         let participant_ids: Vec<i32> = transfers
