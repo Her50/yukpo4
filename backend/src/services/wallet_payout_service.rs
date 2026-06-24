@@ -137,6 +137,47 @@ pub async fn request_payout(
         }
     }
 
+    // 2026-06-24 — Sprint 2 : gate cash-out sur le RELEASED balance.
+    // Seules les commissions parrainage marquées effectives (released_at
+    // IS NOT NULL) sont retirables. Les autres crédits du wallet (troc, etc.)
+    // restent retirables comme avant — on additionne donc :
+    //   • SUM(credit) - SUM(debit) pour les sources NON-parrainage
+    //   • SUM(credit released) pour les sources parrainage
+    let released_balance_xaf: i64 = sqlx::query_scalar(
+        r#"WITH non_referral AS (
+              SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END), 0) AS bal
+                FROM wallet_credit_bourse_ledger
+               WHERE user_id = $1
+                 AND source NOT IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission')
+           ),
+           referral_released AS (
+              SELECT COALESCE(SUM(amount), 0) AS bal
+                FROM wallet_credit_bourse_ledger
+               WHERE user_id = $1
+                 AND direction = 'credit'
+                 AND released_at IS NOT NULL
+                 AND source IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission')
+           )
+           SELECT (
+              (SELECT bal FROM non_referral) + (SELECT bal FROM referral_released)
+           )::BIGINT"#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    if (amount_xaf as i64) > released_balance_xaf {
+        log::warn!(
+            "[payout] user={} demande={} XAF > effectif disponible {} XAF (parrainage en attente non retirable)",
+            user_id, amount_xaf, released_balance_xaf
+        );
+        return Err(PayoutError::InsufficientBalance {
+            balance: released_balance_xaf.max(0).min(i32::MAX as i64) as i32,
+            requested: amount_xaf,
+        });
+    }
+
     let mut tx = pool.begin().await?;
 
     // Vérification + débit atomique (consume_credit_tx échoue si solde < amount).

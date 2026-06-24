@@ -37,6 +37,12 @@ pub struct MyReferralResponse {
     /// 2026-06-24 — Commission VENDEUR sur ventes occasion des filleuls
     /// (déjà créditée — source ledger 'referral_seller_commission').
     pub total_seller_commission_xaf: i64,
+    /// 2026-06-24 — Sprint 2 : montant EFFECTIVE (livraison confirmée
+    /// par coursier), retirable en cash via Mobile Money.
+    pub total_effective_xaf: i64,
+    /// 2026-06-24 — Sprint 2 : montant INITIÉE (en attente de livraison).
+    /// Visible mais bloqué pour cash-out.
+    pub total_initiee_xaf: i64,
     /// 2026-06-24 — Phase 0 : commission espérée si tous les livres
     /// actuellement en circulation par les filleuls trouvaient preneur.
     /// Motiver l'ambassadeur sur le potentiel terrain.
@@ -94,6 +100,8 @@ pub async fn get_my_referral(
         total_trocs_filleuls: stats.total_trocs_filleuls,
         total_troc_commission_xaf: stats.total_troc_commission_xaf,
         total_seller_commission_xaf: stats.total_seller_commission_xaf,
+        total_effective_xaf: stats.total_effective_xaf,
+        total_initiee_xaf: stats.total_initiee_xaf,
         commission_esperee_xaf: stats.commission_esperee_xaf,
         total_gains_xaf: stats.total_gains_xaf,
     }))

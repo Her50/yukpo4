@@ -266,6 +266,14 @@ pub struct ReferralStats {
     /// déjà crédités (= ventes confirmées via validee_complete). Cumul
     /// dans le ledger source 'referral_seller_commission'.
     pub total_seller_commission_xaf: i64,
+    /// 2026-06-24 — Sprint 2 : part EFFECTIVE (released_at IS NOT NULL) du
+    /// total gagné — c'est-à-dire la fraction RETIRABLE en cash.
+    /// Le reste (total_gains - total_effective) reste INITIÉE (visible mais
+    /// bloquée jusqu'à confirmation de la livraison par le coursier).
+    pub total_effective_xaf: i64,
+    /// 2026-06-24 — Sprint 2 : part INITIÉE (en attente de livraison effective).
+    /// Pratique pour l'affichage côté front sans recalcul.
+    pub total_initiee_xaf: i64,
     /// 2026-06-24 — Phase 0 ESPÉRÉE : commission potentielle si TOUS les
     /// livres actuellement mis en circulation par les filleuls trouvaient
     /// preneur (troc ou vente). Calcul live SQL = SUM(valeur_calculee × 0.25
@@ -356,6 +364,23 @@ pub async fn get_stats(pool: &PgPool, user_id: i32) -> Result<ReferralStats, sql
     let total_gains_xaf =
         total_bonus_xaf + total_troc_commission_xaf + total_seller_commission_xaf;
 
+    // 2026-06-24 — Sprint 2 : part EFFECTIVE (released_at IS NOT NULL) du
+    // total. Pour le cash-out gate côté wallet_payout_service.
+    let total_effective_xaf: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+           FROM wallet_credit_bourse_ledger
+           WHERE user_id = $1
+             AND direction = 'credit'
+             AND released_at IS NOT NULL
+             AND source IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission')"#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    let total_initiee_xaf = (total_gains_xaf - total_effective_xaf).max(0);
+
     // ════════════════════════════════════════════════════════════════════
     // PHASE 0 — Commission ESPÉRÉE (potentielle, pas encore créditée)
     // ════════════════════════════════════════════════════════════════════
@@ -397,6 +422,8 @@ pub async fn get_stats(pool: &PgPool, user_id: i32) -> Result<ReferralStats, sql
         total_trocs_filleuls,
         total_troc_commission_xaf,
         total_seller_commission_xaf,
+        total_effective_xaf,
+        total_initiee_xaf,
         commission_esperee_xaf,
         total_gains_xaf,
     })
@@ -794,4 +821,76 @@ pub async fn try_credit_referral_seller_commission(
         parrain_id,
         commission_xaf,
     })
+}
+
+// ============================================================================
+// PR #5 — Release commissions parrainage (Initiée → Effective)
+// ============================================================================
+//
+// Quand un livre est effectivement livré (coursier confirme la remise au
+// destinataire), on marque les commissions parrainage liées à ce livre
+// comme RELEASED (released_at = NOW()). Cela les rend retirables en cash
+// (gate dans wallet_payout_service).
+//
+// Tant que released_at IS NULL → INITIÉE : visible dans le dashboard parrain
+// mais bloquée pour cash-out.
+
+/// Marque comme effectives toutes les commissions parrainage liées à un livre
+/// précis. Appelé quand la livraison effective du livre est confirmée.
+///
+/// Retourne le nombre de lignes ledger mises à jour. Ne lève pas d'erreur si
+/// aucune ligne n'est trouvée (livre sans parrainage ou déjà released).
+pub async fn release_referral_commissions_for_livre(
+    pool: &PgPool,
+    livre_id: i32,
+) -> Result<u64, sqlx::Error> {
+    let res = sqlx::query(
+        r#"UPDATE wallet_credit_bourse_ledger
+              SET released_at = NOW()
+            WHERE livre_id = $1
+              AND released_at IS NULL
+              AND direction = 'credit'
+              AND source IN ('referral_troc_commission', 'referral_seller_commission')"#,
+    )
+    .bind(livre_id)
+    .execute(pool)
+    .await?;
+
+    let updated = res.rows_affected();
+    if updated > 0 {
+        log::info!(
+            "[referral_release] ✅ livre {} : {} commission(s) parrainage marquée(s) effective(s)",
+            livre_id, updated
+        );
+    }
+    Ok(updated)
+}
+
+/// Marque comme effectif le bonus ReferralBonus (5% côté acheteur) lié à une
+/// livraison donnée. Appelé quand DeliveryStatus::Completed.
+pub async fn release_referral_bonus_for_delivery(
+    pool: &PgPool,
+    delivery_id: Uuid,
+) -> Result<u64, sqlx::Error> {
+    let pattern = format!("referral_sale:delivery={}", delivery_id);
+    let res = sqlx::query(
+        r#"UPDATE wallet_credit_bourse_ledger
+              SET released_at = NOW()
+            WHERE released_at IS NULL
+              AND direction = 'credit'
+              AND source = 'referral_bonus'
+              AND dedup_key = $1"#,
+    )
+    .bind(&pattern)
+    .execute(pool)
+    .await?;
+
+    let updated = res.rows_affected();
+    if updated > 0 {
+        log::info!(
+            "[referral_release] ✅ delivery {} : {} bonus parrainage marqué(s) effectif(s)",
+            delivery_id, updated
+        );
+    }
+    Ok(updated)
 }

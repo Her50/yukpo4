@@ -2520,6 +2520,61 @@ impl DeliveryService {
                         );
                     }
                 }
+
+                // 2026-06-24 — Sprint 2 : à la livraison Completed, on RELEASE
+                // les commissions parrainage en attente (Initiée → Effective).
+                //   • Le bonus 5% côté acheteur lié à cette delivery
+                //   • Les commissions troc et seller liées aux livres
+                //     effectivement présents dans cette livraison
+                // Cela débloque le cash-out pour le parrain.
+                match crate::services::referral_service::release_referral_bonus_for_delivery(
+                    &pool, delivery_id,
+                )
+                .await
+                {
+                    Ok(n) if n > 0 => log::info!(
+                        "[referral_release] delivery {} : {} bonus marqué(s) effectif(s)",
+                        delivery_id, n
+                    ),
+                    Ok(_) => {}
+                    Err(e) => log::warn!(
+                        "[referral_release] échec release bonus delivery {}: {e:?}",
+                        delivery_id
+                    ),
+                }
+
+                // Release per-livre des commissions troc/seller : on récupère
+                // les livres de cette delivery via book_delivery_packages.
+                // Best-effort : si la table n'est pas peuplée ou la requête
+                // échoue, on log et on continue.
+                let livre_ids: Vec<i32> = sqlx::query_scalar::<_, i32>(
+                    r#"SELECT DISTINCT livre_id
+                         FROM book_delivery_packages bdp
+                        WHERE bdp.delivery_id = $1
+                          AND bdp.livre_id IS NOT NULL"#,
+                )
+                .bind(delivery_id)
+                .fetch_all(&pool)
+                .await
+                .unwrap_or_default();
+
+                for livre_id in livre_ids {
+                    match crate::services::referral_service::release_referral_commissions_for_livre(
+                        &pool, livre_id,
+                    )
+                    .await
+                    {
+                        Ok(n) if n > 0 => log::info!(
+                            "[referral_release] livre {} (delivery {}) : {} commission(s) effective(s)",
+                            livre_id, delivery_id, n
+                        ),
+                        Ok(_) => {}
+                        Err(e) => log::warn!(
+                            "[referral_release] échec release livre {} delivery {}: {e:?}",
+                            livre_id, delivery_id
+                        ),
+                    }
+                }
             });
         }
 
