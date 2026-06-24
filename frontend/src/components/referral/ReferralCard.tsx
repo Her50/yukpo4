@@ -37,6 +37,9 @@ interface ReferralData {
   total_bonus_xaf: number;
   total_trocs_filleuls: number;
   total_troc_commission_xaf: number;
+  /** 2026-06-24 — Commission VENDEUR sur ventes occasion des filleuls
+   *  (= filleul vend son livre via Yukpo, parrain touche 6.25% du prix). */
+  total_seller_commission_xaf: number;
   commission_esperee_xaf: number;
   total_gains_xaf: number;
 }
@@ -220,14 +223,18 @@ const ReferralCard: React.FC = () => {
           icon={<ArrowLeftRight className="w-3.5 h-3.5 text-amber-600" />}
         />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mt-2 sm:mt-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-2 sm:mt-3">
         <StatTile
-          label={t('referral.stats.bonus_vente', { defaultValue: 'Gains ventes' })}
+          label={t('referral.stats.bonus_vente', { defaultValue: 'Achats filleuls' })}
           value={`${data.total_bonus_xaf.toLocaleString('fr-FR')} XAF`}
         />
         <StatTile
-          label={t('referral.stats.bonus_troc', { defaultValue: 'Gains troc' })}
+          label={t('referral.stats.bonus_troc', { defaultValue: 'Trocs' })}
           value={`${data.total_troc_commission_xaf.toLocaleString('fr-FR')} XAF`}
+        />
+        <StatTile
+          label={t('referral.stats.bonus_seller', { defaultValue: 'Ventes occas.' })}
+          value={`${data.total_seller_commission_xaf.toLocaleString('fr-FR')} XAF`}
         />
         <StatTile
           label={t('referral.stats.total_gains', { defaultValue: 'Total gagné' })}
