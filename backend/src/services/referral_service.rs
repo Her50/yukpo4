@@ -859,12 +859,34 @@ pub async fn try_credit_referral_seller_commission(
 /// Marque comme effectives toutes les commissions parrainage liées à un livre
 /// précis. Appelé quand la livraison effective du livre est confirmée.
 ///
+/// 2026-06-24 V2.2 — Envoie aussi un push notification à CHAQUE parrain
+/// dont une commission a été marquée effective (mort viral important :
+/// le parrain voit sa rémunération arriver en temps réel).
+///
 /// Retourne le nombre de lignes ledger mises à jour. Ne lève pas d'erreur si
 /// aucune ligne n'est trouvée (livre sans parrainage ou déjà released).
 pub async fn release_referral_commissions_for_livre(
     pool: &PgPool,
     livre_id: i32,
 ) -> Result<u64, sqlx::Error> {
+    // On récupère AVANT update les (user_id, amount, source) pour pouvoir
+    // notifier ensuite les parrains concernés.
+    let to_release: Vec<(i32, Decimal, String)> = sqlx::query_as(
+        r#"SELECT user_id, amount, source
+           FROM wallet_credit_bourse_ledger
+           WHERE livre_id = $1
+             AND released_at IS NULL
+             AND direction = 'credit'
+             AND source IN ('referral_troc_commission', 'referral_seller_commission')"#,
+    )
+    .bind(livre_id)
+    .fetch_all(pool)
+    .await?;
+
+    if to_release.is_empty() {
+        return Ok(0);
+    }
+
     let res = sqlx::query(
         r#"UPDATE wallet_credit_bourse_ledger
               SET released_at = NOW()
@@ -883,6 +905,49 @@ pub async fn release_referral_commissions_for_livre(
             "[referral_release] ✅ livre {} : {} commission(s) parrainage marquée(s) effective(s)",
             livre_id, updated
         );
+
+        // Push notif par parrain (agrégé si plusieurs commissions du même
+        // parrain sur ce livre — cas rare mais possible).
+        let mut agg: std::collections::HashMap<i32, (Decimal, Vec<String>)> =
+            std::collections::HashMap::new();
+        for (uid, amt, src) in to_release {
+            let entry = agg.entry(uid).or_insert((Decimal::ZERO, Vec::new()));
+            entry.0 += amt;
+            entry.1.push(src);
+        }
+        for (parrain_id, (total, sources)) in agg {
+            let total_xaf: i64 = total.to_string().parse::<f64>().unwrap_or(0.0) as i64;
+            let kind = if sources.iter().any(|s| s.contains("seller")) {
+                "vente"
+            } else {
+                "troc"
+            };
+            let title = format!("🎉 {} XAF confirmés !", total_xaf);
+            let body = format!(
+                "Le livre de ton filleul a été livré. Ta commission {} de {} XAF est maintenant retirable en Mobile Money.",
+                kind, total_xaf
+            );
+            let data = serde_json::json!({
+                "type": "referral_commission_effective",
+                "amount_xaf": total_xaf,
+                "livre_id": livre_id,
+            });
+            if let Err(e) = crate::services::push_notification_service::send_push_notification(
+                pool,
+                parrain_id,
+                title,
+                body,
+                Some(data),
+                Some("default".to_string()),
+            )
+            .await
+            {
+                log::warn!(
+                    "[referral_release] push notif parrain {} échouée: {e:?}",
+                    parrain_id
+                );
+            }
+        }
     }
     Ok(updated)
 }
@@ -1012,6 +1077,36 @@ pub async fn rollback_referral_commissions_for_livre(
             "[referral_rollback] ✅ livre {} parrain {} : -{} XAF (source={}, raison={})",
             livre_id, user_id, amount, rollback_source_str, raison
         );
+
+        // 2026-06-24 V2.2 — Push notif : informer le parrain de l'annulation.
+        // Important pour la transparence (le solde a baissé).
+        let amount_xaf: i64 = amount.to_string().parse::<f64>().unwrap_or(0.0) as i64;
+        let title = format!("⚠️ Commission annulée : -{} XAF", amount_xaf);
+        let body = format!(
+            "Un livre apporté par ton filleul a été annulé sur le terrain par le coursier. La commission de {} XAF a été reversée. Raison : {}",
+            amount_xaf, raison
+        );
+        let data = serde_json::json!({
+            "type": "referral_commission_rolledback",
+            "amount_xaf": amount_xaf,
+            "livre_id": livre_id,
+            "raison": raison,
+        });
+        if let Err(e) = crate::services::push_notification_service::send_push_notification(
+            pool,
+            user_id,
+            title,
+            body,
+            Some(data),
+            Some("default".to_string()),
+        )
+        .await
+        {
+            log::warn!(
+                "[referral_rollback] push notif parrain {} échouée: {e:?}",
+                user_id
+            );
+        }
     }
 
     Ok(rolled_back)

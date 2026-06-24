@@ -2543,15 +2543,22 @@ impl DeliveryService {
                     ),
                 }
 
-                // Release per-livre des commissions troc/seller : on récupère
-                // les livres de cette delivery via book_delivery_packages.
-                // Best-effort : si la table n'est pas peuplée ou la requête
-                // échoue, on log et on continue.
+                // Release per-livre des commissions troc/seller.
+                // 2026-06-24 V2.1 — FIX : book_delivery_packages n'a pas de
+                // colonne livre_id directe, mais une colonne JSONB `livres`
+                // (chaque élément = {livre_id, valeur, ...}). On extrait les
+                // livre_id en parsant le JSON.
+                //
+                // Cette même requête couvre les commissions troc ET seller
+                // (occasion) : tant que la commission a été créditée avec
+                // livre_id = X et que ce livre est dans la delivery, elle
+                // sera marquée effective.
                 let livre_ids: Vec<i32> = sqlx::query_scalar::<_, i32>(
-                    r#"SELECT DISTINCT livre_id
-                         FROM book_delivery_packages bdp
+                    r#"SELECT DISTINCT (livre->>'livre_id')::int
+                         FROM book_delivery_packages bdp,
+                              jsonb_array_elements(bdp.livres) AS livre
                         WHERE bdp.delivery_id = $1
-                          AND bdp.livre_id IS NOT NULL"#,
+                          AND livre ? 'livre_id'"#,
                 )
                 .bind(delivery_id)
                 .fetch_all(&pool)
