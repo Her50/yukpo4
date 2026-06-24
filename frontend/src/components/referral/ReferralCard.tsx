@@ -21,10 +21,12 @@ import { apiGet } from '../../services/apiService';
 interface ReferralData {
   code: string;
   share_url: string;
-  /** 2026-06-08 — Nouveau modèle de rémunération parrainage :
-   *  - bonus_percent_vente % du montant de la 1re commande qualifiante du filleul
-   *  - bonus_percent_troc % de la commission Yukpo sur chaque troc effectué
-   *    par un filleul (cumulable indéfiniment, pas seulement à la 1re fois)
+  /** 2026-06-24 — Modèle de rémunération parrainage v3 :
+   *  - bonus_percent_vente % du montant de CHAQUE commande ≥ seuil_min du filleul
+   *  - bonus_percent_troc % de la marge Yukpo sur chaque livre des filleuls
+   *    qui passe en troc (cumulable indéfiniment).
+   *  - commission_esperee_xaf : potentiel temps-réel basé sur les livres
+   *    actuellement en circulation par les filleuls (Phase 0, non créditée).
    */
   bonus_percent_vente: number;
   bonus_percent_troc: number;
@@ -35,6 +37,7 @@ interface ReferralData {
   total_bonus_xaf: number;
   total_trocs_filleuls: number;
   total_troc_commission_xaf: number;
+  commission_esperee_xaf: number;
   total_gains_xaf: number;
 }
 
@@ -232,6 +235,34 @@ const ReferralCard: React.FC = () => {
           highlight
         />
       </div>
+
+      {/* 2026-06-24 — Phase 0 : commission ESPÉRÉE (potentielle).
+          Bloc séparé en bas pour bien marquer que ce n'est pas du « gagné ».
+          Cette estimation se base sur les livres actuellement en circulation
+          (= scannés et disponibles) par les filleuls. Elle motive
+          l'ambassadeur à pousser le terrain. Affiché seulement si > 0 pour
+          ne pas polluer le dashboard d'un nouveau parrain inactif. */}
+      {data.commission_esperee_xaf > 0 && (
+        <div className="mt-3 bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-start gap-3">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-lg">
+            🌱
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] uppercase font-bold text-indigo-700 tracking-wider">
+              {t('referral.stats.esperee_label', { defaultValue: 'Commission espérée' })}
+            </p>
+            <p className="text-base sm:text-lg font-bold text-indigo-900 tabular-nums leading-tight">
+              {data.commission_esperee_xaf.toLocaleString('fr-FR')} XAF
+            </p>
+            <p className="text-[11px] text-indigo-700 mt-0.5 leading-snug">
+              {t('referral.stats.esperee_hint', {
+                defaultValue:
+                  'Potentiel sur les livres actuellement mis en circulation par vos filleuls. Versé quand les trocs ou ventes se concrétisent.',
+              })}
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
