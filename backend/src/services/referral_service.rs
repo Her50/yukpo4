@@ -262,6 +262,10 @@ pub struct ReferralStats {
     /// Somme des commissions troc déjà CRÉDITÉES (= "initiée" = chaîne/troc
     /// validé, marge Yukpo réservée). Cumul dans le ledger.
     pub total_troc_commission_xaf: i64,
+    /// 2026-06-24 — Somme des commissions VENDEUR sur livres d'occasion
+    /// déjà crédités (= ventes confirmées via validee_complete). Cumul
+    /// dans le ledger source 'referral_seller_commission'.
+    pub total_seller_commission_xaf: i64,
     /// 2026-06-24 — Phase 0 ESPÉRÉE : commission potentielle si TOUS les
     /// livres actuellement mis en circulation par les filleuls trouvaient
     /// preneur (troc ou vente). Calcul live SQL = SUM(valeur_calculee × 0.25
@@ -336,7 +340,21 @@ pub async fn get_stats(pool: &PgPool, user_id: i32) -> Result<ReferralStats, sql
     .await
     .unwrap_or(0);
 
-    let total_gains_xaf = total_bonus_xaf + total_troc_commission_xaf;
+    // 2026-06-24 — Cumul commissions VENDEUR (ventes occasion).
+    let total_seller_commission_xaf: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+           FROM wallet_credit_bourse_ledger
+           WHERE user_id = $1
+             AND source = 'referral_seller_commission'
+             AND direction = 'credit'"#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+
+    let total_gains_xaf =
+        total_bonus_xaf + total_troc_commission_xaf + total_seller_commission_xaf;
 
     // ════════════════════════════════════════════════════════════════════
     // PHASE 0 — Commission ESPÉRÉE (potentielle, pas encore créditée)
@@ -378,6 +396,7 @@ pub async fn get_stats(pool: &PgPool, user_id: i32) -> Result<ReferralStats, sql
         total_bonus_xaf,
         total_trocs_filleuls,
         total_troc_commission_xaf,
+        total_seller_commission_xaf,
         commission_esperee_xaf,
         total_gains_xaf,
     })
@@ -674,5 +693,105 @@ pub async fn try_credit_referral_troc_commission(
         parrain_id,
         commission_xaf,
         parrain_new_balance: new_balance,
+    })
+}
+
+// ============================================================================
+// PR #4 — Commission parrain VENDEUR sur vente d'un livre d'OCCASION
+// ============================================================================
+
+/// Résultat de [`try_credit_referral_seller_commission`].
+#[derive(Debug)]
+pub enum SellerCommissionOutcome {
+    /// Le vendeur n'a pas de parrain — no-op silencieux.
+    NoOp,
+    Credited {
+        parrain_id: i32,
+        commission_xaf: i32,
+    },
+}
+
+/// Crédite la commission parrain pour UN livre d'occasion d'un filleul
+/// vendu via Yukpo. À appeler par item, quand la commande mixte est confirmée.
+///
+/// Modèle (2026-06-24) :
+///   Au scan, Yukpo a une marge provisionnelle de 25% × prix de vente.
+///   Quand la vente se concrétise (commande validée), la marge se matérialise.
+///   Le parrain du VENDEUR (= scanneur du livre, = filleul) reçoit
+///   `REFERRAL_TROC_COMMISSION_PERCENT` (25% par défaut) de cette marge.
+///
+///   commission = prix_vente × 0.25 × 0.25 = prix_vente × 0.0625
+///
+/// Idempotence : dedup_key = `referral_seller:commande={UUID}:livre={ID}` —
+/// chaque ligne de commande_livres_occasion ne peut créditer qu'une seule
+/// fois, même si le hook se rejoue.
+///
+/// Fire-and-forget côté appelant — n'échoue pas la transaction commande
+/// si le crédit parrain pose problème.
+pub async fn try_credit_referral_seller_commission(
+    pool: &PgPool,
+    commande_id: Uuid,
+    livre_scolaire_id: i32,
+    vendeur_id: i32,
+    prix_vente_xaf: f64,
+) -> Result<SellerCommissionOutcome, sqlx::Error> {
+    if prix_vente_xaf <= 0.0 {
+        return Ok(SellerCommissionOutcome::NoOp);
+    }
+
+    // Lookup parrain du vendeur.
+    let parrain_id: Option<i32> = sqlx::query_scalar(
+        "SELECT referred_by FROM users WHERE id = $1 AND referred_by IS NOT NULL",
+    )
+    .bind(vendeur_id)
+    .fetch_optional(pool)
+    .await?
+    .flatten();
+
+    let Some(parrain_id) = parrain_id else {
+        return Ok(SellerCommissionOutcome::NoOp);
+    };
+
+    if parrain_id == vendeur_id {
+        log::warn!(
+            "[referral_seller] auto-parrainage filtré vendeur={} (= parrain)",
+            vendeur_id
+        );
+        return Ok(SellerCommissionOutcome::NoOp);
+    }
+
+    // Calcul : 25% × (prix × 25% marge Yukpo) = 6.25% × prix.
+    let marge_ratio = 1.0
+        - crate::services::wallet_credit_bourse_service::RATIO_CREDIT_VS_VALEUR_IA;
+    let marge_yukpo = prix_vente_xaf * marge_ratio;
+    let percent = referral_troc_commission_percent();
+    let commission_xaf: i32 = (marge_yukpo * percent / 100.0).floor() as i32;
+    if commission_xaf <= 0 {
+        return Ok(SellerCommissionOutcome::NoOp);
+    }
+
+    let _ = wallet_credit_bourse_service::apply_credit(
+        pool,
+        parrain_id,
+        Decimal::from(commission_xaf),
+        CreditSource::ReferralSellerCommission,
+        CreditMovementContext {
+            livre_id: Some(livre_scolaire_id),
+            note: Some(format!(
+                "Commission parrainage vente occasion : livre {} vendu par user {} pour {} XAF (marge Yukpo {} XAF)",
+                livre_scolaire_id, vendeur_id, prix_vente_xaf as i64, marge_yukpo as i64
+            )),
+            dedup_key: Some(format!(
+                "referral_seller:commande={}:livre={}",
+                commande_id, livre_scolaire_id
+            )),
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    Ok(SellerCommissionOutcome::Credited {
+        parrain_id,
+        commission_xaf,
     })
 }

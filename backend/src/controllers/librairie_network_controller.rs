@@ -3675,6 +3675,67 @@ pub async fn valider_livres_commande(
         livres_valides_count, librairie.id
     );
 
+    // 2026-06-24 — Commission parrainage VENDEUR sur livres d'occasion vendus.
+    // Quand la commande passe à `validee_complete` (ou `validee_partielle`),
+    // les livres d'occasion vendus matérialisent la marge Yukpo. Pour chaque
+    // livre vendu, si le vendeur est un filleul, son parrain reçoit 6.25%
+    // (= 25% × marge Yukpo 25%) du prix de vente.
+    //
+    // Fire-and-forget : la commande est déjà validée. Si un crédit échoue,
+    // l'idempotence par dedup_key gère les retries.
+    if matches!(
+        statut_validation,
+        ValidationStatut::ValideComplet | ValidationStatut::ValidePartiel
+    ) {
+        let pool = state.pg.clone();
+        let cmd_id = payload.commande_id;
+        tokio::spawn(async move {
+            // Fetch tous les livres d'occasion VALIDÉS de cette commande.
+            // statut='valide' pour ne payer que les livres effectivement
+            // engagés dans la vente (pas ceux annulés/refusés).
+            let items = sqlx::query_as::<_, (i32, i32, rust_decimal::Decimal)>(
+                r#"SELECT livre_scolaire_id, vendeur_id, prix
+                   FROM commande_livres_occasion
+                  WHERE commande_id = $1
+                    AND statut IN ('valide', 'vendu', 'disponible')"#,
+            )
+            .bind(cmd_id)
+            .fetch_all(&pool)
+            .await
+            .unwrap_or_default();
+
+            for (livre_id, vendeur_id, prix_dec) in items {
+                let prix_xaf: f64 = prix_dec.to_string().parse().unwrap_or(0.0);
+                match crate::services::referral_service::try_credit_referral_seller_commission(
+                    &pool,
+                    cmd_id,
+                    livre_id,
+                    vendeur_id,
+                    prix_xaf,
+                )
+                .await
+                {
+                    Ok(crate::services::referral_service::SellerCommissionOutcome::Credited {
+                        parrain_id,
+                        commission_xaf,
+                    }) => {
+                        log::info!(
+                            "[referral_seller] ✅ commande {} livre {} vendeur {} → parrain {} crédité {} XAF (prix {} XAF)",
+                            cmd_id, livre_id, vendeur_id, parrain_id, commission_xaf, prix_xaf as i64
+                        );
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::warn!(
+                            "[referral_seller] échec crédit commande={} livre={} vendeur={}: {}",
+                            cmd_id, livre_id, vendeur_id, e
+                        );
+                    }
+                }
+            }
+        });
+    }
+
     Ok(Json(serde_json::json!({
         "success": true,
         "livres_valides": livres_valides_count,

@@ -43,6 +43,13 @@ pub enum CreditSource {
     /// filleul passe en statut `complete`. Distinct de `ReferralBonus`
     /// (ventes) : permet au parrain de cumuler les deux flux.
     ReferralTrocCommission,
+    /// ✅ 2026-06-24 : commission parrain sur vente d'un livre d'OCCASION
+    /// par un filleul. 25% de la marge Yukpo (= 25% × prix vente). Versée
+    /// quand la commande mixte passe à `validee_complete`. Distinct de
+    /// `ReferralBonus` (5% sur la commande côté acheteur) : un même livre
+    /// vendu peut générer la commission du parrain du VENDEUR (cette
+    /// source) + la commission du parrain de l'ACHETEUR (ReferralBonus).
+    ReferralSellerCommission,
     /// ✅ 2026-05-15 (PR #3) : débit pour réserver les fonds d'une demande
     /// de payout cash (avant approbation admin).
     PayoutReserved,
@@ -61,6 +68,7 @@ impl CreditSource {
             CreditSource::ManualAdminAdjustment => "manual_admin_adjustment",
             CreditSource::ReferralBonus => "referral_bonus",
             CreditSource::ReferralTrocCommission => "referral_troc_commission",
+            CreditSource::ReferralSellerCommission => "referral_seller_commission",
             CreditSource::PayoutReserved => "payout_reserved",
             CreditSource::PayoutRefunded => "payout_refunded",
         }
