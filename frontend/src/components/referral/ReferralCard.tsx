@@ -40,6 +40,12 @@ interface ReferralData {
   /** 2026-06-24 — Commission VENDEUR sur ventes occasion des filleuls
    *  (= filleul vend son livre via Yukpo, parrain touche 6.25% du prix). */
   total_seller_commission_xaf: number;
+  /** 2026-06-24 — Sprint 2 : montant déjà EFFECTIF (livraison confirmée
+   *  par coursier), retirable en cash via Mobile Money. */
+  total_effective_xaf: number;
+  /** 2026-06-24 — Sprint 2 : montant INITIÉ (en attente de livraison).
+   *  Visible mais bloqué pour cash-out. */
+  total_initiee_xaf: number;
   commission_esperee_xaf: number;
   total_gains_xaf: number;
 }
@@ -242,6 +248,31 @@ const ReferralCard: React.FC = () => {
           highlight
         />
       </div>
+
+      {/* 2026-06-24 — Sprint 2 : décomposition Initiée / Effective.
+          La part EFFECTIVE est retirable en cash (livraison confirmée par
+          coursier). La part INITIÉE reste bloquée jusqu'à la livraison.
+          On affiche les 2 lignes seulement si > 0 pour ne pas polluer. */}
+      {data.total_gains_xaf > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+            <p className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">
+              💵 {t('referral.stats.effective', { defaultValue: 'Retirable (livré)' })}
+            </p>
+            <p className="text-sm sm:text-base font-bold text-emerald-900 tabular-nums">
+              {data.total_effective_xaf.toLocaleString('fr-FR')} XAF
+            </p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+            <p className="text-[10px] uppercase font-bold text-amber-700 tracking-wider">
+              ⏳ {t('referral.stats.initiee', { defaultValue: 'En attente livraison' })}
+            </p>
+            <p className="text-sm sm:text-base font-bold text-amber-900 tabular-nums">
+              {data.total_initiee_xaf.toLocaleString('fr-FR')} XAF
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 2026-06-24 — Phase 0 : commission ESPÉRÉE (potentielle).
           Bloc séparé en bas pour bien marquer que ce n'est pas du « gagné ».
