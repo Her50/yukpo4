@@ -3145,6 +3145,33 @@ impl TrocIntelligentService {
             req.livre_id, destinataire_id, credit_total, livre_valeur, commission
         );
 
+        // 2026-06-24 Sprint 3 — Rollback commissions parrainage liées à ce
+        // livre. Le livre étant annulé sur le terrain, Yukpo n'encaisse
+        // plus sa marge → la commission du parrain est reversée.
+        // Fire-and-forget : l'annulation elle-même est déjà commited.
+        let pool_bg = self.pool.clone();
+        let livre_id_bg = req.livre_id;
+        let raison_bg = req.raison.clone().unwrap_or_else(|| "non précisée".to_string());
+        tokio::spawn(async move {
+            match crate::services::referral_service::rollback_referral_commissions_for_livre(
+                &pool_bg,
+                livre_id_bg,
+                &format!("annulation_terrain:{}", raison_bg),
+            )
+            .await
+            {
+                Ok(n) if n > 0 => info!(
+                    "[referral_rollback] livre {} (cancel terrain) : {} commission(s) reversée(s)",
+                    livre_id_bg, n
+                ),
+                Ok(_) => {}
+                Err(e) => log::warn!(
+                    "[referral_rollback] échec rollback livre {} (cancel terrain): {e:?}",
+                    livre_id_bg
+                ),
+            }
+        });
+
         Ok(serde_json::json!({
             "success": true,
             "livre_id": req.livre_id,

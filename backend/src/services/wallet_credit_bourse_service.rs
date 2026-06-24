@@ -50,6 +50,14 @@ pub enum CreditSource {
     /// vendu peut générer la commission du parrain du VENDEUR (cette
     /// source) + la commission du parrain de l'ACHETEUR (ReferralBonus).
     ReferralSellerCommission,
+    /// ✅ 2026-06-24 Sprint 3 : rollback de commission troc parrain quand
+    /// le livre est annulé sur le terrain (coursier ne peut pas le livrer)
+    /// ou que le troc/chaîne expire. Direction = 'debit'. Annule la part
+    /// du parrain qui avait été créditée. Idempotent via dedup_key.
+    ReferralTrocCommissionRolledBack,
+    /// ✅ 2026-06-24 Sprint 3 : rollback de commission vendeur sur livre
+    /// d'occasion annulé (livre non livré ou commande annulée).
+    ReferralSellerCommissionRolledBack,
     /// ✅ 2026-05-15 (PR #3) : débit pour réserver les fonds d'une demande
     /// de payout cash (avant approbation admin).
     PayoutReserved,
@@ -69,6 +77,8 @@ impl CreditSource {
             CreditSource::ReferralBonus => "referral_bonus",
             CreditSource::ReferralTrocCommission => "referral_troc_commission",
             CreditSource::ReferralSellerCommission => "referral_seller_commission",
+            CreditSource::ReferralTrocCommissionRolledBack => "referral_troc_commission_rolled_back",
+            CreditSource::ReferralSellerCommissionRolledBack => "referral_seller_commission_rolled_back",
             CreditSource::PayoutReserved => "payout_reserved",
             CreditSource::PayoutRefunded => "payout_refunded",
         }

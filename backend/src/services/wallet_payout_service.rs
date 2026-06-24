@@ -137,29 +137,37 @@ pub async fn request_payout(
         }
     }
 
-    // 2026-06-24 — Sprint 2 : gate cash-out sur le RELEASED balance.
-    // Seules les commissions parrainage marquées effectives (released_at
-    // IS NOT NULL) sont retirables. Les autres crédits du wallet (troc, etc.)
-    // restent retirables comme avant — on additionne donc :
-    //   • SUM(credit) - SUM(debit) pour les sources NON-parrainage
-    //   • SUM(credit released) pour les sources parrainage
+    // 2026-06-24 — Sprint 2 + 3 : gate cash-out sur le RELEASED balance,
+    // tenant compte des rollbacks parrainage (Sprint 3).
+    //   • SUM(credit - debit) pour les sources NON-parrainage
+    //   • SUM(credit released) - SUM(debit rolled_back) pour parrainage
     let released_balance_xaf: i64 = sqlx::query_scalar(
         r#"WITH non_referral AS (
               SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END), 0) AS bal
                 FROM wallet_credit_bourse_ledger
                WHERE user_id = $1
-                 AND source NOT IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission')
+                 AND source NOT IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission',
+                                    'referral_troc_commission_rolled_back', 'referral_seller_commission_rolled_back')
            ),
-           referral_released AS (
-              SELECT COALESCE(SUM(amount), 0) AS bal
+           referral_net AS (
+              SELECT COALESCE(SUM(
+                CASE
+                  WHEN direction = 'credit'
+                       AND source IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission')
+                       AND released_at IS NOT NULL THEN amount
+                  WHEN direction = 'debit'
+                       AND source IN ('referral_troc_commission_rolled_back', 'referral_seller_commission_rolled_back')
+                       THEN -amount
+                  ELSE 0
+                END
+              ), 0) AS bal
                 FROM wallet_credit_bourse_ledger
                WHERE user_id = $1
-                 AND direction = 'credit'
-                 AND released_at IS NOT NULL
-                 AND source IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission')
+                 AND source IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission',
+                                'referral_troc_commission_rolled_back', 'referral_seller_commission_rolled_back')
            )
            SELECT (
-              (SELECT bal FROM non_referral) + (SELECT bal FROM referral_released)
+              (SELECT bal FROM non_referral) + (SELECT bal FROM referral_net)
            )::BIGINT"#,
     )
     .bind(user_id)

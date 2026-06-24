@@ -336,25 +336,37 @@ pub async fn get_stats(pool: &PgPool, user_id: i32) -> Result<ReferralStats, sql
     .unwrap_or(0);
 
     // Cumul commissions troc dans le ledger (source = referral_troc_commission).
+    // 2026-06-24 Sprint 3 : NET = crédits − rollbacks. Une commission rolled
+    // back ne doit plus apparaître dans le total gagné.
     let total_troc_commission_xaf: i64 = sqlx::query_scalar(
-        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+        r#"SELECT COALESCE(SUM(
+              CASE
+                WHEN source = 'referral_troc_commission' AND direction = 'credit' THEN amount
+                WHEN source = 'referral_troc_commission_rolled_back' AND direction = 'debit' THEN -amount
+                ELSE 0
+              END
+           ), 0)::BIGINT
            FROM wallet_credit_bourse_ledger
            WHERE user_id = $1
-             AND source = 'referral_troc_commission'
-             AND direction = 'credit'"#,
+             AND source IN ('referral_troc_commission', 'referral_troc_commission_rolled_back')"#,
     )
     .bind(user_id)
     .fetch_one(pool)
     .await
     .unwrap_or(0);
 
-    // 2026-06-24 — Cumul commissions VENDEUR (ventes occasion).
+    // 2026-06-24 — Cumul commissions VENDEUR (ventes occasion) NET.
     let total_seller_commission_xaf: i64 = sqlx::query_scalar(
-        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+        r#"SELECT COALESCE(SUM(
+              CASE
+                WHEN source = 'referral_seller_commission' AND direction = 'credit' THEN amount
+                WHEN source = 'referral_seller_commission_rolled_back' AND direction = 'debit' THEN -amount
+                ELSE 0
+              END
+           ), 0)::BIGINT
            FROM wallet_credit_bourse_ledger
            WHERE user_id = $1
-             AND source = 'referral_seller_commission'
-             AND direction = 'credit'"#,
+             AND source IN ('referral_seller_commission', 'referral_seller_commission_rolled_back')"#,
     )
     .bind(user_id)
     .fetch_one(pool)
@@ -364,15 +376,24 @@ pub async fn get_stats(pool: &PgPool, user_id: i32) -> Result<ReferralStats, sql
     let total_gains_xaf =
         total_bonus_xaf + total_troc_commission_xaf + total_seller_commission_xaf;
 
-    // 2026-06-24 — Sprint 2 : part EFFECTIVE (released_at IS NOT NULL) du
-    // total. Pour le cash-out gate côté wallet_payout_service.
+    // 2026-06-24 — Sprint 2 + 3 : part EFFECTIVE = released ET NON rolled back.
+    // Pour le cash-out gate côté wallet_payout_service.
     let total_effective_xaf: i64 = sqlx::query_scalar(
-        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+        r#"SELECT COALESCE(SUM(
+              CASE
+                WHEN direction = 'credit'
+                     AND source IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission')
+                     AND released_at IS NOT NULL THEN amount
+                WHEN direction = 'debit'
+                     AND source IN ('referral_troc_commission_rolled_back', 'referral_seller_commission_rolled_back')
+                     THEN -amount
+                ELSE 0
+              END
+           ), 0)::BIGINT
            FROM wallet_credit_bourse_ledger
            WHERE user_id = $1
-             AND direction = 'credit'
-             AND released_at IS NOT NULL
-             AND source IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission')"#,
+             AND source IN ('referral_bonus', 'referral_troc_commission', 'referral_seller_commission',
+                            'referral_troc_commission_rolled_back', 'referral_seller_commission_rolled_back')"#,
     )
     .bind(user_id)
     .fetch_one(pool)
@@ -893,4 +914,105 @@ pub async fn release_referral_bonus_for_delivery(
         );
     }
     Ok(updated)
+}
+
+// ============================================================================
+// PR #6 — Rollback commissions parrainage (annulations / expirations)
+// ============================================================================
+//
+// Quand un livre est annulé sur le terrain (coursier ne peut pas le livrer)
+// ou qu'un troc expire avant complétion, on doit REVERSE la commission qui
+// avait été créditée au parrain.
+//
+// Pattern : on insère une entrée DEBIT dans le ledger avec une source de
+// type *_rolled_back (audit trail) et on décrémente le wallet du parrain
+// (cap à 0 pour ne pas créer un solde négatif si le parrain a déjà retiré
+// cette commission via cash-out).
+
+/// Rollback les commissions troc/seller liées à un livre. Best-effort sur
+/// le wallet (cap à 0). Idempotent via dedup_key.
+pub async fn rollback_referral_commissions_for_livre(
+    pool: &PgPool,
+    livre_id: i32,
+    raison: &str,
+) -> Result<u64, sqlx::Error> {
+    // 1. Trouver toutes les commissions encore non-rolled-back pour ce livre.
+    let entries: Vec<(i32, Decimal, String)> = sqlx::query_as(
+        r#"SELECT user_id, amount, source
+           FROM wallet_credit_bourse_ledger
+           WHERE livre_id = $1
+             AND direction = 'credit'
+             AND source IN ('referral_troc_commission', 'referral_seller_commission')
+             AND NOT EXISTS (
+               SELECT 1 FROM wallet_credit_bourse_ledger r
+               WHERE r.livre_id = wallet_credit_bourse_ledger.livre_id
+                 AND r.user_id  = wallet_credit_bourse_ledger.user_id
+                 AND r.direction = 'debit'
+                 AND r.source IN ('referral_troc_commission_rolled_back',
+                                  'referral_seller_commission_rolled_back')
+             )"#,
+    )
+    .bind(livre_id)
+    .fetch_all(pool)
+    .await?;
+
+    if entries.is_empty() {
+        return Ok(0);
+    }
+
+    let mut rolled_back = 0u64;
+    for (user_id, amount, original_source) in entries {
+        let rollback_source_str = match original_source.as_str() {
+            "referral_troc_commission" => "referral_troc_commission_rolled_back",
+            "referral_seller_commission" => "referral_seller_commission_rolled_back",
+            _ => continue,
+        };
+
+        let mut tx = pool.begin().await?;
+
+        // Décrémenter le wallet (cap à 0).
+        sqlx::query(
+            r#"UPDATE users
+                  SET wallet_credit_bourse = GREATEST(wallet_credit_bourse - $2, 0),
+                      updated_at = NOW()
+                WHERE id = $1"#,
+        )
+        .bind(user_id)
+        .bind(amount)
+        .execute(&mut *tx)
+        .await?;
+
+        let new_balance: Decimal =
+            sqlx::query_scalar("SELECT wallet_credit_bourse FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_one(&mut *tx)
+                .await?;
+
+        let dedup_key = format!("{}:livre={}:par={}", rollback_source_str, livre_id, user_id);
+        sqlx::query(
+            r#"INSERT INTO wallet_credit_bourse_ledger
+                 (user_id, amount, direction, source, livre_id, note, dedup_key, balance_after, released_at)
+               VALUES ($1, $2, 'debit', $3, $4, $5, $6, $7, NOW())
+               ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING"#,
+        )
+        .bind(user_id)
+        .bind(amount)
+        .bind(rollback_source_str)
+        .bind(livre_id)
+        .bind(format!("Rollback parrainage livre {}: {}", livre_id, raison))
+        .bind(&dedup_key)
+        .bind(new_balance)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        rolled_back += 1;
+
+        log::info!(
+            "[referral_rollback] ✅ livre {} parrain {} : -{} XAF (source={}, raison={})",
+            livre_id, user_id, amount, rollback_source_str, raison
+        );
+    }
+
+    Ok(rolled_back)
 }
