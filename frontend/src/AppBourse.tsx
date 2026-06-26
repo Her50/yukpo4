@@ -11,10 +11,6 @@ import './config/axios';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ConfirmationPage from './pages/ConfirmationPage';
-// ✅ 2026-05-28 — Nouveau flux auth simplifié phone + PIN 4 chiffres
-import LoginPhonePage from './pages/LoginPhonePage';
-import RegisterPhonePage from './pages/RegisterPhonePage';
-import { useUser } from './hooks/useUser';
 
 // Bourse du Livre
 import LivreScolaireHomePage from './pages/livres-scolaires/LivreScolaireHomePage';
@@ -55,6 +51,7 @@ import {
 } from './pages/livres-scolaires/EtablissementPortalPage';
 import EtablissementListeScolairePage from './pages/livres-scolaires/EtablissementListeScolairePage';
 import AdminProgrammeNationalImportPage from './pages/livres-scolaires/AdminProgrammeNationalImportPage';
+import AdminShortfallsPage from './pages/livres-scolaires/AdminShortfallsPage';
 import TeamInvitationAcceptPage from './pages/livres-scolaires/TeamInvitationAcceptPage';
 import ComptePage from './pages/ComptePage';
 import RechargePage from './pages/RechargePage';
@@ -85,32 +82,6 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
   }
 }
 
-/**
- * 2026-05-28 — FirstAccessGate
- *
- * Redirige les visiteurs non connectés du `/` vers `/register-phone` (et non
- * `/login-phone`) : la philosophie Bourse du Livre est qu'au 1er accès on
- * crée un compte ; la page de connexion sert uniquement aux retours.
- *
- * Détection : `useUser` interroge /auth/me (cookie httpOnly). Si aucun
- * utilisateur n'est restauré et qu'aucun marqueur localStorage n'indique
- * un compte préexistant, on présume "1ère visite" → register.
- */
-function FirstAccessGate({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useUser();
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 text-sm">Chargement…</div>
-      </div>
-    );
-  }
-  if (!user) {
-    return <Navigate to="/register-phone" replace />;
-  }
-  return <>{children}</>;
-}
-
 function BourseLayout({ children }: { children: React.ReactNode }) {
   // ✅ 2026-05-08 v3 : philosophie finale — tous les parents doivent créer
   // un compte au 1er accès. Une fois connecté, le token JWT persiste dans
@@ -137,11 +108,7 @@ function AppBourse() {
         <AuthProvider>
           <Router>
             <Routes>
-              {/* Auth — nouveau flux phone + PIN (parents) */}
-              <Route path="/register-phone" element={<RegisterPhonePage />} />
-              <Route path="/login-phone" element={<LoginPhonePage />} />
-
-              {/* Auth — legacy email/password (libraires, partenaires, admin) */}
+              {/* Auth */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/confirmation" element={<ConfirmationPage />} />
@@ -149,8 +116,8 @@ function AppBourse() {
               <Route path="/partner-register" element={<PartnerRegisterPage />} />
               <Route path="/register/partner" element={<PartnerRegisterPage />} />
 
-              {/* Home — 1er accès non connecté → /register-phone */}
-              <Route path="/" element={<FirstAccessGate><BourseLayout><LivreScolaireHomePage /></BourseLayout></FirstAccessGate>} />
+              {/* Home */}
+              <Route path="/" element={<BourseLayout><LivreScolaireHomePage /></BourseLayout>} />
 
               {/* Parcours parent */}
               <Route path="/parent-selection" element={<BourseLayout><ParentSelectionPage /></BourseLayout>} />
@@ -209,6 +176,8 @@ function AppBourse() {
               <Route path="/etablissement-portal/:etabId" element={<BourseLayout><RequireAuth><EtablissementDashboardPage /></RequireAuth></BourseLayout>} />
               <Route path="/etablissement-portal/:etabId/liste-scolaire" element={<BourseLayout><RequireAuth><EtablissementListeScolairePage /></RequireAuth></BourseLayout>} />
               <Route path="/admin-yukpo/programme-national/import" element={<BourseLayout><RequireAuth><AdminProgrammeNationalImportPage /></RequireAuth></BourseLayout>} />
+              {/* V2.3 — Dashboard admin shortfalls parrainage (2026-06-26) */}
+              <Route path="/admin-yukpo/parrainage/shortfalls" element={<BourseLayout><RequireAuth><AdminShortfallsPage /></RequireAuth></BourseLayout>} />
               {/* Compte / profil parent — accès au solde de crédits, recharge, infos compte */}
               <Route path="/compte" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />
               <Route path="/profil" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />

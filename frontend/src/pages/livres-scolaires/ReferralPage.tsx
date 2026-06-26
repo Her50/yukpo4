@@ -16,6 +16,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ReferralCard from '../../components/referral/ReferralCard';
+import MesFilleulsSection from '../../components/referral/MesFilleulsSection';
 import WalletPayoutSection from '../../components/wallet/WalletPayoutSection';
 import { getStoredRefCode } from '../../utils/referralStorage';
 
@@ -94,14 +95,14 @@ const ReferralPage: React.FC = () => {
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                to="/register-phone"
+                to="/register"
                 className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-amber-600 hover:from-indigo-700 hover:to-amber-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors"
               >
                 {t('referral.guest.cta_register', { defaultValue: 'Créer mon compte' })}
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to="/login-phone"
+                to="/login"
                 className="flex-1 inline-flex items-center justify-center bg-white border-2 border-indigo-300 hover:bg-indigo-50 text-indigo-700 font-semibold py-3 px-4 rounded-xl transition-colors"
               >
                 {t('referral.guest.cta_login', { defaultValue: 'J’ai déjà un compte' })}
@@ -142,6 +143,9 @@ const ReferralPage: React.FC = () => {
 
         {/* Carte parrainage (code + QR + stats + share) */}
         <ReferralCard />
+
+        {/* V2.4 — Historique par filleul */}
+        <MesFilleulsSection />
 
         {/* Section retrait cash (auto-masquée si solde insuffisant) */}
         <WalletPayoutSection />
