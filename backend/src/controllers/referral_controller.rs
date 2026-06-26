@@ -167,3 +167,48 @@ fn hex_hash(s: &str) -> String {
     let out = hasher.finalize();
     format!("{:x}", out)
 }
+
+// ============================================================================
+// V2.3 — Admin shortfalls dashboard (2026-06-26)
+// ============================================================================
+
+fn require_admin(role: &str) -> AppResult<()> {
+    if role == "admin" || role == "super_admin" {
+        Ok(())
+    } else {
+        Err(AppError::BadRequest(
+            "Accès admin requis pour cette ressource.".into(),
+        ))
+    }
+}
+
+/// GET /api/admin/referrals/shortfalls
+/// Vue financière : commissions parrainage rolled back (pertes) + at risk
+/// (initiées non released) + top parrains affectés + timeline mensuelle.
+pub async fn admin_shortfalls(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    require_admin(&user.role)?;
+    let summary = referral_service::admin_shortfalls_summary(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("referral shortfalls: {e}")))?;
+    Ok(Json(summary))
+}
+
+// ============================================================================
+// V2.4 — Historique par filleul côté parrain (2026-06-26)
+// ============================================================================
+
+/// GET /api/referral/me/filleuls
+/// Liste des filleuls du parrain connecté avec, pour chacun, le détail des
+/// gains qu'il a généré (bonus, troc, vendeur, nb trocs complétés).
+pub async fn get_my_filleuls(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let rows = referral_service::get_filleuls_history(&state.pg, user_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("filleuls history: {e}")))?;
+    Ok(Json(serde_json::json!({ "filleuls": rows })))
+}

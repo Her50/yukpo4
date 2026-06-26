@@ -51,6 +51,7 @@ import {
 } from './pages/livres-scolaires/EtablissementPortalPage';
 import EtablissementListeScolairePage from './pages/livres-scolaires/EtablissementListeScolairePage';
 import AdminProgrammeNationalImportPage from './pages/livres-scolaires/AdminProgrammeNationalImportPage';
+import AdminShortfallsPage from './pages/livres-scolaires/AdminShortfallsPage';
 import TeamInvitationAcceptPage from './pages/livres-scolaires/TeamInvitationAcceptPage';
 import ComptePage from './pages/ComptePage';
 import RechargePage from './pages/RechargePage';
@@ -175,6 +176,8 @@ function AppBourse() {
               <Route path="/etablissement-portal/:etabId" element={<BourseLayout><RequireAuth><EtablissementDashboardPage /></RequireAuth></BourseLayout>} />
               <Route path="/etablissement-portal/:etabId/liste-scolaire" element={<BourseLayout><RequireAuth><EtablissementListeScolairePage /></RequireAuth></BourseLayout>} />
               <Route path="/admin-yukpo/programme-national/import" element={<BourseLayout><RequireAuth><AdminProgrammeNationalImportPage /></RequireAuth></BourseLayout>} />
+              {/* V2.3 — Dashboard admin shortfalls parrainage (2026-06-26) */}
+              <Route path="/admin-yukpo/parrainage/shortfalls" element={<BourseLayout><RequireAuth><AdminShortfallsPage /></RequireAuth></BourseLayout>} />
               {/* Compte / profil parent — accès au solde de crédits, recharge, infos compte */}
               <Route path="/compte" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />
               <Route path="/profil" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />

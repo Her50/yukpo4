@@ -16,6 +16,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ReferralCard from '../../components/referral/ReferralCard';
+import MesFilleulsSection from '../../components/referral/MesFilleulsSection';
 import WalletPayoutSection from '../../components/wallet/WalletPayoutSection';
 import { getStoredRefCode } from '../../utils/referralStorage';
 
@@ -142,6 +143,9 @@ const ReferralPage: React.FC = () => {
 
         {/* Carte parrainage (code + QR + stats + share) */}
         <ReferralCard />
+
+        {/* V2.4 — Historique par filleul */}
+        <MesFilleulsSection />
 
         {/* Section retrait cash (auto-masquée si solde insuffisant) */}
         <WalletPayoutSection />

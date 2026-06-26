@@ -1111,3 +1111,339 @@ pub async fn rollback_referral_commissions_for_livre(
 
     Ok(rolled_back)
 }
+
+// ============================================================================
+// V2.3 — Admin shortfalls dashboard (2026-06-26)
+// ============================================================================
+//
+// Vue financière pour l'admin : combien de commissions parrainage ont été
+// rolled back (perdues définitivement) vs combien sont AT RISK (initiées mais
+// pas encore released, donc encore annulables si la livraison rate).
+//
+// Sert à anticiper les pertes terrain et identifier les parrains les plus
+// affectés (potentiel d'investigation : fraude, qualité du sourcing, etc.).
+
+#[derive(Debug, serde::Serialize)]
+pub struct ShortfallBySource {
+    pub source: String,
+    pub rolled_back_xaf: i64,
+    pub rolled_back_count: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ShortfallRecentRow {
+    pub parrain_id: i32,
+    pub parrain_phone: Option<String>,
+    pub source: String,
+    pub amount_xaf: i64,
+    pub livre_id: Option<i32>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ShortfallTopParrain {
+    pub parrain_id: i32,
+    pub parrain_phone: Option<String>,
+    pub total_rolled_back_xaf: i64,
+    pub rollback_count: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ShortfallMonthly {
+    pub month: String,
+    pub rolled_back_xaf: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct AdminShortfallsSummary {
+    pub total_rolled_back_xaf: i64,
+    pub total_at_risk_xaf: i64,
+    pub total_effective_xaf: i64,
+    pub by_source: Vec<ShortfallBySource>,
+    pub recent: Vec<ShortfallRecentRow>,
+    pub top_parrains: Vec<ShortfallTopParrain>,
+    pub monthly_12m: Vec<ShortfallMonthly>,
+}
+
+pub async fn admin_shortfalls_summary(
+    pool: &PgPool,
+) -> Result<AdminShortfallsSummary, sqlx::Error> {
+    let rolled_back_sources = [
+        "referral_troc_commission_rolled_back",
+        "referral_seller_commission_rolled_back",
+    ];
+    let active_credit_sources = [
+        "referral_bonus",
+        "referral_troc_commission",
+        "referral_seller_commission",
+    ];
+
+    let total_rolled_back_xaf: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+             FROM wallet_credit_bourse_ledger
+            WHERE source = ANY($1) AND direction = 'debit'"#,
+    )
+    .bind(&rolled_back_sources[..])
+    .fetch_one(pool)
+    .await?;
+
+    let total_at_risk_xaf: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+             FROM wallet_credit_bourse_ledger
+            WHERE source = ANY($1) AND direction = 'credit'
+              AND released_at IS NULL"#,
+    )
+    .bind(&active_credit_sources[..])
+    .fetch_one(pool)
+    .await?;
+
+    let total_effective_xaf: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(SUM(amount), 0)::BIGINT
+             FROM wallet_credit_bourse_ledger
+            WHERE source = ANY($1) AND direction = 'credit'
+              AND released_at IS NOT NULL"#,
+    )
+    .bind(&active_credit_sources[..])
+    .fetch_one(pool)
+    .await?;
+
+    let by_source_rows = sqlx::query(
+        r#"SELECT source, COALESCE(SUM(amount), 0)::BIGINT AS rolled_back_xaf,
+                  COUNT(*)::BIGINT AS rolled_back_count
+             FROM wallet_credit_bourse_ledger
+            WHERE source = ANY($1) AND direction = 'debit'
+            GROUP BY source
+            ORDER BY rolled_back_xaf DESC"#,
+    )
+    .bind(&rolled_back_sources[..])
+    .fetch_all(pool)
+    .await?;
+    let by_source: Vec<ShortfallBySource> = by_source_rows
+        .into_iter()
+        .map(|r| ShortfallBySource {
+            source: r.get::<String, _>("source"),
+            rolled_back_xaf: r.get::<i64, _>("rolled_back_xaf"),
+            rolled_back_count: r.get::<i64, _>("rolled_back_count"),
+        })
+        .collect();
+
+    let recent_rows = sqlx::query(
+        r#"SELECT l.user_id AS parrain_id, u.phone AS parrain_phone,
+                  l.source, l.amount::BIGINT AS amount_xaf, l.livre_id, l.created_at
+             FROM wallet_credit_bourse_ledger l
+             LEFT JOIN users u ON u.id = l.user_id
+            WHERE l.source = ANY($1) AND l.direction = 'debit'
+            ORDER BY l.created_at DESC
+            LIMIT 20"#,
+    )
+    .bind(&rolled_back_sources[..])
+    .fetch_all(pool)
+    .await?;
+    let recent: Vec<ShortfallRecentRow> = recent_rows
+        .into_iter()
+        .map(|r| ShortfallRecentRow {
+            parrain_id: r.get::<i32, _>("parrain_id"),
+            parrain_phone: r.try_get::<Option<String>, _>("parrain_phone").unwrap_or(None),
+            source: r.get::<String, _>("source"),
+            amount_xaf: r.get::<i64, _>("amount_xaf"),
+            livre_id: r.try_get::<Option<i32>, _>("livre_id").unwrap_or(None),
+            created_at: r.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+        })
+        .collect();
+
+    let top_rows = sqlx::query(
+        r#"SELECT l.user_id AS parrain_id, u.phone AS parrain_phone,
+                  COALESCE(SUM(l.amount), 0)::BIGINT AS total_rolled_back_xaf,
+                  COUNT(*)::BIGINT AS rollback_count
+             FROM wallet_credit_bourse_ledger l
+             LEFT JOIN users u ON u.id = l.user_id
+            WHERE l.source = ANY($1) AND l.direction = 'debit'
+            GROUP BY l.user_id, u.phone
+            ORDER BY total_rolled_back_xaf DESC
+            LIMIT 10"#,
+    )
+    .bind(&rolled_back_sources[..])
+    .fetch_all(pool)
+    .await?;
+    let top_parrains: Vec<ShortfallTopParrain> = top_rows
+        .into_iter()
+        .map(|r| ShortfallTopParrain {
+            parrain_id: r.get::<i32, _>("parrain_id"),
+            parrain_phone: r.try_get::<Option<String>, _>("parrain_phone").unwrap_or(None),
+            total_rolled_back_xaf: r.get::<i64, _>("total_rolled_back_xaf"),
+            rollback_count: r.get::<i64, _>("rollback_count"),
+        })
+        .collect();
+
+    let monthly_rows = sqlx::query(
+        r#"SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
+                  COALESCE(SUM(amount), 0)::BIGINT AS rolled_back_xaf
+             FROM wallet_credit_bourse_ledger
+            WHERE source = ANY($1) AND direction = 'debit'
+              AND created_at >= NOW() - INTERVAL '12 months'
+            GROUP BY 1
+            ORDER BY 1"#,
+    )
+    .bind(&rolled_back_sources[..])
+    .fetch_all(pool)
+    .await?;
+    let monthly_12m: Vec<ShortfallMonthly> = monthly_rows
+        .into_iter()
+        .map(|r| ShortfallMonthly {
+            month: r.get::<String, _>("month"),
+            rolled_back_xaf: r.get::<i64, _>("rolled_back_xaf"),
+        })
+        .collect();
+
+    Ok(AdminShortfallsSummary {
+        total_rolled_back_xaf,
+        total_at_risk_xaf,
+        total_effective_xaf,
+        by_source,
+        recent,
+        top_parrains,
+        monthly_12m,
+    })
+}
+
+// ============================================================================
+// V2.4 — Historique par filleul côté parrain (2026-06-26)
+// ============================================================================
+//
+// Pour le parrain : liste de ses filleuls avec, pour chacun :
+//   - phone (anonymisé partiellement)
+//   - signup_at, converted_at
+//   - bonus déjà touché (referral_bonus)
+//   - troc_commission cumul (NET)
+//   - seller_commission cumul (NET)
+//   - nombre de trocs/ventes effectués par ce filleul
+//
+// Permet au parrain de voir qui rapporte vraiment et de relancer les filleuls
+// peu actifs.
+
+#[derive(Debug, serde::Serialize)]
+pub struct FilleulHistoryRow {
+    pub filleul_id: i32,
+    pub filleul_phone_masked: String,
+    pub signup_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub converted_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub bonus_xaf: i64,
+    pub troc_commission_xaf: i64,
+    pub seller_commission_xaf: i64,
+    pub total_gains_xaf: i64,
+    pub nb_trocs_completes: i64,
+}
+
+fn mask_phone(phone: Option<String>) -> String {
+    match phone {
+        None => "Anonyme".to_string(),
+        Some(p) if p.len() < 4 => "***".to_string(),
+        Some(p) => {
+            let last4 = &p[p.len() - 4..];
+            format!("***{}", last4)
+        }
+    }
+}
+
+pub async fn get_filleuls_history(
+    pool: &PgPool,
+    parrain_id: i32,
+) -> Result<Vec<FilleulHistoryRow>, sqlx::Error> {
+    // Stratégie de liaison filleul → ledger entry :
+    //   - referral_bonus            : note contient "filleul {filleul_id} a passé"
+    //   - referral_troc_commission* : ledger.troc_id → troc_livres_scolaires.initiateur_id = filleul
+    //   - referral_seller_commission* : ledger.livre_id → livres_scolaires.user_id = filleul
+    let rows = sqlx::query(
+        r#"
+        WITH
+        bonus_per_filleul AS (
+            SELECT r.filleul_id,
+                   COALESCE(SUM(l.amount), 0)::BIGINT AS bonus_xaf
+              FROM referrals r
+              LEFT JOIN wallet_credit_bourse_ledger l
+                ON l.user_id = $1
+               AND l.source = 'referral_bonus'
+               AND l.direction = 'credit'
+               AND l.note LIKE '%filleul ' || r.filleul_id::text || ' a passé%'
+             WHERE r.parrain_id = $1
+             GROUP BY r.filleul_id
+        ),
+        troc_per_filleul AS (
+            SELECT r.filleul_id,
+                   COALESCE(SUM(
+                       CASE WHEN l.direction = 'credit' THEN l.amount ELSE -l.amount END
+                   ), 0)::BIGINT AS troc_xaf
+              FROM referrals r
+              LEFT JOIN troc_livres_scolaires t ON t.initiateur_id = r.filleul_id
+              LEFT JOIN wallet_credit_bourse_ledger l
+                ON l.user_id = $1
+               AND l.troc_id = t.id
+               AND l.source IN ('referral_troc_commission','referral_troc_commission_rolled_back')
+             WHERE r.parrain_id = $1
+             GROUP BY r.filleul_id
+        ),
+        seller_per_filleul AS (
+            SELECT r.filleul_id,
+                   COALESCE(SUM(
+                       CASE WHEN l.direction = 'credit' THEN l.amount ELSE -l.amount END
+                   ), 0)::BIGINT AS seller_xaf
+              FROM referrals r
+              LEFT JOIN livres_scolaires lv ON lv.user_id = r.filleul_id
+              LEFT JOIN wallet_credit_bourse_ledger l
+                ON l.user_id = $1
+               AND l.livre_id = lv.id
+               AND l.source IN ('referral_seller_commission','referral_seller_commission_rolled_back')
+             WHERE r.parrain_id = $1
+             GROUP BY r.filleul_id
+        )
+        SELECT r.filleul_id,
+               u.phone AS filleul_phone,
+               u.created_at AS signup_at,
+               r.bonus_credited_at AS converted_at,
+               COALESCE(b.bonus_xaf, 0)::BIGINT AS bonus_xaf,
+               COALESCE(tc.troc_xaf, 0)::BIGINT AS troc_commission_xaf,
+               COALESCE(s.seller_xaf, 0)::BIGINT AS seller_commission_xaf,
+               (SELECT COUNT(*)::BIGINT FROM troc_livres_scolaires t
+                 WHERE t.initiateur_id = r.filleul_id AND t.statut = 'complete') AS nb_trocs_completes
+          FROM referrals r
+          JOIN users u ON u.id = r.filleul_id
+          LEFT JOIN bonus_per_filleul b ON b.filleul_id = r.filleul_id
+          LEFT JOIN troc_per_filleul tc ON tc.filleul_id = r.filleul_id
+          LEFT JOIN seller_per_filleul s ON s.filleul_id = r.filleul_id
+         WHERE r.parrain_id = $1
+         ORDER BY (COALESCE(b.bonus_xaf, 0) + COALESCE(tc.troc_xaf, 0)
+                   + COALESCE(s.seller_xaf, 0)) DESC,
+                  r.created_at DESC
+         LIMIT 200
+        "#,
+    )
+    .bind(parrain_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            let bonus = r.get::<i64, _>("bonus_xaf");
+            let troc = r.get::<i64, _>("troc_commission_xaf");
+            let seller = r.get::<i64, _>("seller_commission_xaf");
+            FilleulHistoryRow {
+                filleul_id: r.get::<i32, _>("filleul_id"),
+                filleul_phone_masked: mask_phone(
+                    r.try_get::<Option<String>, _>("filleul_phone").unwrap_or(None),
+                ),
+                signup_at: r
+                    .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("signup_at")
+                    .unwrap_or(None),
+                converted_at: r
+                    .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("converted_at")
+                    .unwrap_or(None),
+                bonus_xaf: bonus,
+                troc_commission_xaf: troc,
+                seller_commission_xaf: seller,
+                total_gains_xaf: bonus + troc + seller,
+                nb_trocs_completes: r.get::<i64, _>("nb_trocs_completes"),
+            }
+        })
+        .collect())
+}
