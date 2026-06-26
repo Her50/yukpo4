@@ -51,7 +51,7 @@ UPDATE programmes_scolaires
    AND systeme_educatif = 'francophone'
    AND matiere IN ('ECM', 'Education à la citoyenneté');
 
--- ─── INSERT LATIN 6ème (nouveau manuel) ───────────────────────────────────
+-- ─── INSERT LATIN 6ème (nouveau manuel — idempotent via NOT EXISTS) ──────
 INSERT INTO programmes_scolaires (
     etablissement_id, type_etablissement, niveau, classe,
     annee_scolaire, is_active, pays, systeme_educatif,
@@ -61,21 +61,28 @@ INSERT INTO programmes_scolaires (
     periode_academique
 )
 SELECT DISTINCT
-    etablissement_id, type_etablissement, 'Secondaire général', '6ème',
-    '2026-2027', true, pays, 'francophone',
+    src.etablissement_id, src.type_etablissement, 'Secondaire général', '6ème',
+    '2026-2027', true, src.pays, 'francophone',
     'Latin', 'Latinistas 6ème-5ème', 'Ottou Fouda, Sabikanda', 'Eclosion',
     false, 5000, 'XAF', 'livre',
     1, '2026-07-01'::date, '2027-06-30'::date,
     '2026-2027'
-FROM programmes_scolaires
-WHERE annee_scolaire = '2026-2027'
-  AND classe = '6ème'
-  AND systeme_educatif = 'francophone'
-  AND etablissement_id IS NOT NULL
-GROUP BY etablissement_id, type_etablissement, pays
-ON CONFLICT DO NOTHING;
+FROM programmes_scolaires src
+WHERE src.annee_scolaire = '2026-2027'
+  AND src.classe = '6ème'
+  AND src.systeme_educatif = 'francophone'
+  AND src.etablissement_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM programmes_scolaires dst
+    WHERE dst.annee_scolaire = '2026-2027'
+      AND dst.classe = '6ème'
+      AND dst.systeme_educatif = 'francophone'
+      AND dst.matiere = 'Latin'
+      AND dst.titre_livre = 'Latinistas 6ème-5ème'
+      AND COALESCE(dst.etablissement_id, -1) = COALESCE(src.etablissement_id, -1)
+  );
 
--- ─── INSERT Les Bimanes (Littérature 6ème, nouveau) ───────────────────────
+-- ─── INSERT Les Bimanes (Littérature 6ème, idempotent via NOT EXISTS) ────
 INSERT INTO programmes_scolaires (
     etablissement_id, type_etablissement, niveau, classe,
     annee_scolaire, is_active, pays, systeme_educatif,
@@ -85,21 +92,28 @@ INSERT INTO programmes_scolaires (
     periode_academique
 )
 SELECT DISTINCT
-    etablissement_id, type_etablissement, 'Secondaire général', '6ème',
-    '2026-2027', true, pays, 'francophone',
+    src.etablissement_id, src.type_etablissement, 'Secondaire général', '6ème',
+    '2026-2027', true, src.pays, 'francophone',
     'Littérature', 'Les Bimanes', 'Séverin Cécil Abega', 'EDICEF',
     true, 2000, 'XAF', 'livre',
     1, '2026-07-01'::date, '2027-06-30'::date,
     '2026-2027'
-FROM programmes_scolaires
-WHERE annee_scolaire = '2026-2027'
-  AND classe = '6ème'
-  AND systeme_educatif = 'francophone'
-  AND etablissement_id IS NOT NULL
-GROUP BY etablissement_id, type_etablissement, pays
-ON CONFLICT DO NOTHING;
+FROM programmes_scolaires src
+WHERE src.annee_scolaire = '2026-2027'
+  AND src.classe = '6ème'
+  AND src.systeme_educatif = 'francophone'
+  AND src.etablissement_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM programmes_scolaires dst
+    WHERE dst.annee_scolaire = '2026-2027'
+      AND dst.classe = '6ème'
+      AND dst.systeme_educatif = 'francophone'
+      AND dst.matiere = 'Littérature'
+      AND dst.titre_livre = 'Les Bimanes'
+      AND COALESCE(dst.etablissement_id, -1) = COALESCE(src.etablissement_id, -1)
+  );
 
--- ─── INSERT Les Contes de Korotoumou (Littérature 6ème, nouveau) ──────────
+-- ─── INSERT Les Contes de Korotoumou (idempotent via NOT EXISTS) ──────────
 INSERT INTO programmes_scolaires (
     etablissement_id, type_etablissement, niveau, classe,
     annee_scolaire, is_active, pays, systeme_educatif,
@@ -109,19 +123,26 @@ INSERT INTO programmes_scolaires (
     periode_academique
 )
 SELECT DISTINCT
-    etablissement_id, type_etablissement, 'Secondaire général', '6ème',
-    '2026-2027', true, pays, 'francophone',
+    src.etablissement_id, src.type_etablissement, 'Secondaire général', '6ème',
+    '2026-2027', true, src.pays, 'francophone',
     'Littérature', 'Les Contes de Korotoumou', 'Amadou Kone', 'Vallesse',
     true, 2200, 'XAF', 'livre',
     1, '2026-07-01'::date, '2027-06-30'::date,
     '2026-2027'
-FROM programmes_scolaires
-WHERE annee_scolaire = '2026-2027'
-  AND classe = '6ème'
-  AND systeme_educatif = 'francophone'
-  AND etablissement_id IS NOT NULL
-GROUP BY etablissement_id, type_etablissement, pays
-ON CONFLICT DO NOTHING;
+FROM programmes_scolaires src
+WHERE src.annee_scolaire = '2026-2027'
+  AND src.classe = '6ème'
+  AND src.systeme_educatif = 'francophone'
+  AND src.etablissement_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM programmes_scolaires dst
+    WHERE dst.annee_scolaire = '2026-2027'
+      AND dst.classe = '6ème'
+      AND dst.systeme_educatif = 'francophone'
+      AND dst.matiere = 'Littérature'
+      AND dst.titre_livre = 'Les Contes de Korotoumou'
+      AND COALESCE(dst.etablissement_id, -1) = COALESCE(src.etablissement_id, -1)
+  );
 
 -- Vérification
 DO $$
