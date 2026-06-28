@@ -1160,6 +1160,56 @@ pub fn is_workbook_or_livret(titre: &str) -> bool {
     CONSUMABLE_PATTERNS.iter().any(|p| n.contains(p))
 }
 
+/// Vérifie si une classe relève du cycle SECONDAIRE (6ème → Tle en système FR,
+/// Form 1 → Upper Sixth en anglophone, équivalents dans les autres systèmes).
+///
+/// 2026-06-28 — Garde-fou troc : les livres de Maternelle / Primaire ne sont
+/// PAS éligibles au troc (consommables : l'élève écrit dedans, contenu
+/// utilisé une fois). Cette fonction sert à les rejeter en amont.
+///
+/// Whitelist par patterns canoniques. Tolère les variantes orthographiques
+/// (6e / 6ème / sixième) via canonical().
+pub fn is_classe_secondaire(classe: &str) -> bool {
+    let c = crate::utils::classe_normalization::canonical(classe);
+    if c.is_empty() {
+        return false;
+    }
+    // Système francophone (CM/CI/SN/CG/...) — 6e, 5e, 4e, 3e, 2nde, 1ere, tle
+    // (avec éventuel suffixe série A/C/D/E/TI/F2…)
+    let fr_prefixes = ["6e", "5e", "4e", "3e", "2nde", "1ere", "tle"];
+    for p in fr_prefixes {
+        if c == p || c.starts_with(&format!("{} ", p)) {
+            return true;
+        }
+    }
+    // Système anglophone Cameroun — Form 1..5, Lower/Upper Sixth
+    let en_prefixes = [
+        "form 1",
+        "form 2",
+        "form 3",
+        "form 4",
+        "form 5",
+        "lower sixth",
+        "upper sixth",
+    ];
+    for p in en_prefixes {
+        if c == p || c.starts_with(&format!("{} ", p)) {
+            return true;
+        }
+    }
+    // Système anglophone Kenya/Ghana — SSS / SHS / JSS / JHS 1..3
+    let other_prefixes = [
+        "sss 1", "sss 2", "sss 3", "shs 1", "shs 2", "shs 3", "jss 1", "jss 2", "jss 3",
+        "jhs 1", "jhs 2", "jhs 3",
+    ];
+    for p in other_prefixes {
+        if c == p {
+            return true;
+        }
+    }
+    false
+}
+
 /// Vérifie si une classe est la dernière de son système (pas de troc possible, vente uniquement).
 /// Fonctionne pour tous les systèmes: Tle, Upper Sixth, SSS 3, SHS 3, Form 4 (Kenya), 6ème secondaire (RDC)...
 /// Gère les classes avec série suffixée ("Tle A", "Tle C", "Tle F2") via match préfixe.

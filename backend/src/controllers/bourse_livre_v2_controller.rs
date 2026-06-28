@@ -677,20 +677,35 @@ pub async fn analyze_recto_verso(
     // Double sécurité : on accepte si l'IA dit oui OU si on trouve une
     // similarité titre >= 0.4 dans la table programmes_scolaires côté backend
     // (cas où l'IA hésite mais que le matching trigram est fiable).
+    //
+    // 2026-06-28 — Renforcements :
+    //   * Filtrage par année académique courante (`compute_session_academique`)
+    //     pour éviter d'accepter un livre 2024-2025 alors qu'on est en 2026-2027.
+    //   * Filtrage classe SECONDAIRE uniquement : Maternelle / Primaire =
+    //     manuels consommables non revendables → rejet précoce.
+    let session_courante =
+        crate::utils::session_academique::compute_session_academique("CM", None).annee;
+    let classe_actuelle_ia = analysis.classe_actuelle.as_deref().unwrap_or("");
+    let is_secondaire = crate::services::book_exchange_ai_service::is_classe_secondaire(
+        classe_actuelle_ia,
+    );
+
     let ai_says_in_program = analysis.est_au_programme.unwrap_or(false);
     let mut programme_match_serveur: Option<i32> = None;
     if !ai_says_in_program {
         if let Some(titre_ia) = analysis.titre.as_deref() {
             // Vérif serveur via pg_trgm similarité — accepte les variantes
-            // d'orthographe / éditions différentes.
+            // d'orthographe / éditions différentes. Filtré sur l'année courante.
             let match_id: Option<i32> = sqlx::query_scalar(
                 r#"SELECT id FROM programmes_scolaires
                    WHERE is_active = true
+                     AND annee_scolaire = $2
                      AND similarity(lower(unaccent(titre_livre)), lower(unaccent($1))) >= 0.4
                    ORDER BY similarity(lower(unaccent(titre_livre)), lower(unaccent($1))) DESC
                    LIMIT 1"#,
             )
             .bind(titre_ia)
+            .bind(&session_courante)
             .fetch_optional(&state.pg)
             .await
             .unwrap_or(None);
@@ -698,15 +713,34 @@ pub async fn analyze_recto_verso(
         }
     }
     let is_in_program = ai_says_in_program || programme_match_serveur.is_some();
-    if !is_in_program {
+
+    if !is_secondaire {
         info!(
-            "[analyze_recto_verso] Livre REJETÉ : pas au programme officiel — titre={:?}",
-            analysis.titre
+            "[analyze_recto_verso] Livre REJETÉ : classe non secondaire ({}) — titre={:?}",
+            classe_actuelle_ia, analysis.titre
+        );
+        analysis.etat_classification = "rejete".to_string();
+        analysis.prix_detecte = Some(0.0);
+        let note = format!(
+            "Cycle non éligible au troc : classe '{}' (seul le secondaire — 6ème→Tle / Form 1→Upper Sixth — est échangeable).",
+            classe_actuelle_ia
+        );
+        analysis.notes = Some(match analysis.notes.take() {
+            Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+            _ => note,
+        });
+    } else if !is_in_program {
+        info!(
+            "[analyze_recto_verso] Livre REJETÉ : pas au programme officiel {} — titre={:?}",
+            session_courante, analysis.titre
         );
         // On force le rejet : état + valeur = 0
         analysis.etat_classification = "rejete".to_string();
         analysis.prix_detecte = Some(0.0);
-        let note = "Pas au programme scolaire officiel".to_string();
+        let note = format!(
+            "Pas au programme scolaire officiel {}",
+            session_courante
+        );
         analysis.notes = Some(match analysis.notes.take() {
             Some(n) if !n.is_empty() => format!("{} | {}", n, note),
             _ => note,

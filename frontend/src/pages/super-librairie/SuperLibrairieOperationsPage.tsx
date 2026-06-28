@@ -11,13 +11,13 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
-import AppLayout from '@/components/layout/AppLayout';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/buttons/Button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'react-hot-toast';
 import {
   AlertTriangle,
+  BookOpen,
   Send,
   Loader2,
   RefreshCw,
@@ -76,14 +76,32 @@ const SuperLibrairieOperationsPage: React.FC = () => {
   })();
   const [tab, setTab] = useState<Tab>(initialTab);
 
+  // 2026-06-28 — Refonte UI : AppLayout legacy (dark mode + ancien logo XAF)
+  // remplacé par un wrapper Bourse light/orange cohérent avec le reste de la
+  // librairie. En-tête simple en texte (la Bourse n'a pas de logo bitmap),
+  // titre + breadcrumb retour vers le portail librairie.
   return (
-    <AppLayout>
-      <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50/40 via-white to-white">
+      {/* Header Bourse */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-amber-100 shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+          <Link
+            to="/librairie"
+            className="flex items-center gap-2 text-amber-700 hover:text-amber-800 font-semibold text-sm"
+          >
+            <BookOpen className="w-5 h-5" />
+            <span className="hidden sm:inline">Yukpo Librairie</span>
+          </Link>
+          <div className="text-xs text-slate-500 truncate">Opérations</div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
         <header className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-2">
             {t('yukpoLib.ops.title', 'Yukpo Librairie — Opérations')}
           </h1>
-          <p className="text-slate-600 text-sm">
+          <p className="text-slate-600 text-xs sm:text-sm">
             {t(
               'yukpoLib.ops.subtitle',
               'Cascade rupture grossiste + libération libraires_proches + assignation coursier',
@@ -91,7 +109,7 @@ const SuperLibrairieOperationsPage: React.FC = () => {
           </p>
         </header>
 
-        <nav className="flex gap-2 mb-6 border-b border-slate-200">
+        <nav className="flex gap-1 sm:gap-2 mb-6 border-b border-slate-200 overflow-x-auto">
           <TabButton current={tab} value="ruptures" onClick={() => setTab('ruptures')}>
             <AlertTriangle className="w-4 h-4" /> {t('yukpoLib.ops.tabRuptures', 'Ruptures')}
           </TabButton>
@@ -99,7 +117,7 @@ const SuperLibrairieOperationsPage: React.FC = () => {
             <User className="w-4 h-4" /> {t('yukpoLib.ops.tabCoursiers', 'Assigner coursier')}
           </TabButton>
           <TabButton current={tab} value="invite" onClick={() => setTab('invite')}>
-            <User className="w-4 h-4" /> {t('yukpoLib.ops.tabInvite', 'Inviter coursier')}
+            <Send className="w-4 h-4" /> {t('yukpoLib.ops.tabInvite', 'Inviter coursier')}
           </TabButton>
         </nav>
 
@@ -107,7 +125,7 @@ const SuperLibrairieOperationsPage: React.FC = () => {
         {tab === 'coursiers' && <CoursiersTab />}
         {tab === 'invite' && <InviteCoursierTab />}
       </div>
-    </AppLayout>
+    </div>
   );
 };
 
@@ -124,9 +142,9 @@ const TabButton: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className={`px-4 py-2 -mb-px border-b-2 text-sm font-medium flex items-center gap-2 ${
+    className={`px-3 sm:px-4 py-2 -mb-px border-b-2 text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors ${
       current === value
-        ? 'border-primary text-primary'
+        ? 'border-amber-600 text-amber-700'
         : 'border-transparent text-slate-600 hover:text-slate-900'
     }`}
   >
