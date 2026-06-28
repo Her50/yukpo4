@@ -15,7 +15,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, AlertTriangle, CheckCircle2, Loader2, MapPin, Phone, RefreshCcw } from 'lucide-react';
-import AppLayout from '@/components/layout/AppLayout';
+import CourierLayout from '@/components/layout/CourierLayout';
 import { Button } from '@/components/ui/buttons/Button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'react-hot-toast';
@@ -161,17 +161,17 @@ const BookDeliveryFlowPage: React.FC = () => {
 
   if (loading) {
     return (
-      <AppLayout>
+      <CourierLayout pageTitle="Mes paquets Bourse">
         <div className="flex items-center justify-center min-h-[60vh] text-gray-500">
           <Loader2 className="w-6 h-6 animate-spin mr-2" />
           Chargement des paquets…
         </div>
-      </AppLayout>
+      </CourierLayout>
     );
   }
 
   return (
-    <AppLayout>
+    <CourierLayout pageTitle="Mes paquets Bourse">
       <div className="max-w-3xl mx-auto p-4 space-y-4">
         <div className="flex items-center gap-3">
           <button
@@ -365,7 +365,7 @@ const BookDeliveryFlowPage: React.FC = () => {
           </div>
         </div>
       )}
-    </AppLayout>
+    </CourierLayout>
   );
 };
 

@@ -76,7 +76,7 @@ const CourierAdminPage: React.FC = () => {
             toast({
                 title: 'Erreur',
                 description: error.message || 'Impossible de charger les candidatures',
-                variant: 'destructive',
+                type: 'error',
             });
             setApplications([]);
         } finally {
@@ -104,7 +104,7 @@ const CourierAdminPage: React.FC = () => {
             toast({
                 title: 'Erreur',
                 description: error.message || 'Impossible d\'approuver la candidature',
-                variant: 'destructive',
+                type: 'error',
             });
         } finally {
             setProcessing(null);
@@ -116,7 +116,7 @@ const CourierAdminPage: React.FC = () => {
             toast({
                 title: 'Erreur',
                 description: 'Veuillez indiquer une raison de refus',
-                variant: 'destructive',
+                type: 'error',
             });
             return;
         }
@@ -144,7 +144,7 @@ const CourierAdminPage: React.FC = () => {
             toast({
                 title: 'Erreur',
                 description: error.message || 'Impossible de rejeter la candidature',
-                variant: 'destructive',
+                type: 'error',
             });
         } finally {
             setProcessing(null);
