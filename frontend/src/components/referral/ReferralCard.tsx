@@ -30,6 +30,18 @@ interface ReferralData {
   total_signups: number;
   total_conversions: number;
   total_bonus_xaf: number;
+  // 2026-06-08 — Détail commissions troc + vente d'occasion (filleuls).
+  total_trocs_filleuls: number;
+  total_troc_commission_xaf: number;
+  total_seller_commission_xaf: number;
+  // 2026-06-24 — Cycle 4 phases : Espérée → Initiée → Effective → RolledBack.
+  // Espérée : scan/listing — potentiel terrain, pas créditée.
+  // Initiée : troc/vente validé — créditée mais bloquée (released_at IS NULL).
+  // Effective : livraison confirmée — retirable en cash via Mobile Money.
+  commission_esperee_xaf: number;
+  total_initiee_xaf: number;
+  total_effective_xaf: number;
+  total_gains_xaf: number;
 }
 
 const ReferralCard: React.FC = () => {
@@ -188,8 +200,42 @@ const ReferralCard: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-4 pt-4 border-t border-indigo-100">
+      {/* 2026-06-28 — Cycle 4 phases : Espérée → Initiée → Effective.
+          Vue financière qui MOTIVE le parrain en montrant ce que son réseau
+          peut rapporter (espérée), ce qu'il a déjà gagné (initiée) et ce
+          qu'il peut retirer maintenant (effective). */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mt-4 pt-4 border-t border-indigo-100">
+        <PhaseTile
+          tone="amber"
+          phase={t('referral.phases.esperee', { defaultValue: 'Potentiel terrain' })}
+          value={data.commission_esperee_xaf}
+          hint={t('referral.phases.esperee_hint', {
+            defaultValue:
+              'Si tous les livres scannés par tes filleuls trouvent preneur — incitation à pousser le terrain.',
+          })}
+        />
+        <PhaseTile
+          tone="indigo"
+          phase={t('referral.phases.initiee', { defaultValue: 'En cours de validation' })}
+          value={data.total_initiee_xaf}
+          hint={t('referral.phases.initiee_hint', {
+            defaultValue:
+              'Commission gagnée — débloquée dès que le coursier confirme la livraison.',
+          })}
+        />
+        <PhaseTile
+          tone="emerald"
+          phase={t('referral.phases.effective', { defaultValue: 'Retirable en cash' })}
+          value={data.total_effective_xaf}
+          hint={t('referral.phases.effective_hint', {
+            defaultValue:
+              'Disponible pour retrait Mobile Money (Orange Money / MTN MoMo / Wave).',
+          })}
+        />
+      </div>
+
+      {/* Stats secondaires — activité réseau */}
+      <div className="grid grid-cols-4 gap-2 mt-3">
         <StatTile
           label={t('referral.stats.clicks', { defaultValue: 'Clics' })}
           value={data.total_clicks.toLocaleString('fr-FR')}
@@ -204,12 +250,54 @@ const ReferralCard: React.FC = () => {
           value={data.total_conversions.toLocaleString('fr-FR')}
         />
         <StatTile
-          label={t('referral.stats.bonus', { defaultValue: 'Bonus gagné' })}
-          value={`${data.total_bonus_xaf.toLocaleString('fr-FR')} XAF`}
-          highlight
+          label={t('referral.stats.trocs', { defaultValue: 'Trocs' })}
+          value={data.total_trocs_filleuls.toLocaleString('fr-FR')}
         />
       </div>
+
+      {/* Détail bonus / troc / vente — pour transparence */}
+      {(data.total_bonus_xaf > 0 ||
+        data.total_troc_commission_xaf > 0 ||
+        data.total_seller_commission_xaf > 0) && (
+        <div className="mt-3 text-[10px] sm:text-[11px] text-gray-500 leading-relaxed">
+          <span className="font-semibold text-gray-700">Détail des gains : </span>
+          Bonus ventes {data.total_bonus_xaf.toLocaleString('fr-FR')} XAF ·{' '}
+          Commission troc {data.total_troc_commission_xaf.toLocaleString('fr-FR')} XAF ·{' '}
+          Commission vente {data.total_seller_commission_xaf.toLocaleString('fr-FR')} XAF
+        </div>
+      )}
     </section>
+  );
+};
+
+interface PhaseTileProps {
+  tone: 'amber' | 'indigo' | 'emerald';
+  phase: string;
+  value: number;
+  hint: string;
+}
+
+const PhaseTile: React.FC<PhaseTileProps> = ({ tone, phase, value, hint }) => {
+  const toneClasses = {
+    amber: 'bg-amber-50 border-amber-200',
+    indigo: 'bg-indigo-50 border-indigo-200',
+    emerald: 'bg-emerald-50 border-emerald-200',
+  }[tone];
+  const labelTone = {
+    amber: 'text-amber-700',
+    indigo: 'text-indigo-700',
+    emerald: 'text-emerald-700',
+  }[tone];
+  return (
+    <div className={`rounded-xl border p-3 ${toneClasses}`}>
+      <div className={`text-[10px] sm:text-[11px] uppercase font-bold tracking-wider ${labelTone}`}>
+        {phase}
+      </div>
+      <div className="text-lg sm:text-xl font-bold text-gray-900 mt-0.5">
+        {value.toLocaleString('fr-FR')} <span className="text-xs font-medium text-gray-500">XAF</span>
+      </div>
+      <div className="text-[10px] text-gray-600 mt-1 leading-snug">{hint}</div>
+    </div>
   );
 };
 
