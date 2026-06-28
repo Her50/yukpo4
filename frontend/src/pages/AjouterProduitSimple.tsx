@@ -115,9 +115,11 @@ const AjouterProduitSimple: React.FC = () => {
         
         // Vérifier si le solde est suffisant (minimum requis)
         if (balance < 10) {
-          toast.error('Solde insuffisant. Veuillez recharger votre compte.', {
-            onClick: () => navigate('/recharge-tokens')
-          });
+          // 2026-06-28 — react-hot-toast n'a pas d'option onClick.
+          // Avant : `toast.error(msg, { onClick: ... })` cassait au tsc.
+          // Maintenant : toast + navigation différée.
+          toast.error('Solde insuffisant — redirection vers la recharge…');
+          setTimeout(() => navigate('/recharge-tokens'), 1800);
           return false;
         }
         

@@ -612,9 +612,12 @@ const ChatInputPanel: React.FC<ChatInputPanelProps> = React.memo(({ onSubmit, lo
                   } else {
                     // Gestion erreur solde insuffisant
                     if (result.error?.includes('solde') || result.error?.includes('insufficient')) {
-                      toast.error(result.error, {
-                        onClick: () => navigate('/recharge-tokens')
-                      });
+                      // 2026-06-28 — react-hot-toast n'a pas d'option onClick.
+                      // Avant : `toast.error(msg, { onClick: ... })` cassait au tsc.
+                      // Maintenant : toast info + navigation automatique différée
+                      // pour laisser l'utilisateur lire le message avant le redirect.
+                      toast.error(`${result.error} — redirection vers la recharge…`);
+                      setTimeout(() => navigate('/recharge-tokens'), 1800);
                     } else {
                       toast.error(result.error || 'Erreur lors de la recherche par vidéo');
                     }
