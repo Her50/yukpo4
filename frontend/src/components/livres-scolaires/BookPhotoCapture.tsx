@@ -335,7 +335,9 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
     setVersoBase64(null);
     setRectoHash(null);
     setVersoIdenticalTries(0);
-    setPendingRectoReplace(false);
+    // 2026-06-28 — setter orphelin supprimé (state pendingRectoReplace n'existe
+    // plus depuis le refactor flow recto/verso). Causait ReferenceError au
+    // runtime quand l'utilisateur cliquait sur "Recommencer".
     setResult(null);
     setError('');
     setStep('idle');

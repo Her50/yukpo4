@@ -2184,44 +2184,87 @@ NE PAS se laisser tromper par une page de titre intérieure qui ressemble à la 
 
 ⚠️⚠️⚠️ CHECKLIST OBLIGATOIRE — degradation_flags ⚠️⚠️⚠️
 TU DOIS remplir ces 9 booléens SANS EXCEPTION. Examine chaque cm² visible.
-N'invente pas, mais ne sois pas indulgent : en cas de doute pour un défaut visible, mets true.
-Si UN SEUL est true → le livre sera AUTOMATIQUEMENT rejeté côté backend.
 
-🔥 RÈGLE CARDINALE — OR LOGIQUE RECTO/VERSO :
-La qualité du livre est déterminée par la PIRE des 2 images. Donc :
-  - Si RECTO endommagé (déchirure, morceau manquant, etc.) ET VERSO en bon état → REJET (flag true)
-  - Si VERSO endommagé ET RECTO en bon état → REJET (flag true)
-  - Si UN SEUL des défauts est visible sur UNE SEULE des deux images → flag = true
+🎯 BIAIS PAR DÉFAUT : la VASTE majorité des livres scolaires utilisés UNE année
+sont en bon ou acceptable état. Le REJET est une décision RARE réservée aux
+livres VRAIMENT abîmés (impossibles à réutiliser en classe). Ton biais par
+défaut est FALSE pour chaque flag : tu n'actives un flag QUE si tu vois
+CLAIREMENT et SANS AMBIGUÏTÉ le défaut, avec les seuils précis ci-dessous.
 
-TU N'AS PAS LE DROIT de moyenner la qualité ou d'ignorer un défaut sur le recto sous prétexte
-que le verso est propre. Le livre PHYSIQUE est endommagé dès qu'une face l'est. C'est l'objet
-entier qui circule, pas une seule face.
+⚠️ NE PAS INVENTER DE DÉFAUTS :
+- Photo floue/sombre/avec reflets ≠ défaut.
+- Coin d'image mal cadré ≠ morceau manquant.
+- Ombre ou reflet ≠ moisissure / tache.
+- Variation d'éclairage ≠ jaunissement biologique.
+- En cas de doute → flag = FALSE.
 
-Exemple critique : une couverture AVANT (recto) déchirée mais une couverture ARRIÈRE (verso)
-en parfait état → has_tear = true → rejet automatique. C'est NON NÉGOCIABLE.
+🔥 RÈGLE OR LOGIQUE RECTO/VERSO :
+La qualité du livre est déterminée par la pire des 2 images. Si UN défaut
+INCONTESTABLE est visible sur l'une des deux faces → flag = true.
 
   degradation_flags: {{
-    "has_tear": <true|false>,                  // Déchirure visible sur la couverture (même 1cm, même recollée)
-    "has_missing_piece": <true|false>,         // Morceau de couverture manquant (coin, bord, bande)
-    "has_pelliculage_arrache": <true|false>,   // Pelliculage arraché >20% (zones où le carton est à nu)
-    "has_inscription_permanent": <true|false>, // Stylo/feutre/marker permanent sur la couverture (PAS un sticker)
-    "has_moisissure": <true|false>,            // Moisissures, taches biologiques, points noirs, halo verdâtre
-    "has_water_damage": <true|false>,          // Papier gondolé, taches d'eau, brûlures
-    "is_paper_not_cardboard": <true|false>,    // L'image montre une PAGE INTÉRIEURE PAPIER au lieu de la couverture cartonnée
-    "has_broken_binding": <true|false>,        // Reliure cassée : pages tombantes ou couverture détachée
-    "has_illegible_pages": <true|false>        // Texte illisible >5% des pages visibles (gribouillage, taches)
+    "has_tear": <true|false>,                  // BLOQUANT — Déchirure NETTE ≥2 cm. PAS une éraflure superficielle ni une pliure.
+    "has_missing_piece": <true|false>,         // BLOQUANT — Morceau manquant ≥1 cm², bord déchiqueté. PAS un coin corné.
+    "has_pelliculage_arrache": <true|false>,   // MINEUR (=> acceptable) — ≥40% du pelliculage arraché OU carton à nu sur ≥4 cm². Un coin de pelliculage légèrement décollé reste FALSE.
+    "has_inscription_permanent": <true|false>, // MINEUR (=> acceptable) — Stylo/feutre permanent sur >2 mots ou >5 cm². Une signature courte (1 nom) ou crayon ne compte PAS.
+    "has_moisissure": <true|false>,            // BLOQUANT — Taches biologiques VERTES/NOIRES de ≥0.5 cm², à motif circulaire. PAS une ombre ni un reflet.
+    "has_water_damage": <true|false>,          // BLOQUANT — Papier gondolé sur ≥30% OU auréole d'eau brunâtre claire. PAS un jaunissement uniforme normal.
+    "is_paper_not_cardboard": <true|false>,    // BLOQUANT — L'image montre UNIQUEMENT une page intérieure papier. Le carton n'est pas visible du tout.
+    "has_broken_binding": <true|false>,        // BLOQUANT — Reliure cassée : dos décollé ≥5 cm ou pages tombantes visibles. PAS un dos légèrement souple.
+    "has_illegible_pages": <true|false>        // BLOQUANT — ≥10% des pages illisibles (gribouillage massif). PAS une simple annotation au crayon.
   }}
 
-🔍 PROCÉDURE STRICTE (suis l'ordre, ne saute aucune étape) :
-1. Observe l'image recto (zoom mental sur chaque zone : coins, bords, centre, surface).
-2. Pour chaque flag de degradation_flags, demande-toi : "Est-ce que je VOIS ce défaut ?"
-   - Si OUI ou si TU HÉSITES → mets true (mieux refuser à tort qu'accepter à tort)
-   - Si NON sans aucun doute → mets false
-3. Idem pour l'image verso.
-4. Renseigne degradation_flags avec OR logique des deux images.
-5. Choisis etat_classification :
-   - Si ≥1 flag à true → "rejete" (le backend forcera de toute façon).
-   - Sinon, choisis entre "bon" et "acceptable" selon l'arbre suivant.
+🔍 PROCÉDURE :
+1. Observe les 2 images (recto + verso).
+2. Pour chaque flag : "Est-ce que je vois CLAIREMENT ce défaut au seuil indiqué ?"
+   - Si OUI sans ambiguïté → true
+   - Si NON, ou si DOUTE → false (le bénéfice du doute va au livre, pas au rejet)
+3. Choisis etat_classification :
+   - "rejete" UNIQUEMENT si ≥1 flag BLOQUANT à true (parmi has_tear, has_missing_piece,
+     is_paper_not_cardboard, has_broken_binding, has_illegible_pages, has_moisissure,
+     has_water_damage).
+   - "acceptable" si aucun bloquant mais ≥1 flag mineur (has_pelliculage_arrache ou
+     has_inscription_permanent) à true, OU si présence d'indicateurs d'usage (cornures,
+     jaunissement, pelliculage légèrement décollé, petite annotation crayon).
+   - "bon" si aucun défaut visible, couverture quasi-neuve.
+
+🎯 DISTINCTION CRITIQUE "bon" vs "acceptable" — règle stricte :
+
+   "bon" = couverture qui paraît n'avoir JAMAIS ou PRESQUE JAMAIS servi.
+       Critères CUMULATIFS (TOUS doivent être vrais) :
+       ✓ Pelliculage 100% intact, brillant, sans aucune marque
+       ✓ Aucun coin corné, aucun coin écrasé
+       ✓ Aucune annotation visible (ni crayon, ni stylo, ni nom de propriétaire)
+       ✓ Aucun jaunissement, surface uniformément blanche/colorée
+       ✓ Aucune tache, aucune trace de doigt
+       ✓ Aucune pliure même légère
+       Si UN SEUL de ces critères tombe → "acceptable", JAMAIS "bon".
+
+   "acceptable" = livre utilisé UNE année avec usure NORMALE, structurellement intact.
+       Indicateurs (au moins UN suffit pour basculer de "bon" à "acceptable") :
+       • Coin corné, même un seul, même léger
+       • Jaunissement du papier (livre d'une année précédente)
+       • Pelliculage légèrement décollé sur un bord ou coin
+       • Annotation visible au crayon (même un seul mot)
+       • Signature/nom de propriétaire sur la page de garde
+       • Petite trace de doigt, halo de manipulation
+       • Pliure légère sur la couverture
+       • Trace d'usure normale (livre déjà utilisé une année)
+
+   EXEMPLES (suis cette logique) :
+   - Couverture impeccable, dos droit, aucune annotation, aucun coin corné,
+     aucun jaunissement, pelliculage parfait → "bon"
+   - Couverture propre mais 1 coin légèrement corné → "acceptable" (pas "bon")
+   - Pelliculage très légèrement décollé sur 1 cm dans un coin → "acceptable"
+   - 1 nom écrit en page de garde au crayon → "acceptable"
+   - Papier légèrement jauni (livre d'il y a 1 an), reste impeccable → "acceptable"
+   - Plusieurs coins cornés + couverture pliée + jaunissement,
+     mais aucune déchirure ni morceau manquant → "acceptable" (PAS rejete)
+
+⚠️ Ne dis JAMAIS "bon" pour un livre qui a manifestement servi. La règle est
+  que "bon" signifie pratiquement neuf. La VRAIE valeur de la Bourse est dans
+  les livres "acceptable" — c'est la classification PAR DÉFAUT pour les livres
+  d'occasion en bon état physique mais avec traces d'usage normales.
 
    ARBRE DE DÉCISION BON vs ACCEPTABLE (pour les livres SANS flag bloquant) :
 
@@ -2403,31 +2446,47 @@ Réponds en JSON strict avec TOUS les champs : titre, auteur, editeur, isbn, cla
         let state_prompt = format!(
             r#"Tu es un expert qualité livre scolaire pour Yukpo. Analyse UNIQUEMENT l'état physique des 2 images fournies (recto + verso d'un même manuel scolaire). Ignore titre/auteur/prix — seulement l'état.
 
-Yukpo refuse de remettre en circulation des livres dégradés. Sois STRICT — en cas de doute sur un défaut visible, mets le flag à true et classe en "rejete". Il vaut mieux refuser à tort qu'accepter un livre abîmé.
+🎯 RÈGLE FONDAMENTALE :
+La très grande majorité des livres scolaires utilisés UNE année sont en BON ou ACCEPTABLE état. Le REJET est RARE et doit être réservé aux livres VRAIMENT abîmés (impossibles à réutiliser en classe). Ton biais par défaut est "acceptable" — pas "rejete".
 
-Pour chacun des 9 booléens degradation_flags ci-dessous, examine CHAQUE cm² visible des 2 couvertures :
-- has_tear : déchirure visible (même petite, même recollée par scotch/colle)
-- has_missing_piece : morceau de couverture manquant (coin, bord, bande)
-- has_pelliculage_arrache : pelliculage arraché >20% (zones où le carton est à nu)
-- has_inscription_permanent : stylo/feutre/marker permanent sur la couverture (pas un sticker amovible)
-- has_moisissure : moisissures, taches biologiques, points noirs, halo verdâtre
-- has_water_damage : papier gondolé, taches d'eau, brûlures
-- is_paper_not_cardboard : l'image montre une PAGE INTÉRIEURE PAPIER au lieu de la couverture cartonnée
-- has_broken_binding : reliure cassée, pages tombantes ou couverture détachée
-- has_illegible_pages : texte illisible >5% des pages visibles (gribouillage, taches)
+⚠️ NE PAS INVENTER DE DÉFAUTS :
+- Une photo légèrement floue, sombre, ou avec reflets ne signifie PAS un défaut.
+- Un coin d'image mal cadré n'est PAS un morceau manquant.
+- Une ombre ou un reflet n'est PAS une moisissure ni une tache.
+- Les variations naturelles d'éclairage ne sont PAS du jaunissement biologique.
+- En cas de doute sur un défaut → flag = FALSE (pas true).
 
-OR LOGIQUE recto/verso : si UN flag est true sur N'IMPORTE LAQUELLE des 2 images → flag = true global. Ne PAS moyenner.
+Pour chacun des 9 flags degradation_flags : mets `true` UNIQUEMENT si tu vois CLAIREMENT et SANS AMBIGUÏTÉ le défaut décrit, AVEC les seuils précis ci-dessous. Sinon → false.
 
-Classification :
-- Si ≥1 flag à true → etat_classification = "rejete"
-- Sinon : "bon" si couverture quasi-neuve (pelliculage intact, coins nets, propreté >95%) ; "acceptable" si usage visible (cornures légères, traces d'usage normal) mais lisible et structurellement intact.
+FLAGS BLOQUANTS (rejet auto si true — réserve aux dégâts INCONTESTABLES) :
+- has_tear : DÉCHIRURE NETTE de la couverture, ≥2 cm de long, visible des deux côtés. PAS une simple pliure ni une éraflure superficielle.
+- has_missing_piece : MORCEAU MANQUANT ≥1 cm², bord déchiqueté apparent. PAS un coin légèrement corné.
+- is_paper_not_cardboard : l'image montre UNIQUEMENT une page intérieure papier (pas la couverture cartonnée). Le carton n'est pas du tout visible.
+- has_broken_binding : reliure VISIBLEMENT cassée (dos décollé sur ≥5 cm, pages tombantes visibles). PAS un dos légèrement souple.
+- has_illegible_pages : ≥10% des pages visibles totalement illisibles (gribouillage massif au stylo, taches d'encre opaques). PAS une simple annotation au crayon.
+- has_moisissure : TÂCHES BIOLOGIQUES VERTES/NOIRES de ≥0.5 cm², à motif circulaire (vraies moisissures). PAS une ombre, PAS un reflet, PAS de simples points de saleté.
+- has_water_damage : papier VISIBLEMENT gondolé sur ≥30% de la surface OU auréole d'eau brunâtre claire et nette. PAS un jaunissement uniforme normal.
 
-⚠️ EN CAS DE DOUTE entre bon et acceptable → "acceptable" (protection acheteur).
+FLAGS MOINS GRAVES (peuvent rester `true` SANS rejeter le livre — voir classification) :
+- has_pelliculage_arrache : ≥40% du pelliculage est arraché OU le carton brun est à nu sur ≥4 cm². Seuil élevé : un coin de pelliculage légèrement décollé reste FALSE.
+- has_inscription_permanent : annotation au STYLO/FEUTRE PERMANENT sur >2 mots ou plus de 5 cm² couvert. Une signature de propriétaire (1 nom court) ou une petite mention au crayon ne compte PAS.
+
+OR LOGIQUE recto/verso : si UN flag est true sur l'une des 2 images → flag = true global.
+
+CLASSIFICATION etat_classification :
+- "rejete" : ≥1 flag BLOQUANT (parmi has_tear / has_missing_piece / is_paper_not_cardboard / has_broken_binding / has_illegible_pages / has_moisissure / has_water_damage) à true.
+- "acceptable" : aucun bloquant à true, MAIS au moins un des indicateurs d'usage (cornures, jaunissement uniforme, pelliculage légèrement décollé, inscription crayon, traces d'utilisation normale). Inclut aussi les cas où has_pelliculage_arrache ou has_inscription_permanent sont true SEULS (sans flag bloquant).
+- "bon" : aucun défaut visible. Couverture quasi-neuve, pelliculage intact, pas d'annotation visible, pas de cornure.
+
+⚠️ En cas de doute entre "bon" et "acceptable" → "acceptable".
+⚠️ En cas de doute entre "acceptable" et "rejete" → "acceptable". JAMAIS de rejet sans preuve VISUELLE NETTE.
+
+Justifie dans `etat_description` (2 phrases max) ce que tu vois réellement, sans inventer. Si tu rejettes, cite explicitement la zone et le défaut observé.
 
 Réponds en JSON STRICT (rien d'autre, pas de markdown) :
 {{
   "etat_classification": "bon" | "acceptable" | "rejete",
-  "etat_description": "courte description en 1-2 phrases du constat visuel",
+  "etat_description": "constat visuel précis en 1-2 phrases",
   "confidence": 0.0-1.0,
   "degradation_flags": {{
     "has_tear": false,

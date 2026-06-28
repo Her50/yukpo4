@@ -754,9 +754,21 @@ pub async fn analyze_recto_verso(
 
     // ─── Vérifications supplémentaires : rejeter les livres non-réutilisables ─────
 
-    // ✅ 2026-05-14 : 0) FORCE REJECT sur degradation_flags. Si l'IA a coché
-    //    UN SEUL flag bloquant, on force le rejet — mécanisme anti-hallucination
-    //    qui empêche le LLM de "minimiser" un défaut visible.
+    // ✅ 2026-05-14 / refondu 2026-06-28 : FORCE REJECT sur degradation_flags
+    //    SEULEMENT pour les flags BLOQUANTS (vraies dégradations rédhibitoires).
+    //
+    // Avant : les 9 flags déclenchaient un rejet auto → l'IA cochait à tort
+    //    has_pelliculage_arrache ou has_inscription_permanent pour des défauts
+    //    mineurs, et le livre était rejeté alors qu'il était parfaitement
+    //    réutilisable. Le user a confirmé des cas de livres "bon état physique"
+    //    rejetés faussement.
+    //
+    // Maintenant :
+    //    - Flags BLOQUANTS (rejet auto) : has_tear, has_missing_piece,
+    //      is_paper_not_cardboard, has_broken_binding, has_illegible_pages,
+    //      has_moisissure, has_water_damage.
+    //    - Flags MINEURS (=> "acceptable", JAMAIS rejet auto) :
+    //      has_pelliculage_arrache, has_inscription_permanent.
     if let Some(flags) = analysis.degradation_flags.clone() {
         let mut bloquants: Vec<&str> = Vec::new();
         if flags.has_tear {
@@ -764,12 +776,6 @@ pub async fn analyze_recto_verso(
         }
         if flags.has_missing_piece {
             bloquants.push("morceau manquant");
-        }
-        if flags.has_pelliculage_arrache {
-            bloquants.push("pelliculage arraché");
-        }
-        if flags.has_inscription_permanent {
-            bloquants.push("inscriptions au stylo/feutre permanent");
         }
         if flags.has_moisissure {
             bloquants.push("moisissures/taches biologiques");
@@ -789,7 +795,7 @@ pub async fn analyze_recto_verso(
 
         if !bloquants.is_empty() {
             info!(
-                "[analyze_recto_verso] Livre FORCÉ REJETÉ via degradation_flags : {:?}",
+                "[analyze_recto_verso] Livre FORCÉ REJETÉ via degradation_flags bloquants : {:?}",
                 bloquants
             );
             analysis.etat_classification = "rejete".to_string();
@@ -799,6 +805,16 @@ pub async fn analyze_recto_verso(
                 Some(n) if !n.is_empty() => format!("{} | {}", n, note),
                 _ => note,
             });
+        } else if flags.has_pelliculage_arrache || flags.has_inscription_permanent {
+            // Flags MINEURS : pas de rejet, mais on s'assure qu'on est en
+            // "acceptable" et pas en "bon" (l'IA a parfois tendance à classer
+            // "bon" même quand elle voit ces défauts).
+            if analysis.etat_classification.eq_ignore_ascii_case("bon") {
+                info!(
+                    "[analyze_recto_verso] Flag mineur détecté → déclassé bon → acceptable"
+                );
+                analysis.etat_classification = "acceptable".to_string();
+            }
         }
     }
 
