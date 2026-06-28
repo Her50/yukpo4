@@ -69,6 +69,12 @@ import MesTrocsPage from './pages/trocs/MesTrocsPage';
 import RequireAuth from './components/auth/RequireAuth';
 import PartnerRegisterPage from './pages/PartnerRegisterPage';
 
+// 2026-06-28 — Coursier Bourse (lien d'invitation YL libraire)
+import CourierRegistrationPage from './pages/delivery/CourierRegistrationPage';
+import CourierMyDeliveriesPage from './pages/delivery/CourierMyDeliveriesPage';
+import CourierDashboardPage from './pages/delivery/CourierDashboardPage';
+import CourierAdminPage from './pages/admin/CourierAdminPage';
+
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null };
   static getDerivedStateFromError(error: Error) { return { error }; }
@@ -248,6 +254,15 @@ function AppBourse() {
                   /login si déconnectés) plutôt que de laisser le catch-all
                   ci-dessous renvoyer vers /register-phone. */}
               <Route path="/dashboard" element={<Navigate to="/etablissement-portal" replace />} />
+
+              {/* 2026-06-28 — Routes coursier (le lien d'invitation envoyé par
+                  l'YL libraire pointe sur le même domaine que la Bourse). Sans
+                  ces routes, le clic du nouveau coursier tombait sur le catch-all
+                  → / → register-phone (mauvais flux). */}
+              <Route path="/become-courier" element={<RequireAuth><CourierRegistrationPage /></RequireAuth>} />
+              <Route path="/courier/my-deliveries" element={<RequireAuth><CourierMyDeliveriesPage /></RequireAuth>} />
+              <Route path="/courier/bourse-livre" element={<RequireAuth><CourierDashboardPage /></RequireAuth>} />
+              <Route path="/admin/courier-applications" element={<RequireAuth><CourierAdminPage /></RequireAuth>} />
 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
