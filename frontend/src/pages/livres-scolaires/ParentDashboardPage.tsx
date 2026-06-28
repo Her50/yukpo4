@@ -271,12 +271,13 @@ const ParentDashboardPage: React.FC = () => {
               <div className="min-w-0">
                 <p className="font-bold text-sm sm:text-base text-gray-900 leading-tight">
                   {t('bourse.dashboard.referral_cta_title', {
-                    defaultValue: 'Parrainez et gagnez 500 FCFA',
+                    defaultValue: 'Parrainez et gagnez à vie',
                   })}
                 </p>
                 <p className="text-[11px] sm:text-xs text-gray-600 leading-snug mt-0.5">
                   {t('bourse.dashboard.referral_cta_sub', {
-                    defaultValue: 'Partagez votre lien. Bonus à la 1ère commande filleul ≥ 10 000 FCFA.',
+                    defaultValue:
+                      '5 % sur chaque commande de vos filleuls + 25 % sur leurs commissions troc.',
                   })}
                 </p>
               </div>

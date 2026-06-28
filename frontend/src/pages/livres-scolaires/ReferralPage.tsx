@@ -83,11 +83,11 @@ const ReferralPage: React.FC = () => {
               <Step
                 num={3}
                 title={t('referral.guest.step3_title', {
-                  defaultValue: 'Votre parrain est récompensé',
+                  defaultValue: 'Vous parrainez à votre tour',
                 })}
                 body={t('referral.guest.step3_body', {
                   defaultValue:
-                    'Si votre commande atteint 10 000 FCFA, votre parrain reçoit un bonus de 500 FCFA. Et vous pourrez à votre tour parrainer pour gagner.',
+                    'Une fois inscrit, vous obtenez votre propre lien de parrainage. Partagez-le autour de vous et accumulez des gains à vie sur les commandes et les trocs de vos filleuls.',
                 })}
               />
             </div>
@@ -95,14 +95,14 @@ const ReferralPage: React.FC = () => {
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                to="/register"
+                to="/register-phone"
                 className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-amber-600 hover:from-indigo-700 hover:to-amber-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors"
               >
                 {t('referral.guest.cta_register', { defaultValue: 'Créer mon compte' })}
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to="/login"
+                to="/login-phone"
                 className="flex-1 inline-flex items-center justify-center bg-white border-2 border-indigo-300 hover:bg-indigo-50 text-indigo-700 font-semibold py-3 px-4 rounded-xl transition-colors"
               >
                 {t('referral.guest.cta_login', { defaultValue: 'J’ai déjà un compte' })}
@@ -136,7 +136,7 @@ const ReferralPage: React.FC = () => {
           <p className="text-xs sm:text-sm text-gray-600">
             {t('referral.page.subtitle', {
               defaultValue:
-                'Partagez votre lien et gagnez 500 FCFA dès que votre filleul passe une commande ≥ 10 000 FCFA.',
+                'Partagez votre lien : vous touchez 5 % de chaque commande de vos filleuls (à partir de 10 000 FCFA) + 25 % de leurs commissions troc — à vie.',
             })}
           </p>
         </div>

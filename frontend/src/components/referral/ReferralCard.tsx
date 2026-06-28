@@ -11,7 +11,7 @@
 // côté backend (referral_service.rs) — l'UI affiche le bonus en valeur
 // effective déjà gagnée (referrals.bonus_amount_xaf sommé).
 
-import { ArrowLeftRight, Check, Copy, Loader2, Share2, Sparkles, Users } from 'lucide-react';
+import { Check, Copy, Loader2, Share2, Sparkles, Users } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
@@ -21,13 +21,8 @@ import { apiGet } from '../../services/apiService';
 interface ReferralData {
   code: string;
   share_url: string;
-  /** 2026-06-24 — Modèle de rémunération parrainage v3 :
-   *  - bonus_percent_vente % du montant de CHAQUE commande ≥ seuil_min du filleul
-   *  - bonus_percent_troc % de la marge Yukpo sur chaque livre des filleuls
-   *    qui passe en troc (cumulable indéfiniment).
-   *  - commission_esperee_xaf : potentiel temps-réel basé sur les livres
-   *    actuellement en circulation par les filleuls (Phase 0, non créditée).
-   */
+  // 2026-06-08 — Modèle pourcentage (remplace l'ancien bonus_amount_xaf=500
+  // fixe). Cf. backend referral_controller::MyReferralResponse.
   bonus_percent_vente: number;
   bonus_percent_troc: number;
   bonus_seuil_min_xaf: number;
@@ -35,19 +30,6 @@ interface ReferralData {
   total_signups: number;
   total_conversions: number;
   total_bonus_xaf: number;
-  total_trocs_filleuls: number;
-  total_troc_commission_xaf: number;
-  /** 2026-06-24 — Commission VENDEUR sur ventes occasion des filleuls
-   *  (= filleul vend son livre via Yukpo, parrain touche 6.25% du prix). */
-  total_seller_commission_xaf: number;
-  /** 2026-06-24 — Sprint 2 : montant déjà EFFECTIF (livraison confirmée
-   *  par coursier), retirable en cash via Mobile Money. */
-  total_effective_xaf: number;
-  /** 2026-06-24 — Sprint 2 : montant INITIÉ (en attente de livraison).
-   *  Visible mais bloqué pour cash-out. */
-  total_initiee_xaf: number;
-  commission_esperee_xaf: number;
-  total_gains_xaf: number;
 }
 
 const ReferralCard: React.FC = () => {
@@ -139,11 +121,11 @@ const ReferralCard: React.FC = () => {
             </h2>
           </div>
           <p className="text-[11px] sm:text-xs text-gray-600 mt-1 leading-snug">
-            {t('referral.subtitle_v2', {
+            {t('referral.subtitle', {
               defaultValue:
-                'Gagnez {{pct_vente}}% sur la 1re commande ≥ {{min}} FCFA de chaque filleul + {{pct_troc}}% sur les commissions Yukpo de chacun de leurs trocs réussis.',
-              pct_vente: data.bonus_percent_vente,
-              pct_troc: data.bonus_percent_troc,
+                'Touchez {{pctVente}} % sur chaque commande de vos filleuls (≥ {{min}} FCFA) + {{pctTroc}} % sur leurs commissions troc — à vie.',
+              pctVente: data.bonus_percent_vente,
+              pctTroc: data.bonus_percent_troc,
               min: data.bonus_seuil_min_xaf.toLocaleString('fr-FR'),
             })}
           </p>
@@ -206,9 +188,7 @@ const ReferralCard: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats — 2 lignes :
-          1) Indicateurs d'activité (clics, inscrits, commandes, trocs effectifs)
-          2) Gains détaillés (ventes, troc, total) — TOTAL en vert highlight */}
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-4 pt-4 border-t border-indigo-100">
         <StatTile
           label={t('referral.stats.clicks', { defaultValue: 'Clics' })}
@@ -224,83 +204,11 @@ const ReferralCard: React.FC = () => {
           value={data.total_conversions.toLocaleString('fr-FR')}
         />
         <StatTile
-          label={t('referral.stats.trocs', { defaultValue: 'Trocs réussis' })}
-          value={data.total_trocs_filleuls.toLocaleString('fr-FR')}
-          icon={<ArrowLeftRight className="w-3.5 h-3.5 text-amber-600" />}
-        />
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-2 sm:mt-3">
-        <StatTile
-          label={t('referral.stats.bonus_vente', { defaultValue: 'Achats filleuls' })}
+          label={t('referral.stats.bonus', { defaultValue: 'Bonus gagné' })}
           value={`${data.total_bonus_xaf.toLocaleString('fr-FR')} XAF`}
-        />
-        <StatTile
-          label={t('referral.stats.bonus_troc', { defaultValue: 'Trocs' })}
-          value={`${data.total_troc_commission_xaf.toLocaleString('fr-FR')} XAF`}
-        />
-        <StatTile
-          label={t('referral.stats.bonus_seller', { defaultValue: 'Ventes occas.' })}
-          value={`${data.total_seller_commission_xaf.toLocaleString('fr-FR')} XAF`}
-        />
-        <StatTile
-          label={t('referral.stats.total_gains', { defaultValue: 'Total gagné' })}
-          value={`${data.total_gains_xaf.toLocaleString('fr-FR')} XAF`}
           highlight
         />
       </div>
-
-      {/* 2026-06-24 — Sprint 2 : décomposition Initiée / Effective.
-          La part EFFECTIVE est retirable en cash (livraison confirmée par
-          coursier). La part INITIÉE reste bloquée jusqu'à la livraison.
-          On affiche les 2 lignes seulement si > 0 pour ne pas polluer. */}
-      {data.total_gains_xaf > 0 && (
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
-            <p className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">
-              💵 {t('referral.stats.effective', { defaultValue: 'Retirable (livré)' })}
-            </p>
-            <p className="text-sm sm:text-base font-bold text-emerald-900 tabular-nums">
-              {data.total_effective_xaf.toLocaleString('fr-FR')} XAF
-            </p>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-            <p className="text-[10px] uppercase font-bold text-amber-700 tracking-wider">
-              ⏳ {t('referral.stats.initiee', { defaultValue: 'En attente livraison' })}
-            </p>
-            <p className="text-sm sm:text-base font-bold text-amber-900 tabular-nums">
-              {data.total_initiee_xaf.toLocaleString('fr-FR')} XAF
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 2026-06-24 — Phase 0 : commission ESPÉRÉE (potentielle).
-          Bloc séparé en bas pour bien marquer que ce n'est pas du « gagné ».
-          Cette estimation se base sur les livres actuellement en circulation
-          (= scannés et disponibles) par les filleuls. Elle motive
-          l'ambassadeur à pousser le terrain. Affiché seulement si > 0 pour
-          ne pas polluer le dashboard d'un nouveau parrain inactif. */}
-      {data.commission_esperee_xaf > 0 && (
-        <div className="mt-3 bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-start gap-3">
-          <div className="shrink-0 w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-lg">
-            🌱
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase font-bold text-indigo-700 tracking-wider">
-              {t('referral.stats.esperee_label', { defaultValue: 'Commission espérée' })}
-            </p>
-            <p className="text-base sm:text-lg font-bold text-indigo-900 tabular-nums leading-tight">
-              {data.commission_esperee_xaf.toLocaleString('fr-FR')} XAF
-            </p>
-            <p className="text-[11px] text-indigo-700 mt-0.5 leading-snug">
-              {t('referral.stats.esperee_hint', {
-                defaultValue:
-                  'Potentiel sur les livres actuellement mis en circulation par vos filleuls. Versé quand les trocs ou ventes se concrétisent.',
-              })}
-            </p>
-          </div>
-        </div>
-      )}
     </section>
   );
 };
