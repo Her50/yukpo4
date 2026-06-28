@@ -11,24 +11,37 @@
 //      → Lien de partage généré pointe vers cette même page (/parrainage?ref=XXX)
 //        pour que le filleul voit le contexte au lieu d'atterrir sur le home.
 
-import { ArrowRight, Gift, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, Gift, Loader2, Sparkles, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ReferralCard from '../../components/referral/ReferralCard';
 import MesFilleulsSection from '../../components/referral/MesFilleulsSection';
 import WalletPayoutSection from '../../components/wallet/WalletPayoutSection';
+import { useUser } from '../../hooks/useUser';
 import { getStoredRefCode } from '../../utils/referralStorage';
 
 const ReferralPage: React.FC = () => {
   const { t } = useTranslation();
-  const [isAuthed, setIsAuthed] = useState<boolean>(false);
+  // 2026-06-28 — Migration httpOnly cookie : localStorage.getItem('token')
+  // ne contient plus le JWT. Utiliser useUser() qui interroge /auth/me.
+  const { user, isLoading } = useUser();
+  const isAuthed = !!user;
   const [pendingRefCode, setPendingRefCode] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsAuthed(!!localStorage.getItem('token'));
     setPendingRefCode(getStoredRefCode());
   }, []);
+
+  // Attente du résolveur d'auth — évite d'afficher la page invité à un
+  // utilisateur connecté pendant le premier round-trip /auth/me.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
 
   // ─── MODE VISITEUR (non connecté + code capturé) ──────────────────────────
   if (!isAuthed) {
@@ -95,14 +108,14 @@ const ReferralPage: React.FC = () => {
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                to="/register"
+                to="/register-phone"
                 className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-amber-600 hover:from-indigo-700 hover:to-amber-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors"
               >
                 {t('referral.guest.cta_register', { defaultValue: 'Créer mon compte' })}
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to="/login"
+                to="/login-phone"
                 className="flex-1 inline-flex items-center justify-center bg-white border-2 border-indigo-300 hover:bg-indigo-50 text-indigo-700 font-semibold py-3 px-4 rounded-xl transition-colors"
               >
                 {t('referral.guest.cta_login', { defaultValue: 'J’ai déjà un compte' })}
@@ -112,7 +125,7 @@ const ReferralPage: React.FC = () => {
             <p className="text-[11px] text-gray-500 text-center mt-4 italic">
               {t('referral.guest.disclaimer', {
                 defaultValue:
-                  'Programme sans engagement. Bonus crédité une seule fois par filleul, après une première commande validée ≥ 10 000 FCFA.',
+                  'Programme sans engagement. Gains crédités au fur et à mesure des commandes et trocs validés de vos filleuls (≥ 10 000 FCFA par commande).',
               })}
             </p>
           </div>
