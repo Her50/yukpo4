@@ -11,24 +11,37 @@
 //      → Lien de partage généré pointe vers cette même page (/parrainage?ref=XXX)
 //        pour que le filleul voit le contexte au lieu d'atterrir sur le home.
 
-import { ArrowRight, Gift, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, Gift, Loader2, Sparkles, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ReferralCard from '../../components/referral/ReferralCard';
 import MesFilleulsSection from '../../components/referral/MesFilleulsSection';
 import WalletPayoutSection from '../../components/wallet/WalletPayoutSection';
+import { useUser } from '../../hooks/useUser';
 import { getStoredRefCode } from '../../utils/referralStorage';
 
 const ReferralPage: React.FC = () => {
   const { t } = useTranslation();
-  const [isAuthed, setIsAuthed] = useState<boolean>(false);
+  // 2026-06-28 — Migration httpOnly cookie : localStorage.getItem('token')
+  // ne contient plus le JWT. Utiliser useUser() qui interroge /auth/me.
+  const { user, isLoading } = useUser();
+  const isAuthed = !!user;
   const [pendingRefCode, setPendingRefCode] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsAuthed(!!localStorage.getItem('token'));
     setPendingRefCode(getStoredRefCode());
   }, []);
+
+  // Attente du résolveur d'auth — évite d'afficher la page invité à un
+  // utilisateur connecté pendant le premier round-trip /auth/me.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
 
   // ─── MODE VISITEUR (non connecté + code capturé) ──────────────────────────
   if (!isAuthed) {
@@ -112,7 +125,7 @@ const ReferralPage: React.FC = () => {
             <p className="text-[11px] text-gray-500 text-center mt-4 italic">
               {t('referral.guest.disclaimer', {
                 defaultValue:
-                  'Programme sans engagement. Bonus crédité une seule fois par filleul, après une première commande validée ≥ 10 000 FCFA.',
+                  'Programme sans engagement. Gains crédités au fur et à mesure des commandes et trocs validés de vos filleuls (≥ 10 000 FCFA par commande).',
               })}
             </p>
           </div>
