@@ -21,7 +21,11 @@ import { apiGet } from '../../services/apiService';
 interface ReferralData {
   code: string;
   share_url: string;
-  bonus_amount_xaf: number;
+  // 2026-06-08 — Modèle pourcentage (remplace l'ancien bonus_amount_xaf=500
+  // fixe). Cf. backend referral_controller::MyReferralResponse.
+  bonus_percent_vente: number;
+  bonus_percent_troc: number;
+  bonus_seuil_min_xaf: number;
   total_clicks: number;
   total_signups: number;
   total_conversions: number;
@@ -119,9 +123,10 @@ const ReferralCard: React.FC = () => {
           <p className="text-[11px] sm:text-xs text-gray-600 mt-1 leading-snug">
             {t('referral.subtitle', {
               defaultValue:
-                'Gagnez {{amount}} FCFA dès qu’un filleul passe sa première commande de {{min}} FCFA ou plus.',
-              amount: data.bonus_amount_xaf.toLocaleString('fr-FR'),
-              min: '10 000',
+                'Touchez {{pctVente}} % sur chaque commande de vos filleuls (≥ {{min}} FCFA) + {{pctTroc}} % sur leurs commissions troc — à vie.',
+              pctVente: data.bonus_percent_vente,
+              pctTroc: data.bonus_percent_troc,
+              min: data.bonus_seuil_min_xaf.toLocaleString('fr-FR'),
             })}
           </p>
         </div>

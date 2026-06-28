@@ -83,11 +83,11 @@ const ReferralPage: React.FC = () => {
               <Step
                 num={3}
                 title={t('referral.guest.step3_title', {
-                  defaultValue: 'Votre parrain est récompensé',
+                  defaultValue: 'Vous parrainez à votre tour',
                 })}
                 body={t('referral.guest.step3_body', {
                   defaultValue:
-                    'Si votre commande atteint 10 000 FCFA, votre parrain reçoit un bonus de 500 FCFA. Et vous pourrez à votre tour parrainer pour gagner.',
+                    'Une fois inscrit, vous obtenez votre propre lien de parrainage. Partagez-le autour de vous et accumulez des gains à vie sur les commandes et les trocs de vos filleuls.',
                 })}
               />
             </div>
@@ -136,7 +136,7 @@ const ReferralPage: React.FC = () => {
           <p className="text-xs sm:text-sm text-gray-600">
             {t('referral.page.subtitle', {
               defaultValue:
-                'Partagez votre lien et gagnez 500 FCFA dès que votre filleul passe une commande ≥ 10 000 FCFA.',
+                'Partagez votre lien : vous touchez 5 % de chaque commande de vos filleuls (à partir de 10 000 FCFA) + 25 % de leurs commissions troc — à vie.',
             })}
           </p>
         </div>
