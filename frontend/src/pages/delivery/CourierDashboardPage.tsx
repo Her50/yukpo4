@@ -1,6 +1,6 @@
 import DeliveryLiveMap from '@/components/delivery/DeliveryLiveMap';
 import DeliveryTimeline from '@/components/delivery/DeliveryTimeline';
-import AppLayout from '@/components/layout/AppLayout';
+import CourierLayout from '@/components/layout/CourierLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/buttons/Button';
 import useCourierShopping from '@/hooks/useCourierShopping';
@@ -103,42 +103,42 @@ const CourierDashboardPage: React.FC = () => {
 
     if (!deliveryId) {
         return (
-            <AppLayout>
+            <CourierLayout pageTitle="Tableau de bord" showBack={false}>
                 <div className="mx-auto max-w-3xl px-4 py-16 text-center">
                     <p className="text-sm text-slate-500">Aucun identifiant de livraison fourni.</p>
                     <Button className="mt-4" onClick={() => navigate('/delivery')}>
                         Retour à la livraison
                     </Button>
                 </div>
-            </AppLayout>
+            </CourierLayout>
         );
     }
 
     if (!delivery && loading) {
         return (
-            <AppLayout>
+            <CourierLayout pageTitle="Tableau de bord" showBack={false}>
                 <div className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-slate-500">
                     Chargement du tableau de bord coursier…
                 </div>
-            </AppLayout>
+            </CourierLayout>
         );
     }
 
     if (!delivery) {
         return (
-            <AppLayout>
+            <CourierLayout pageTitle="Tableau de bord" showBack={false}>
                 <div className="mx-auto max-w-3xl px-4 py-16 text-center">
                     <p className="text-sm text-slate-500">Impossible de trouver cette livraison.</p>
                     <Button className="mt-4" onClick={() => navigate('/delivery')}>
                         Retour à la livraison
                     </Button>
                 </div>
-            </AppLayout>
+            </CourierLayout>
         );
     }
 
     return (
-        <AppLayout>
+        <CourierLayout pageTitle="Tableau de bord" showBack={false}>
             <div className="mx-auto max-w-6xl space-y-8 px-4 pb-16 pt-6">
                 <header className="flex flex-wrap items-center justify-between gap-4">
                     <div>
@@ -366,7 +366,7 @@ const CourierDashboardPage: React.FC = () => {
                 </section>
 
             </div>
-        </AppLayout>
+        </CourierLayout>
     );
 };
 

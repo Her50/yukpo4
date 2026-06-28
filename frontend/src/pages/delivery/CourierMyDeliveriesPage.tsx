@@ -1,4 +1,4 @@
-import AppLayout from '@/components/layout/AppLayout';
+import CourierLayout from '@/components/layout/CourierLayout';
 import { Button } from '@/components/ui/buttons/Button';
 import { Badge } from '@/components/ui/badge';
 import { listActiveDeliveries, getCourierNavigation } from '@/services/deliveryApi';
@@ -79,17 +79,17 @@ const CourierMyDeliveriesPage: React.FC = () => {
 
     if (loading) {
         return (
-            <AppLayout>
+            <CourierLayout pageTitle="Mes livraisons">
                 <div className="mx-auto max-w-4xl px-4 py-16 text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                     <p className="text-slate-600">Chargement...</p>
                 </div>
-            </AppLayout>
+            </CourierLayout>
         );
     }
 
     return (
-        <AppLayout>
+        <CourierLayout pageTitle="Mes livraisons">
             <div className="mx-auto max-w-6xl px-4 py-8">
                 <div className="mb-8 flex items-start justify-between gap-4">
                     <div>
@@ -224,7 +224,7 @@ const CourierMyDeliveriesPage: React.FC = () => {
                     </Link>
                 </div>
             </div>
-        </AppLayout>
+        </CourierLayout>
     );
 };
 

@@ -1,4 +1,4 @@
-import AppLayout from '@/components/layout/AppLayout';
+import CourierLayout from '@/components/layout/CourierLayout';
 import { Button } from '@/components/ui/buttons/Button';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUser';
@@ -297,7 +297,7 @@ const CourierRegistrationPage: React.FC = () => {
 
     if (applicationStatus === 'approved') {
         return (
-            <AppLayout>
+            <CourierLayout pageTitle="Inscription">
                 <div className="mx-auto max-w-2xl px-4 py-16 text-center">
                     <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
                     <h1 className="text-2xl font-bold text-slate-900 mb-2">Candidature approuvée !</h1>
@@ -308,13 +308,13 @@ const CourierRegistrationPage: React.FC = () => {
                         Voir mes livraisons
                     </Button>
                 </div>
-            </AppLayout>
+            </CourierLayout>
         );
     }
 
     if (applicationStatus === 'submitted') {
         return (
-            <AppLayout>
+            <CourierLayout pageTitle="Inscription">
                 <div className="mx-auto max-w-2xl px-4 py-16 text-center">
                     <Clock className="mx-auto h-16 w-16 text-amber-500 mb-4" />
                     <h1 className="text-2xl font-bold text-slate-900 mb-2">Candidature en cours d'examen</h1>
@@ -325,13 +325,13 @@ const CourierRegistrationPage: React.FC = () => {
                         Retour au tableau de bord
                     </Button>
                 </div>
-            </AppLayout>
+            </CourierLayout>
         );
     }
 
     if (applicationStatus === 'rejected') {
         return (
-            <AppLayout>
+            <CourierLayout pageTitle="Inscription">
                 <div className="mx-auto max-w-2xl px-4 py-16 text-center">
                     <X className="mx-auto h-16 w-16 text-red-500 mb-4" />
                     <h1 className="text-2xl font-bold text-slate-900 mb-2">Candidature refusée</h1>
@@ -342,12 +342,12 @@ const CourierRegistrationPage: React.FC = () => {
                         Retour au tableau de bord
                     </Button>
                 </div>
-            </AppLayout>
+            </CourierLayout>
         );
     }
 
     return (
-        <AppLayout>
+        <CourierLayout pageTitle="Inscription">
             <div className="mx-auto max-w-4xl px-4 py-8">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-slate-900 mb-2">Devenir coursier Yukpo</h1>
@@ -777,7 +777,7 @@ const CourierRegistrationPage: React.FC = () => {
                     </div>
                 </form>
             </div>
-        </AppLayout>
+        </CourierLayout>
     );
 };
 
