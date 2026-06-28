@@ -521,7 +521,22 @@ pub async fn create_commande_mixte(
     // ✅ 2026-05-11 : forfait livraison parent (1000 FCFA par défaut),
     // distinct de commission_app/montant_net_libraires. Redistribué au
     // coursier (80 %) et à la plateforme (20 %) à la livraison.
-    .bind(payload.frais_livraison_xaf.unwrap_or(0.0))
+    //
+    // 2026-06-28 — Garde-fou serveur : avant cette date le frontend
+    // pouvait envoyer `frais_livraison_xaf=0` (ou rien) pour avoir une
+    // livraison gratuite. Forcé au minimum MIN_FRAIS_LIVRAISON_XAF si
+    // mode_livraison='coursier'. Le calcul fin (distance Haversine entre
+    // libraire et parent) est refait à l'assignation du paquet dans
+    // bourse_livre_v2_controller (update_delivery_location, ligne 8408).
+    .bind({
+        const MIN_FRAIS_LIVRAISON_XAF: f64 = 1000.0;
+        let envoye = payload.frais_livraison_xaf.unwrap_or(0.0);
+        if mode_livraison == "coursier" && envoye < MIN_FRAIS_LIVRAISON_XAF {
+            MIN_FRAIS_LIVRAISON_XAF
+        } else {
+            envoye
+        }
+    })
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création commande: {}", e)))?;

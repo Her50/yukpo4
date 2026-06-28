@@ -71,7 +71,10 @@ const RequireCourierValidated: React.FC<RequireCourierValidatedProps> = ({ child
   }
 
   if (state.status === 'unauthorized') {
-    const target = `/courier/register?from=${encodeURIComponent(
+    // 2026-06-28 — Route corrigée : la page d'inscription coursier vit à
+    // `/become-courier` (pas `/courier/register` qui n'existe pas, ni dans
+    // App.tsx ni dans AppBourse).
+    const target = `/become-courier?from=${encodeURIComponent(
       location.pathname,
     )}&reason=${encodeURIComponent(state.reason)}`;
     return <Navigate to={target} state={{ from: location }} replace />;

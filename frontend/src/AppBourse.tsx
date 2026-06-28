@@ -72,8 +72,9 @@ import PartnerRegisterPage from './pages/PartnerRegisterPage';
 // 2026-06-28 — Coursier Bourse (lien d'invitation YL libraire)
 import CourierRegistrationPage from './pages/delivery/CourierRegistrationPage';
 import CourierMyDeliveriesPage from './pages/delivery/CourierMyDeliveriesPage';
-import CourierDashboardPage from './pages/delivery/CourierDashboardPage';
+import BookDeliveryFlowPage from './pages/delivery/BookDeliveryFlowPage';
 import CourierAdminPage from './pages/admin/CourierAdminPage';
+import RequireCourierValidated from './components/auth/RequireCourierValidated';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null };
@@ -258,10 +259,13 @@ function AppBourse() {
               {/* 2026-06-28 — Routes coursier (le lien d'invitation envoyé par
                   l'YL libraire pointe sur le même domaine que la Bourse). Sans
                   ces routes, le clic du nouveau coursier tombait sur le catch-all
-                  → / → register-phone (mauvais flux). */}
+                  → / → register-phone (mauvais flux).
+                  Pages protégées par RequireCourierValidated (vérifie
+                  couriers.status='active' via GET /courier/me — redirige vers
+                  /become-courier si pas validé). */}
               <Route path="/become-courier" element={<RequireAuth><CourierRegistrationPage /></RequireAuth>} />
-              <Route path="/courier/my-deliveries" element={<RequireAuth><CourierMyDeliveriesPage /></RequireAuth>} />
-              <Route path="/courier/bourse-livre" element={<RequireAuth><CourierDashboardPage /></RequireAuth>} />
+              <Route path="/courier/my-deliveries" element={<RequireAuth><RequireCourierValidated><CourierMyDeliveriesPage /></RequireCourierValidated></RequireAuth>} />
+              <Route path="/courier/bourse-livre" element={<RequireAuth><RequireCourierValidated><BookDeliveryFlowPage /></RequireCourierValidated></RequireAuth>} />
               <Route path="/admin/courier-applications" element={<RequireAuth><CourierAdminPage /></RequireAuth>} />
 
               <Route path="*" element={<Navigate to="/" replace />} />

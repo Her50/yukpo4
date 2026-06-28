@@ -39,7 +39,7 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
             toast({
                 title: 'Erreur',
                 description: 'Impossible de charger la liste des coursiers',
-                variant: 'destructive',
+                type: 'error',
             });
         } finally {
             setLoadingCouriers(false);
@@ -51,7 +51,7 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
             toast({
                 title: 'Erreur',
                 description: 'Veuillez sélectionner un coursier',
-                variant: 'destructive',
+                type: 'error',
             });
             return;
         }
@@ -70,7 +70,7 @@ const CourierSelectionModal: React.FC<CourierSelectionModalProps> = ({
             toast({
                 title: 'Erreur',
                 description: error.message || 'Impossible d\'assigner le coursier',
-                variant: 'destructive',
+                type: 'error',
             });
         } finally {
             setLoading(false);

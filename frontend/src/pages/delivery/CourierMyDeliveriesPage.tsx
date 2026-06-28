@@ -187,7 +187,7 @@ const CourierMyDeliveriesPage: React.FC = () => {
                                         <div className="flex flex-col gap-2">
                                             <Button
                                                 size="sm"
-                                                variant="primary"
+                                                variant="default"
                                                 onClick={() => handleOpenNavigation(delivery.id)}
                                             >
                                                 <Navigation2 className="h-4 w-4 mr-2" />

@@ -163,7 +163,7 @@ const CourierDashboardPage: React.FC = () => {
                     <div className="flex items-center gap-3">
                         {/* ✅ NOUVEAU : Bouton navigation pour le coursier */}
                         <Button
-                            variant="primary"
+                            variant="default"
                             onClick={async () => {
                                 try {
                                     const { getCourierNavigation } = await import('@/services/deliveryApi');
@@ -323,7 +323,7 @@ const CourierDashboardPage: React.FC = () => {
                                                 <div className="flex justify-end gap-2">
                                                     <Button
                                                         variant="outline"
-                                                        size="xs"
+                                                        size="sm"
                                                         disabled={workingItem === item.id}
                                                         onClick={() => handleUpdateItem(item.id, 'purchased')}
                                                     >
@@ -331,7 +331,7 @@ const CourierDashboardPage: React.FC = () => {
                                                     </Button>
                                                     <Button
                                                         variant="outline"
-                                                        size="xs"
+                                                        size="sm"
                                                         disabled={workingItem === item.id}
                                                         onClick={() => handleUpdateItem(item.id, 'missing')}
                                                     >
@@ -339,7 +339,7 @@ const CourierDashboardPage: React.FC = () => {
                                                     </Button>
                                                     <Button
                                                         variant="outline"
-                                                        size="xs"
+                                                        size="sm"
                                                         disabled={workingItem === item.id}
                                                         onClick={() => handleUpdateItem(item.id, 'replaced')}
                                                     >
