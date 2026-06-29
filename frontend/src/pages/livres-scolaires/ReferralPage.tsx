@@ -149,7 +149,7 @@ const ReferralPage: React.FC = () => {
           <p className="text-xs sm:text-sm text-gray-600">
             {t('referral.page.subtitle', {
               defaultValue:
-                'Partagez votre lien : vous touchez 5 % de chaque commande de vos filleuls (à partir de 10 000 FCFA) + 25 % de leurs commissions troc — à vie.',
+                'Partagez votre lien : vous touchez 5 % sur les achats de vos filleuls (≥ 10 000 FCFA), 25 % sur leurs trocs ET 25 % sur leurs ventes d\'occasion — à vie.',
             })}
           </p>
         </div>

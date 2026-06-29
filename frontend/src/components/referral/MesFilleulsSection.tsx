@@ -175,10 +175,26 @@ const MesFilleulsSection: React.FC = () => {
               </button>
 
               {isExpanded && (
-                <div className="mt-3 ml-4 grid grid-cols-3 gap-2 text-xs">
-                  <Detail label="Bonus (5% ventes)" value={fmtXaf(r.bonus_xaf)} />
-                  <Detail label="Commission troc" value={fmtXaf(r.troc_commission_xaf)} />
-                  <Detail label="Commission vente" value={fmtXaf(r.seller_commission_xaf)} />
+                <div className="mt-3 ml-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  {/* 2026-06-29 — libellés clarifiés : on précise QUI fait
+                      quoi pour lever l'ambiguïté bonus vente vs commission
+                      vente (le filleul est acheteur dans le 1er cas, vendeur
+                      dans le 3e). */}
+                  <Detail
+                    label="Bonus 5 %"
+                    sub="quand ton filleul achète"
+                    value={fmtXaf(r.bonus_xaf)}
+                  />
+                  <Detail
+                    label="Commission 25 %"
+                    sub="quand ton filleul troque"
+                    value={fmtXaf(r.troc_commission_xaf)}
+                  />
+                  <Detail
+                    label="Commission 25 %"
+                    sub="quand ton filleul vend d'occasion"
+                    value={fmtXaf(r.seller_commission_xaf)}
+                  />
                 </div>
               )}
             </li>
@@ -195,9 +211,14 @@ const MesFilleulsSection: React.FC = () => {
   );
 };
 
-const Detail: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const Detail: React.FC<{ label: string; value: string; sub?: string }> = ({
+  label,
+  value,
+  sub,
+}) => (
   <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-    <div className="text-amber-700 opacity-80">{label}</div>
+    <div className="text-amber-700 opacity-80 font-semibold">{label}</div>
+    {sub && <div className="text-[10px] text-amber-700/70 italic">{sub}</div>}
     <div className="font-semibold text-gray-900 mt-0.5">{value}</div>
   </div>
 );
