@@ -2224,87 +2224,62 @@ INCONTESTABLE est visible sur l'une des deux faces → flag = true.
      is_paper_not_cardboard, has_broken_binding, has_illegible_pages, has_moisissure,
      has_water_damage).
    - "acceptable" si aucun bloquant mais ≥1 flag mineur (has_pelliculage_arrache ou
-     has_inscription_permanent) à true, OU si présence d'indicateurs d'usage (cornures,
-     jaunissement, pelliculage légèrement décollé, petite annotation crayon).
-   - "bon" si aucun défaut visible, couverture quasi-neuve.
+     has_inscription_permanent) à true, OU défauts MULTIPLES et CLAIRS d'usage
+     (≥3 cornures franches + pelliculage décollé visible + annotations crayon
+     répétées, etc.). Une seule marque mineure ne suffit PAS.
+   - "bon" : couverture en bon état général, lisible, pelliculage globalement
+     intact. Petites marques normales tolérées (1-2 cornures légères,
+     signature discrète, léger jaunissement uniforme, trace de doigt isolée).
 
-🎯 DISTINCTION CRITIQUE "bon" vs "acceptable" — règle stricte :
+🎯 DISTINCTION "bon" vs "acceptable" — règle équilibrée (corrigée 2026-06-29) :
 
-   "bon" = couverture qui paraît n'avoir JAMAIS ou PRESQUE JAMAIS servi.
-       Critères CUMULATIFS (TOUS doivent être vrais) :
-       ✓ Pelliculage 100% intact, brillant, sans aucune marque
-       ✓ Aucun coin corné, aucun coin écrasé
-       ✓ Aucune annotation visible (ni crayon, ni stylo, ni nom de propriétaire)
-       ✓ Aucun jaunissement, surface uniformément blanche/colorée
-       ✓ Aucune tache, aucune trace de doigt
-       ✓ Aucune pliure même légère
-       Si UN SEUL de ces critères tombe → "acceptable", JAMAIS "bon".
+   La majorité des livres scolaires utilisés UNE SEULE année et bien
+   entretenus sont en ÉTAT "BON". "Acceptable" est réservé aux livres
+   avec des défauts CLAIRS et VISIBLES (≠ marques d'usure normales).
 
-   "acceptable" = livre utilisé UNE année avec usure NORMALE, structurellement intact.
-       Indicateurs (au moins UN suffit pour basculer de "bon" à "acceptable") :
-       • Coin corné, même un seul, même léger
-       • Jaunissement du papier (livre d'une année précédente)
-       • Pelliculage légèrement décollé sur un bord ou coin
-       • Annotation visible au crayon (même un seul mot)
-       • Signature/nom de propriétaire sur la page de garde
-       • Petite trace de doigt, halo de manipulation
-       • Pliure légère sur la couverture
-       • Trace d'usure normale (livre déjà utilisé une année)
+   "bon" = livre en bon état physique GLOBAL. La couverture est propre,
+   structurellement saine, lisible. Petites marques normales TOLÉRÉES.
+   Indicateurs typiques d'un "bon" livre :
+       ✓ Couverture cartonnée intacte (pas pliée en accordéon)
+       ✓ Pelliculage globalement présent (≥90% intact)
+       ✓ Titre et illustrations parfaitement lisibles
+       ✓ Coloration générale uniforme
+       ✓ Pas de défaut visible flagrant à 1m de distance
 
-   EXEMPLES (suis cette logique) :
-   - Couverture impeccable, dos droit, aucune annotation, aucun coin corné,
-     aucun jaunissement, pelliculage parfait → "bon"
-   - Couverture propre mais 1 coin légèrement corné → "acceptable" (pas "bon")
-   - Pelliculage très légèrement décollé sur 1 cm dans un coin → "acceptable"
-   - 1 nom écrit en page de garde au crayon → "acceptable"
-   - Papier légèrement jauni (livre d'il y a 1 an), reste impeccable → "acceptable"
-   - Plusieurs coins cornés + couverture pliée + jaunissement,
-     mais aucune déchirure ni morceau manquant → "acceptable" (PAS rejete)
+   COMPATIBLES avec "bon" (ne déclassent PAS en "acceptable") :
+       • 1-2 cornures TRÈS légères aux coins
+       • Signature ou nom de propriétaire discret (1 ligne en page garde)
+       • Trace de doigt isolée
+       • Léger jaunissement uniforme du papier (livre d'1 an)
+       • Petit pli de couverture peu visible
+       • Coin légèrement écorné (le pelliculage tient encore)
 
-⚠️ Ne dis JAMAIS "bon" pour un livre qui a manifestement servi. La règle est
-  que "bon" signifie pratiquement neuf. La VRAIE valeur de la Bourse est dans
-  les livres "acceptable" — c'est la classification PAR DÉFAUT pour les livres
-  d'occasion en bon état physique mais avec traces d'usage normales.
+   "acceptable" = défauts VISIBLES et MULTIPLES mais livre utilisable.
+   Bascule en "acceptable" UNIQUEMENT si tu vois CLAIREMENT :
+       • Plusieurs cornures franches (≥3 coins TRÈS cornés)
+       • Annotation au crayon répétée sur plusieurs pages visibles
+       • Pelliculage décollé sur ≥10% de la surface (mais <40%)
+       • Jaunissement MARQUÉ (≠ léger uniforme)
+       • Pliure de couverture nette et bien visible
+       • Tache modérée (sans atteindre le seuil moisissure/eau)
+       • Plusieurs traces d'usage manifestes cumulées
 
-   ARBRE DE DÉCISION BON vs ACCEPTABLE (pour les livres SANS flag bloquant) :
+   "rejete" : UNIQUEMENT si ≥1 flag BLOQUANT à true.
 
-   ⚠️ EN CAS DE DOUTE → "acceptable". La plateforme protège l'acheteur :
-      en cas d'incertitude visuelle, on classe prudemment en `acceptable`
-      plutôt que de promettre du `bon` qui pourrait décevoir à la livraison.
+   ⚠️ En cas de doute entre "bon" et "acceptable" → "bon".
+   ⚠️ Le LLM tend à sur-pénaliser (l'éclairage et le grain de la photo
+     font paraître un livre plus abîmé qu'en réalité). Ne déclasse en
+     "acceptable" que si tu vois UN DÉFAUT CLAIR.
 
-   ⚠️ RIGUEUR sur défauts mineurs : tu DOIS pointer dans `notes` les défauts
-      visibles (même mineurs). Si tu vois un défaut mineur clair sur l'une
-      des deux photos → `acceptable`, ne minimise PAS.
-
-   "bon"        : livre quasi-neuf. Couverture cartonnée intacte, dos droit,
-                  AUCUN défaut pointable : pas de coin corné, pas
-                  d'annotation, pas de jaunissement, pas de tache, pas de
-                  pliure, surface uniforme. Tu dois pouvoir dire « ce livre
-                  paraît n'avoir jamais ou presque servi » en regardant les
-                  2 photos.
-
-   "acceptable" : ≥ 1 défaut mineur visible (même un seul). Liste :
-                  - coin corné (même 1 seul)
-                  - pliure légère de couverture
-                  - annotation crayon/stylo visible (même 1)
-                  - jaunissement du papier (livre d'une année précédente)
-                  - tache visible non bloquante
-                  - pelliculage légèrement décollé sur un coin
-                  - marque d'usure typique d'un livre déjà utilisé une année
-                  Tant qu'AUCUN flag bloquant n'est `true`, on reste en
-                  `acceptable`, jamais en `rejete`.
-
-   EXEMPLES (NE PAS confondre avec les exemples de rejet plus haut) :
-   - Couverture parfaitement propre, dos droit, aucune annotation, aucun
-     coin corné, aucun jaunissement → `bon`
-   - Couverture propre mais 1 coin légèrement corné → `acceptable`
-   - Petite annotation crayon en page de garde, reste impeccable →
-     `acceptable`
-   - Jaunissement uniforme du papier (livre d'une année précédente),
-     couverture intacte → `acceptable`
-   - Plusieurs coins cornés + couverture pliée + jaunissement, mais aucune
-     déchirure ni morceau manquant → `acceptable` (les flags bloquants
-     restent false, donc PAS `rejete`)
+   EXEMPLES :
+   - Couverture impeccable → "bon"
+   - Couverture propre, 1 coin légèrement corné, signature discrète → "bon"
+   - Couverture propre, pelliculage 95% intact, léger jaunissement → "bon"
+   - Petite marque d'usage au dos, lisible et structurellement intact → "bon"
+   - Plusieurs cornures franches + pelliculage décollé sur 15% +
+     annotations crayon visibles → "acceptable"
+   - Couverture pliée + annotations stylo sur plusieurs pages → "acceptable"
+   - Déchirure ≥2 cm OU moisissure ≥0.5 cm² → "rejete"
 6. Si rejete, dans `notes` cite EXPLICITEMENT le(s) flag(s) déclenché(s) :
    ex: "Déchirure visible sur la couverture (has_tear=true)"
    ex: "Page intérieure papier au lieu de couverture cartonnée (is_paper_not_cardboard=true)"
@@ -2473,12 +2448,13 @@ FLAGS MOINS GRAVES (peuvent rester `true` SANS rejeter le livre — voir classif
 
 OR LOGIQUE recto/verso : si UN flag est true sur l'une des 2 images → flag = true global.
 
-CLASSIFICATION etat_classification :
+CLASSIFICATION etat_classification (corrigée 2026-06-29 — moins stricte sur "bon") :
 - "rejete" : ≥1 flag BLOQUANT (parmi has_tear / has_missing_piece / is_paper_not_cardboard / has_broken_binding / has_illegible_pages / has_moisissure / has_water_damage) à true.
-- "acceptable" : aucun bloquant à true, MAIS au moins un des indicateurs d'usage (cornures, jaunissement uniforme, pelliculage légèrement décollé, inscription crayon, traces d'utilisation normale). Inclut aussi les cas où has_pelliculage_arrache ou has_inscription_permanent sont true SEULS (sans flag bloquant).
-- "bon" : aucun défaut visible. Couverture quasi-neuve, pelliculage intact, pas d'annotation visible, pas de cornure.
+- "acceptable" : défauts CLAIRS et MULTIPLES — plusieurs cornures franches (≥3), pelliculage décollé ≥10%, jaunissement MARQUÉ, annotations crayon répétées sur plusieurs pages, pliure de couverture nette. OU flag has_pelliculage_arrache / has_inscription_permanent à true. Ne PAS classer en "acceptable" pour une seule marque mineure.
+- "bon" : livre en bon état global — couverture cartonnée intacte, pelliculage ≥90% intact, illustrations nettes. TOLÉRÉES en "bon" sans déclasser : 1-2 cornures TRÈS légères, signature discrète, léger jaunissement uniforme, petite trace de doigt isolée.
 
-⚠️ En cas de doute entre "bon" et "acceptable" → "acceptable".
+⚠️ La majorité des livres scolaires utilisés 1 année sont en "BON" état.
+⚠️ En cas de doute entre "bon" et "acceptable" → "bon" (le LLM tend à sur-pénaliser à cause de l'éclairage photo).
 ⚠️ En cas de doute entre "acceptable" et "rejete" → "acceptable". JAMAIS de rejet sans preuve VISUELLE NETTE.
 
 Justifie dans `etat_description` (2 phrases max) ce que tu vois réellement, sans inventer. Si tu rejettes, cite explicitement la zone et le défaut observé.
