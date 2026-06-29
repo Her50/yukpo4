@@ -277,7 +277,7 @@ const ParentDashboardPage: React.FC = () => {
                 <p className="text-[11px] sm:text-xs text-gray-600 leading-snug mt-0.5">
                   {t('bourse.dashboard.referral_cta_sub', {
                     defaultValue:
-                      '5 % sur chaque commande de vos filleuls + 25 % sur leurs commissions troc.',
+                      '5 % sur les achats de vos filleuls + 25 % sur leurs trocs + 25 % sur leurs ventes d\'occasion. À vie.',
                   })}
                 </p>
               </div>

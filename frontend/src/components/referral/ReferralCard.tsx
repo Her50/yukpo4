@@ -135,7 +135,7 @@ const ReferralCard: React.FC = () => {
           <p className="text-[11px] sm:text-xs text-gray-600 mt-1 leading-snug">
             {t('referral.subtitle', {
               defaultValue:
-                'Touchez {{pctVente}} % sur chaque commande de vos filleuls (≥ {{min}} FCFA) + {{pctTroc}} % sur leurs commissions troc — à vie.',
+                'Touchez {{pctVente}} % sur les achats de vos filleuls (≥ {{min}} FCFA) + {{pctTroc}} % sur leurs trocs + {{pctTroc}} % sur leurs ventes d\'occasion — à vie.',
               pctVente: data.bonus_percent_vente,
               pctTroc: data.bonus_percent_troc,
               min: data.bonus_seuil_min_xaf.toLocaleString('fr-FR'),
@@ -255,15 +255,18 @@ const ReferralCard: React.FC = () => {
         />
       </div>
 
-      {/* Détail bonus / troc / vente — pour transparence */}
+      {/* Détail bonus / troc / vente — pour transparence.
+          2026-06-29 — libellés clarifiés pour lever l'ambiguïté "bonus vente"
+          vs "commission vente" (deux situations distinctes selon le RÔLE du
+          filleul : acheteur vs vendeur). */}
       {(data.total_bonus_xaf > 0 ||
         data.total_troc_commission_xaf > 0 ||
         data.total_seller_commission_xaf > 0) && (
         <div className="mt-3 text-[10px] sm:text-[11px] text-gray-500 leading-relaxed">
           <span className="font-semibold text-gray-700">Détail des gains : </span>
-          Bonus ventes {data.total_bonus_xaf.toLocaleString('fr-FR')} XAF ·{' '}
-          Commission troc {data.total_troc_commission_xaf.toLocaleString('fr-FR')} XAF ·{' '}
-          Commission vente {data.total_seller_commission_xaf.toLocaleString('fr-FR')} XAF
+          Bonus 5 % (achats de tes filleuls) {data.total_bonus_xaf.toLocaleString('fr-FR')} XAF ·{' '}
+          Commission 25 % (trocs de tes filleuls) {data.total_troc_commission_xaf.toLocaleString('fr-FR')} XAF ·{' '}
+          Commission 25 % (ventes d'occasion de tes filleuls) {data.total_seller_commission_xaf.toLocaleString('fr-FR')} XAF
         </div>
       )}
     </section>
