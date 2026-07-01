@@ -22,7 +22,7 @@ captureRefFromUrl();
 // avec le cache stale — moins grave que ne jamais démarrer).
 // Compteur de tentatives en sessionStorage : si on a déjà retry 2 fois dans cette
 // session, on bypass définitivement pour briser la boucle.
-const BOURSE_APP_VERSION = 'v27-2026-06-28-16h';
+const BOURSE_APP_VERSION = 'v28-2026-07-01-14h';
 (async () => {
   try {
     const lastVersion = localStorage.getItem('bourse_app_version');
