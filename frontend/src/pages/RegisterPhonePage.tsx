@@ -16,6 +16,7 @@ import {
   registerPhone,
 } from '@/services/authPhoneService';
 import { useUser } from '@/hooks/useUser';
+import { getStoredRefCode } from '@/utils/referralStorage';
 
 type Step = 'phone' | 'details';
 
@@ -103,6 +104,11 @@ const RegisterPhonePage: React.FC = () => {
 
     setLoading(true);
     try {
+      // 2026-07-01 — Fix propagation parrainage : on récupère le code capté
+      // à l'ouverture de l'URL (?ref=XXX → localStorage via captureRefFromUrl)
+      // ET on l'envoie au backend qui set users.referred_by + insère
+      // dans la table referrals. Avant : code stocké mais jamais envoyé.
+      const refCode = referral || getStoredRefCode() || undefined;
       const data = await registerPhone({
         phone,
         phone_confirm: phoneConfirm,
@@ -110,6 +116,7 @@ const RegisterPhonePage: React.FC = () => {
         pin_confirm: pinConfirm,
         nom: nom.trim(),
         prenom: prenom.trim(),
+        ref_code: refCode,
       });
       if (data?.token) {
         if (data.user?.tokens_balance !== undefined) {

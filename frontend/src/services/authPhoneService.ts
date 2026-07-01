@@ -21,10 +21,6 @@ export interface AuthUser {
   phone: string;
   nom_complet: string | null;
   tokens_balance: number;
-  /** 2026-05-28 — FALSE tant que la possession de la SIM n'a pas été
-   *  prouvée (OTP futur, validation admin / librairie partenaire).
-   *  Gate les actions sensibles : payout cash, création troc. */
-  phone_verified: boolean;
 }
 
 export interface AuthResponse {
@@ -55,7 +51,10 @@ export async function checkPhone(phone: string): Promise<CheckPhoneResponse> {
   return data as CheckPhoneResponse;
 }
 
-/** Crée un nouveau compte (phone + PIN + nom + prénom). */
+/** Crée un nouveau compte (phone + PIN + nom + prénom).
+ *  2026-07-01 — ref_code optionnel : code de parrainage capté sur ?ref=XXX
+ *  ou lu depuis localStorage (getStoredRefCode). Sans ce champ, le filleul
+ *  ne serait jamais rattaché au parrain (bug identifié en prod). */
 export async function registerPhone(input: {
   phone: string;
   phone_confirm: string;
@@ -64,6 +63,7 @@ export async function registerPhone(input: {
   nom: string;
   prenom: string;
   email?: string;
+  ref_code?: string;
 }): Promise<AuthResponse> {
   const res = await apiPost('/api/auth/phone/register', input);
   const data = await res.json().catch(() => ({}));
@@ -81,20 +81,4 @@ export async function loginPhone(phone: string, pin: string): Promise<AuthRespon
     throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
   }
   return data as AuthResponse;
-}
-
-/** Signale qu'un numéro a été pris par quelqu'un d'autre ("c'est mon numéro,
- *  pas le sien"). Crée un ticket admin sans alerter le compte cible.
- *  Anti-spam : 3 / IP / 24 h côté backend. */
-export async function reclaimPhone(input: {
-  phone: string;
-  contact: string;
-  reason?: string;
-}): Promise<{ success: boolean; message: string }> {
-  const res = await apiPost('/api/auth/phone/reclaim', input);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
-  }
-  return data;
 }
