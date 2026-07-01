@@ -204,6 +204,13 @@ pub struct RegisterPhoneInput {
     /// Optionnel : email si l'utilisateur en a un. Non bloquant.
     #[serde(default)]
     pub email: Option<String>,
+    /// 2026-07-01 — Code parrainage capté sur ?ref=XXX. Optionnel.
+    /// Si présent et valide, users.referred_by est set + entrée créée dans
+    /// la table `referrals` (status='pending'). Sans ce champ, l'inscription
+    /// se faisait sans jamais attacher le filleul au parrain (bug identifié
+    /// via dashboard parrainage : 85 clics, 244 users, 1 seul referred_by).
+    #[serde(default, alias = "referral_code")]
+    pub ref_code: Option<String>,
 }
 
 pub async fn register_phone(
@@ -268,6 +275,14 @@ pub async fn register_phone(
         tokens_balance: i64,
     }
 
+    // 2026-07-01 — Wrap INSERT users + attach_referrer dans une transaction
+    // pour atomicité. Avant : INSERT direct sur pool + le ref_code n'était
+    // même pas transmis → 244 inscriptions et 1 seul users.referred_by set.
+    let mut tx = state.pg.begin().await.map_err(|e| {
+        error!("[register_phone] BEGIN tx: {e:?}");
+        AppError::Internal("Erreur ouverture transaction".into())
+    })?;
+
     // phone_verified = FALSE : aucun OTP/SMS n'a confirmé la possession de
     // la SIM. Le compte est utilisable pour les achats (où l'argent vient
     // de l'inscrit lui-même → pas de risque pour autrui), mais les actions
@@ -297,7 +312,7 @@ pub async fn register_phone(
     .bind(&nom_complet)
     .bind(&phone)
     .bind(&pin_hash)
-    .fetch_one(&state.pg)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
         // Si l'index unique a quand même tiré (race), on renvoie 409 clair.
@@ -308,6 +323,39 @@ pub async fn register_phone(
         }
         error!("[register_phone] INSERT: {e:?}");
         AppError::Internal("Impossible de créer le compte".into())
+    })?;
+
+    // 2026-07-01 — Attache filleul au parrain si un code a été transmis.
+    // attach_referrer_tx est idempotent (Ok(None) si code vide/inconnu ou
+    // referred_by déjà set). N'échoue pas l'inscription si l'attach rate
+    // (le compte reste créé même sans parrainage).
+    if let Some(ref_code) = body.ref_code.as_deref() {
+        let trimmed = ref_code.trim();
+        if !trimmed.is_empty() {
+            match crate::services::referral_service::attach_referrer_tx(
+                &mut tx, user.id, trimmed,
+            )
+            .await
+            {
+                Ok(Some(parrain_id)) => info!(
+                    "[register_phone] filleul {} attaché au parrain {} via code {}",
+                    user.id, parrain_id, trimmed
+                ),
+                Ok(None) => info!(
+                    "[register_phone] code parrainage '{}' non résolu ou déjà attaché",
+                    trimmed
+                ),
+                Err(e) => log::warn!(
+                    "[register_phone] attach_referrer échoué user {}: {e:?}",
+                    user.id
+                ),
+            }
+        }
+    }
+
+    tx.commit().await.map_err(|e| {
+        error!("[register_phone] COMMIT: {e:?}");
+        AppError::Internal("Erreur validation transaction".into())
     })?;
 
     let secret = std::env::var("JWT_SECRET")
